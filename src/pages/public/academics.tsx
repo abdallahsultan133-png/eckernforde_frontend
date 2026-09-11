@@ -1,0 +1,18 @@
+import { ArrowRight, BookOpen, CalendarDays, ShieldCheck } from "lucide-react";
+import { Link } from "react-router";
+import { PublicPageMeta } from "@/components/public/public-page-meta";
+
+const stages = [
+  { number: "01", title: "Nursery & Kindergarten", range: "Early Years", copy: "A dedicated place for the school to explain its approved early-years approach, routines, care arrangements and family partnership.", label: "Early Years information" },
+  { number: "02", title: "Primary", range: "Standard I – Standard VII", copy: "A clear account of subjects, learning support, progression and age-appropriate expectations across the primary years.", label: "Primary information" },
+  { number: "03", title: "Secondary", range: "Form I – Form IV", copy: "A focused secondary pathway covering subjects, examinations, guidance and formal results reporting.", label: "Secondary information" },
+];
+
+export default function AcademicsPage() {
+  return <><PublicPageMeta title="Academics" description="Explore the school’s Nursery, Primary and Secondary educational journey." />
+    <section className="public-page-hero"><p className="public-eyebrow">Academics</p><h1>One learning journey, designed around each stage of growth.</h1><p className="public-lede">The academic experience should be easy for families to understand: where a child starts, how learning develops and how progress is communicated.</p></section>
+    <section className="mx-auto max-w-[1440px] px-4 pb-20 sm:px-6 lg:px-10"><div className="border-t border-[#172b3a]/20"><p className="public-eyebrow pt-5">Educational journey</p>{stages.map((stage) => <article key={stage.number} className="grid gap-5 border-b border-[#172b3a]/20 py-9 md:grid-cols-[5rem_1fr_1.2fr]"><span className="font-serif text-3xl text-[#ba4a32]">{stage.number}</span><div><h2 className="font-serif text-3xl leading-tight">{stage.title}</h2><p className="mt-2 text-sm font-bold uppercase tracking-[.14em] text-[#172b3a]/60">{stage.range}</p></div><div><p className="max-w-lg text-sm leading-7 text-[#172b3a]/75">{stage.copy}</p><span className="mt-5 inline-block border-b border-[#172b3a]/30 pb-1 text-sm font-semibold">{stage.label} pending school approval</span></div></article>)}</div>
+      <div className="mt-16 grid gap-px border border-[#172b3a]/15 bg-[#172b3a]/15 lg:grid-cols-3"><section className="bg-white p-6"><BookOpen className="h-6 w-6 text-[#ba4a32]" aria-hidden="true" /><h2 className="mt-5 font-serif text-2xl">Curriculum & subjects</h2><p className="mt-3 text-sm leading-6 text-[#172b3a]/75">Approved curriculum documents, subjects and learning philosophy belong here—not generic claims.</p></section><section className="bg-white p-6"><CalendarDays className="h-6 w-6 text-[#ba4a32]" aria-hidden="true" /><h2 className="mt-5 font-serif text-2xl">Academic calendar</h2><p className="mt-3 text-sm leading-6 text-[#172b3a]/75">Verified term dates, assessment windows and key milestones will be published after school approval.</p></section><section className="bg-white p-6"><ShieldCheck className="h-6 w-6 text-[#ba4a32]" aria-hidden="true" /><h2 className="mt-5 font-serif text-2xl">Progress & reporting</h2><p className="mt-3 text-sm leading-6 text-[#172b3a]/75">Authenticated families access their own attendance, assignments and formal results in the secure portal.</p></section></div>
+      <div className="public-admissions-cta mt-16"><p className="public-eyebrow">For current families</p><h2>Personal academic information belongs in the secure portal.</h2><Link className="public-primary-button" to="/portal">Open secure portal <ArrowRight aria-hidden="true" /></Link></div>
+    </section></>;
+}

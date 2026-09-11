@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /portal
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /admin
+Disallow: /grades
+Disallow: /classes
+Disallow: /students

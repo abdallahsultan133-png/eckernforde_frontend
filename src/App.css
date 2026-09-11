@@ -1,0 +1,481 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+
+@layer components {
+  .column-title {
+    @apply flex items-center gap-1 font-bold;
+  }
+
+  .sign-up {
+    @apply flex flex-col items-center justify-center px-6 py-8 min-h-svh;
+
+    .logo {
+      @apply flex items-center justify-center;
+
+      img {
+        @apply h-12 w-12;
+      }
+    }
+
+    .card {
+      @apply w-full max-w-xl p-12 mt-6;
+    }
+
+    .header {
+      @apply px-0;
+    }
+
+    .title {
+      @apply text-3xl font-semibold;
+    }
+
+    .description {
+      @apply text-muted-foreground;
+    }
+
+    .content {
+      @apply px-0;
+    }
+
+    .form {
+      @apply space-y-6;
+
+      [data-slot="label"] {
+        @apply text-sm font-medium;
+      }
+
+      [data-slot="input"] {
+        @apply w-full;
+      }
+    }
+
+    .roles {
+      @apply grid w-full grid-cols-2 gap-3;
+
+      .role-button {
+        @apply flex flex-col items-center justify-center gap-2 rounded-md border border-input bg-background p-3 text-sm font-medium transition-colors;
+
+        &.is-active {
+          @apply border-primary bg-primary/10 text-primary;
+        }
+
+        svg {
+          @apply h-6 w-6;
+        }
+
+        span {
+          @apply text-sm;
+        }
+      }
+    }
+
+    .field {
+      @apply flex flex-col gap-3;
+    }
+
+    .submit {
+      @apply w-full mt-2;
+    }
+
+    .footer {
+      @apply w-full text-center text-sm px-0;
+
+      span {
+        @apply text-muted-foreground mr-2;
+      }
+
+      a {
+        @apply font-semibold underline;
+      }
+    }
+  }
+
+  .class-view {
+    @apply container mx-auto pb-8 px-2 sm:px-4;
+  }
+
+  .class-form-card {
+    @apply max-w-3xl gap-2 w-full mx-auto relative overflow-hidden border shadow-sm border-foreground/20;
+  }
+
+  .upload-dropzone {
+    @apply flex flex-col items-center justify-center gap-4 min-h-40 border-2 border-dashed border-foreground/20 bg-primary/5 w-full mt-3 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed rounded-md;
+
+    .upload-prompt {
+      @apply flex flex-col sm:flex-row items-center justify-center gap-4 p-5;
+
+      .icon {
+        @apply size-10 text-orange-600;
+      }
+
+      div {
+        @apply text-center sm:text-left;
+
+        :first-child {
+          @apply text-sm font-bold text-orange-600 mb-1;
+        }
+
+        :last-child {
+          @apply text-xs text-foreground/60;
+        }
+      }
+    }
+  }
+
+  .upload-preview {
+    @apply relative w-full;
+
+    img {
+      @apply size-full object-cover rounded-md;
+    }
+
+    button {
+      @apply absolute top-2 right-3 z-10 cursor-pointer;
+    }
+  }
+
+}
+
+:root {
+    --background: oklch(0.9900 0 0);
+    --foreground: oklch(0 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0 0 0);
+    --popover: oklch(0.9900 0 0);
+    --popover-foreground: oklch(0 0 0);
+    --primary: oklch(0 0 0);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.9400 0 0);
+    --secondary-foreground: oklch(0 0 0);
+    --muted: oklch(0.9700 0 0);
+    --muted-foreground: oklch(0.4400 0 0);
+    --accent: oklch(0.9400 0 0);
+    --accent-foreground: oklch(0 0 0);
+    --destructive: oklch(0.6300 0.1900 23.0300);
+    --destructive-foreground: oklch(1 0 0);
+    --border: oklch(0.9200 0 0);
+    --input: oklch(0.9400 0 0);
+    --ring: oklch(0 0 0);
+    --chart-1: oklch(0.8100 0.1700 75.3500);
+    --chart-2: oklch(0.5500 0.2200 264.5300);
+    --chart-3: oklch(0.7200 0 0);
+    --chart-4: oklch(0.9200 0 0);
+    --chart-5: oklch(0.5600 0 0);
+    --sidebar: oklch(0.9900 0 0);
+    --sidebar-foreground: oklch(0 0 0);
+    --sidebar-primary: oklch(0 0 0);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.9400 0 0);
+    --sidebar-accent-foreground: oklch(0 0 0);
+    --sidebar-border: oklch(0.9400 0 0);
+    --sidebar-ring: oklch(0 0 0);
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-serif: Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+    --radius: 0.5rem;
+    --shadow-x: 0px;
+    --shadow-y: 1px;
+    --shadow-blur: 2px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.18;
+    --shadow-color: hsl(0 0% 0%);
+    --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+    --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+    --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+    --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+    --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+    --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+    --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+    --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+
+    /* ── Data-viz palette (validated with the dataviz skill's checks) ──────
+       Charts are where colour lives — the rest of the app stays monochrome.
+       Categorical order is fixed (blue → orange → aqua); status is the
+       traffic-light triple and never re-themed; the grade chart is one hue. */
+    --viz-cat-1: #2a78d6;   /* categorical slot 1 — blue   */
+    --viz-cat-2: #eb6834;   /* categorical slot 2 — orange */
+    --viz-cat-3: #1baf7a;   /* categorical slot 3 — aqua   */
+    --viz-good: #0ca30c;    /* status — present / on-track  */
+    --viz-warning: #fab219; /* status — late / at-risk      */
+    --viz-critical: #d03b3b;/* status — absent / failing    */
+    --viz-primary: #2a78d6; /* single-hue series (grade distribution) */
+}
+
+.dark {
+    --background: oklch(0 0 0);
+    --foreground: oklch(1 0 0);
+    --card: oklch(0.1400 0 0);
+    --card-foreground: oklch(1 0 0);
+    --popover: oklch(0.1800 0 0);
+    --popover-foreground: oklch(1 0 0);
+    --primary: oklch(1 0 0);
+    --primary-foreground: oklch(0 0 0);
+    --secondary: oklch(0.2500 0 0);
+    --secondary-foreground: oklch(1 0 0);
+    --muted: oklch(0.2300 0 0);
+    --muted-foreground: oklch(0.7200 0 0);
+    --accent: oklch(0.3200 0 0);
+    --accent-foreground: oklch(1 0 0);
+    --destructive: oklch(0.6900 0.2000 23.9100);
+    --destructive-foreground: oklch(0 0 0);
+    --border: oklch(0.2600 0 0);
+    --input: oklch(0.3200 0 0);
+    --ring: oklch(0.7200 0 0);
+    --chart-1: oklch(0.8100 0.1700 75.3500);
+    --chart-2: oklch(0.5800 0.2100 260.8400);
+    --chart-3: oklch(0.5600 0 0);
+    --chart-4: oklch(0.4400 0 0);
+    --chart-5: oklch(0.9200 0 0);
+    --sidebar: oklch(0.1800 0 0);
+    --sidebar-foreground: oklch(1 0 0);
+    --sidebar-primary: oklch(1 0 0);
+    --sidebar-primary-foreground: oklch(0 0 0);
+    --sidebar-accent: oklch(0.3200 0 0);
+    --sidebar-accent-foreground: oklch(1 0 0);
+    --sidebar-border: oklch(0.3200 0 0);
+    --sidebar-ring: oklch(0.7200 0 0);
+
+    /* Data-viz — steps re-picked for the dark surface (status stays fixed). */
+    --viz-cat-1: #3987e5;
+    --viz-cat-2: #d95926;
+    --viz-cat-3: #199e70;
+    --viz-good: #0ca30c;
+    --viz-warning: #fab219;
+    --viz-critical: #d03b3b;
+    --viz-primary: #3987e5;
+
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-serif: Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+    --radius: 0.5rem;
+    --shadow-x: 0px;
+    --shadow-y: 1px;
+    --shadow-blur: 2px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.18;
+    --shadow-color: hsl(0 0% 0%);
+    --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+    --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+    --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+    --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+    --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+    --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+    --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+    --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    --font-sans: var(--font-sans);
+    --font-display: var(--font-display);
+    --font-mono: var(--font-mono);
+    --font-serif: var(--font-serif);
+
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+
+    --shadow-2xs: var(--shadow-2xs);
+    --shadow-xs: var(--shadow-xs);
+    --shadow-sm: var(--shadow-sm);
+    --shadow: var(--shadow);
+    --shadow-md: var(--shadow-md);
+    --shadow-lg: var(--shadow-lg);
+    --shadow-xl: var(--shadow-xl);
+    --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* ─── ANIMATIONS ──────────────────────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Route content fades in on every navigation (Layout re-keys this element on
+   the pathname). */
+.animate-page {
+  animation: fadeInUp 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page {
+    animation: none;
+  }
+}
+
+/* Cards hover lift */
+[class*="-card"] {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Notification bell badge pop */
+@keyframes badgePop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Apply animation to notification badge */
+.notification-badge-enter {
+  animation: badgePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ─── MOBILE RESPONSIVE POLISH ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Stack the messages layout on mobile */
+  .messages-page > div:last-child {
+    grid-template-columns: 1fr;
+  }
+
+  /* Calendar grid readable on small screens */
+  .calendar-page [class*="grid-cols-7"] {
+    font-size: 0.75rem;
+  }
+
+  /* Attendance status buttons wrap */
+  .attendance-mark [data-active] {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* ─── GLOBAL TRANSITIONS ─────────────────────────────────────────────────── */
+
+/* Smooth page transitions */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus ring consistent */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ── Public school site ────────────────────────────────────────────────────
+   The public product has its own editorial language.  Portal tokens above
+   stay intentionally operational; these classes prevent the public site from
+   inheriting the generic dashboard/card aesthetic. */
+.public-skip-link { @apply sr-only; }
+.public-skip-link:focus { @apply fixed left-4 top-4 z-[60] rounded bg-white px-4 py-2 text-sm font-semibold text-[#172b3a] shadow-lg; }
+.public-eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.18em] text-[#ba4a32]; }
+.public-hero { @apply mx-auto grid min-h-[620px] max-w-[1600px] lg:grid-cols-[1.04fr_.96fr]; }
+.public-hero-copy { @apply flex flex-col justify-center px-6 py-18 sm:px-10 lg:px-16 xl:px-24; }
+.public-hero h1, .public-page-hero h1 { @apply mt-5 max-w-3xl font-serif text-5xl leading-[.96] tracking-tight sm:text-6xl lg:text-7xl; }
+.public-lede { @apply mt-7 max-w-2xl text-base leading-7 text-[#172b3a]/72 sm:text-lg; }
+.public-image-placeholder { @apply relative flex overflow-hidden bg-[#315d65] p-8 text-sm font-medium text-white/80; }
+.public-image-placeholder::before { content: ""; @apply absolute inset-0 opacity-70; background: linear-gradient(135deg, #315d65 0%, #315d65 45%, #ba4a32 45%, #ba4a32 46%, #d9a441 46%, #d9a441 100%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .public-site *,
+  .public-site *::before,
+  .public-site *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.public-image-placeholder > *,.public-image-placeholder > span { @apply relative z-10; }
+.public-hero-art { @apply min-h-[360px] items-end justify-start sm:min-h-[460px] lg:min-h-0; }
+.public-primary-button { @apply inline-flex min-h-12 items-center justify-center gap-2 bg-[#ba4a32] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#963722] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ba4a32]; }
+.public-secondary-button { @apply inline-flex min-h-12 items-center justify-center border border-[#172b3a]/30 px-5 py-3 text-sm font-bold transition-colors hover:border-[#172b3a] hover:bg-[#172b3a] hover:text-white; }
+.public-portal-button { @apply inline-flex min-h-10 items-center border border-[#172b3a] bg-[#172b3a] px-4 text-sm font-bold text-white transition-colors hover:bg-[#ba4a32] hover:border-[#ba4a32]; }
+.public-text-link { @apply inline-flex items-center gap-1.5 text-sm font-bold underline decoration-[#ba4a32] decoration-1 underline-offset-4 hover:text-[#ba4a32]; }
+.public-intro-grid { @apply mx-auto grid max-w-[1440px] gap-8 px-6 py-20 sm:px-10 lg:grid-cols-[.8fr_1.2fr] lg:px-16; }
+.public-intro-grid h2,.public-section-heading h2,.public-story-band h2,.public-utility-section h2,.public-admissions-cta h2,.public-editorial-list h2,.public-content-note h2 { @apply font-serif text-4xl leading-tight tracking-tight sm:text-5xl; }
+.public-intro-grid p:not(.public-eyebrow),.public-story-band p:not(.public-eyebrow),.public-utility-section p:not(.public-eyebrow),.public-admissions-cta p:not(.public-eyebrow),.public-editorial-list p,.public-content-note p { @apply mt-5 max-w-2xl text-base leading-7 text-[#172b3a]/70; }
+.public-stage-section { @apply bg-[#e8e0d2] px-6 py-20 sm:px-10 lg:px-16; }
+.public-section-heading,.public-stage-grid,.public-story-band,.public-utility-section { @apply mx-auto max-w-[1440px]; }
+.public-stage-grid { @apply mt-12 grid border-t border-[#172b3a]/20 md:grid-cols-3; }
+.public-stage { @apply min-h-72 border-b border-[#172b3a]/20 py-8 md:border-b-0 md:px-8 md:first:pl-0; }
+.public-stage-number { @apply text-xs font-bold tracking-widest text-[#ba4a32]; }
+.public-stage h3 { @apply mt-12 font-serif text-3xl; }
+.public-stage p { @apply mt-4 max-w-xs leading-7 text-[#172b3a]/70; }
+.public-stage .public-text-link { @apply mt-8; }
+.public-story-band { @apply grid gap-10 px-6 py-20 sm:px-10 lg:grid-cols-2 lg:items-center lg:px-16; }
+.public-story-art { @apply min-h-80 flex-col items-center justify-center gap-3 text-center; }
+.public-utility-section { @apply grid gap-10 border-y border-[#172b3a]/15 px-6 py-20 sm:px-10 lg:grid-cols-[.8fr_1.2fr] lg:px-16; }
+.public-utility-list { @apply divide-y divide-[#172b3a]/15 border-y border-[#172b3a]/15; }
+.public-utility-list a { @apply grid grid-cols-[auto_1fr_auto] items-center gap-4 py-5 transition-colors hover:text-[#ba4a32]; }
+.public-utility-list b { @apply block text-base; }.public-utility-list small { @apply mt-1 block text-sm leading-5 text-[#172b3a]/65; }
+.public-admissions-cta { @apply mx-auto my-10 max-w-[1376px] bg-[#d9a441] px-6 py-16 sm:my-16 sm:px-10 lg:px-16; }
+.public-page-hero { @apply mx-auto max-w-[1440px] px-6 py-22 sm:px-10 lg:px-16 lg:py-28; }
+.public-editorial-list { @apply mx-auto max-w-[1440px] border-t border-[#172b3a]/20 px-6 sm:px-10 lg:px-16; }
+.public-editorial-list article { @apply grid gap-6 border-b border-[#172b3a]/20 py-10 sm:grid-cols-[100px_1fr]; }.public-editorial-list article>span { @apply pt-2 text-xs font-bold tracking-[.18em] text-[#ba4a32]; }
+.public-content-note { @apply mx-auto my-16 flex max-w-[1312px] gap-5 border-l-4 border-[#ba4a32] bg-white/70 p-7 sm:p-10; }
+@media (prefers-reduced-motion: no-preference) { .public-primary-button,.public-secondary-button,.public-stage,.public-utility-list a { transition: transform .2s ease, background-color .2s ease, color .2s ease, border-color .2s ease; }.public-primary-button:hover,.public-secondary-button:hover { transform: translateY(-2px); }.public-stage:hover { background: rgb(255 255 255 / .28); } }
+@media (min-width: 48rem) { .public-stage:not(:last-child) { border-right-width: 1px; } }
+
+/* Smooth colour cross-fade on a light/dark toggle only. The `.theme-transition`
+   class is added to <html> for ~250ms by the ThemeProvider when the theme
+   changes, so these transitions are NOT live during normal scrolling, resizing,
+   or hover — only while the palette is actually swapping. */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+    fill 0.2s ease, stroke 0.2s ease !important;
+}
+/* Public-site focus treatment: links and controls remain obvious when using a
+   keyboard, without relying on pointer hover. */
+.public-site a:focus-visible,
+.public-site button:focus-visible,
+.public-site input:focus-visible,
+.public-site select:focus-visible,
+.public-site textarea:focus-visible {
+  outline: 3px solid #ba4a32;
+  outline-offset: 3px;
+}
