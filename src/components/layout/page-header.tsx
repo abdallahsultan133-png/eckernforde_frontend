@@ -12,6 +12,10 @@ interface PageHeaderProps {
   breadcrumb?: boolean;
   /** Extra node between breadcrumb and title (e.g. a "back" link, a status row). */
   above?: ReactNode;
+  /** Compact context above the title, such as a class or academic period. */
+  eyebrow?: ReactNode;
+  /** Optional metadata below the description. */
+  metadata?: ReactNode;
   className?: string;
 }
 
@@ -27,28 +31,36 @@ export function PageHeader({
   actions,
   breadcrumb = false,
   above,
+  eyebrow,
+  metadata,
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("space-y-4", className)}>
+    <header className={cn("space-y-3", className)}>
       {breadcrumb && <Breadcrumb />}
       {above}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0 space-y-1">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {eyebrow && (
+            <div className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              {eyebrow}
+            </div>
+          )}
+          <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground">
             {title}
           </h1>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
           )}
+          {metadata && <div className="pt-1 text-sm text-muted-foreground">{metadata}</div>}
         </div>
         {actions && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             {actions}
           </div>
         )}
       </div>
-    </div>
+    </header>
   );
 }
 
