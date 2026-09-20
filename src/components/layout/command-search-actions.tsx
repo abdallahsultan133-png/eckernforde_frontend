@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useKBar, useRegisterActions, type Action } from "kbar";
 import { useGetIdentity } from "@refinedev/core";
-import { GraduationCap, UserRound } from "lucide-react";
+import { Bell, CalendarDays, ClipboardCheck, FileBarChart, FileText, GraduationCap, MessageSquare, UserRound } from "lucide-react";
 
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value.ts";
@@ -38,8 +38,15 @@ export function CommandSearchActions() {
   );
 
   const actions = useMemo<Action[]>(() => {
-    if (!enabled) return [];
-    const list: Action[] = [];
+    const list: Action[] = [
+      { id: "nav-calendar", name: "Open Calendar", subtitle: "View lessons, exams, deadlines, and events", section: "Navigate", icon: <CalendarDays className="h-4 w-4" />, perform: () => navigate("/calendar") },
+      { id: "nav-insights", name: "Open Academic Insights", subtitle: "Attendance, performance, and class activity", section: "Navigate", icon: <FileBarChart className="h-4 w-4" />, perform: () => navigate("/insights") },
+      { id: "nav-assignments", name: "Open Assignments", subtitle: "Review work and submission status", section: "Navigate", icon: <FileText className="h-4 w-4" />, perform: () => navigate("/assignments") },
+      { id: "nav-attendance", name: "Open Attendance", subtitle: "Mark or review attendance", section: "Navigate", icon: <ClipboardCheck className="h-4 w-4" />, perform: () => navigate("/attendance") },
+      { id: "nav-notifications", name: "Open Notifications", subtitle: "Review academic and school updates", section: "Navigate", icon: <Bell className="h-4 w-4" />, perform: () => navigate("/notifications") },
+      { id: "nav-messages", name: "Open Messages", subtitle: "View school communication", section: "Navigate", icon: <MessageSquare className="h-4 w-4" />, perform: () => navigate("/messages") },
+    ];
+    if (!enabled) return list;
 
     for (const c of (classData?.data ?? []).slice(0, 6)) {
       list.push({
@@ -58,7 +65,7 @@ export function CommandSearchActions() {
         list.push({
           id: `search-student-${s.id}`,
           name: s.name,
-          subtitle: s.email,
+          subtitle: "Student",
           section: "Students",
           keywords: `${q} student ${s.email}`,
           icon: <UserRound className="h-4 w-4" />,

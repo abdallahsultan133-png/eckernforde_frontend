@@ -18,7 +18,7 @@ interface QuickActionsProps {
 export function QuickActions({ actions, description = "Jump straight into your most common tasks.", highlight }: QuickActionsProps) {
     return (
         <Card>
-            <CardContent className="space-y-4 p-6">
+            <CardContent className="space-y-4 p-4">
                 <h2 className="text-xl font-semibold">Quick Actions</h2>
                 <p className="text-muted-foreground">{description}</p>
 

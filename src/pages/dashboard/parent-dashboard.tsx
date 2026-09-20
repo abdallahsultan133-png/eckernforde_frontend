@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { GraduationCap, ClipboardCheck, ChevronRight, Users, ShieldCheck } from "lucide-react";
+import { GraduationCap, ClipboardCheck, ChevronRight, Users, ShieldCheck, ArrowRight, CalendarDays } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -60,8 +60,20 @@ const ParentDashboard = () => {
     const children = data?.data ?? [];
 
     return (
-        <div className="space-y-6">
-            <DashboardGreeting subtitle="How your children are doing and what needs your attention." />
+        <div className="space-y-4">
+            <section className="dashboard-context-panel parent-context-panel">
+                <DashboardGreeting subtitle="A calm, child-centered view of progress, attendance, and school communication." />
+                <div className="dashboard-context-actions" aria-label="Parent shortcuts">
+                    <Link to="/calendar" className="dashboard-context-link">
+                        <CalendarDays className="h-4 w-4" /> School calendar
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link to="/parent" className="dashboard-context-link dashboard-context-link-primary">
+                        <Users className="h-4 w-4" /> Open family view
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </section>
 
             {!isLoading && !isError && children.length > 0 && (
                 <ActionQueue
@@ -95,10 +107,18 @@ const ParentDashboard = () => {
                         </Link>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {children.map((child) => {
+                    <div className="dashboard-child-shell">
+                        <div className="dashboard-module-heading">
+                            <div>
+                                <p className="dashboard-module-kicker">Family workspace</p>
+                                <h2 id="children-heading">Your children</h2>
+                            </div>
+                            <span className="dashboard-module-note">Select a profile</span>
+                        </div>
+                        <div className="dashboard-child-grid" aria-labelledby="children-heading">
+                          {children.map((child) => {
                             return (
-                                <Card key={child.id}>
+                                <Card key={child.id} className="parent-child-card overflow-hidden">
                                     <CardHeader className="pb-3">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-11 w-11">
@@ -111,7 +131,7 @@ const ParentDashboard = () => {
                                                     <Badge variant="outline" className="mt-1 text-[10px]">#{child.profile.registrationNumber}</Badge>
                                                 )}
                                             </div>
-                                            <Link to={`/students/${child.id}`} className="text-muted-foreground hover:text-primary">
+                                            <Link to={`/students/${child.id}`} aria-label={`Open ${child.name}'s profile`} className="text-muted-foreground hover:text-primary">
                                                 <ChevronRight className="h-5 w-5" />
                                             </Link>
                                         </div>
@@ -142,7 +162,8 @@ const ParentDashboard = () => {
                                     </CardContent>
                                 </Card>
                             );
-                        })}
+                          })}
+                        </div>
                     </div>
                 </>
             )}

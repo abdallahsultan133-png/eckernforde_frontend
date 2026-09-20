@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useGetIdentity } from "@refinedev/core";
 import type { User } from "@/types";
+import { ROLE_LABEL } from "@/lib/roles";
+import { useApiQuery } from "@/hooks/use-api-query";
 
 const firstName = (name?: string) => name?.trim().split(/\s+/)[0] ?? "";
 
@@ -12,8 +14,23 @@ const firstName = (name?: string) => name?.trim().split(/\s+/)[0] ?? "";
  */
 export function DashboardGreeting({ subtitle }: { subtitle: ReactNode }) {
   const { data: identity } = useGetIdentity<User>();
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(identity?.role === "student" ? "/portal-context" : null);
   const reduce = useReducedMotion();
   const name = firstName(identity?.name);
+  const role = identity?.role ? ROLE_LABEL[identity.role] : "School portal";
+  const schoolName = portal?.data.context?.schoolBand === "secondary"
+    ? "Eckernforde Cambridge Secondary School"
+    : portal?.data.context?.schoolBand === "primary"
+      ? "Eckernforde English Medium Primary School"
+      : role;
+  const today = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
+
+  const hour = new Date().getHours();
+  const salutation = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
     <motion.div
@@ -21,8 +38,13 @@ export function DashboardGreeting({ subtitle }: { subtitle: ReactNode }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
     >
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/75">
+        <span>{schoolName}</span>
+        <span aria-hidden="true" className="h-1 w-1 rounded-full bg-primary/45" />
+        <span className="text-muted-foreground">{today}</span>
+      </div>
       <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-        Welcome back{name ? `, ${name}` : ""}
+        {salutation}{name ? `, ${name}` : ""}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground sm:text-base">{subtitle}</p>
     </motion.div>

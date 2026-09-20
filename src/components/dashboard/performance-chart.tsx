@@ -64,7 +64,7 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
     const unitPlural = personal ? "classes" : "students";
 
     return (
-        <div className="rounded-xl border p-6">
+        <div className="rounded-xl border p-4">
             <h2 className="text-xl font-semibold">Student Performance</h2>
             <p className="mb-4 mt-1 text-sm text-muted-foreground">
                 {personal
@@ -90,7 +90,7 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                             ? "Once your teachers post final grades, you'll see how many of your classes fall into each grade band."
                             : "Grade distribution will appear here once grades are recorded."
                     }
-                    action={{ label: personal ? "See my grades" : "Go to gradebook", to: "/grades" }}
+                    action={{ label: personal ? "See my grades" : "Open assignment grade book", to: "/grades" }}
                 />
             ) : (
                 <>

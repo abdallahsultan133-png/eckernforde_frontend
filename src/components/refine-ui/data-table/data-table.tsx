@@ -4,8 +4,8 @@ import type { BaseRecord, HttpError } from "@refinedev/core";
 import type { UseTableReturnType } from "@refinedev/react-table";
 import type { Column } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
-import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { AlertCircle, Inbox } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { DataTablePagination } from "@/components/refine-ui/data-table/data-table-pagination";
 import {
@@ -17,13 +17,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type DataTableProps<TData extends BaseRecord> = {
   table: UseTableReturnType<TData, HttpError>;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  ariaLabel?: string;
 };
 
 export function DataTable<TData extends BaseRecord>({
   table,
+  emptyTitle = "No records found",
+  emptyDescription = "There are no records matching the current view.",
+  ariaLabel = "Records",
 }: DataTableProps<TData>) {
   const {
     reactTable: { getHeaderGroups, getRowModel, getAllColumns },
@@ -79,10 +87,10 @@ export function DataTable<TData extends BaseRecord>({
   }, [tableQuery.data?.data, pageSize]);
 
   return (
-    <div className={cn("flex", "flex-col", "flex-1", "gap-4")}>
-      <div ref={tableContainerRef} className={cn("rounded-md", "border")}>
-        <Table ref={tableRef} style={{ tableLayout: "fixed", width: "100%" }}>
-          <TableHeader>
+    <div className="flex flex-1 flex-col gap-4">
+      <div ref={tableContainerRef} className="overflow-hidden border-y border-border bg-card sm:rounded-lg sm:border">
+        <Table ref={tableRef} aria-label={ariaLabel} aria-busy={isLoading} style={{ width: "100%" }}>
+          <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur-sm">
             {getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -112,10 +120,18 @@ export function DataTable<TData extends BaseRecord>({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className="relative">
-            {isLoading ? (
-              <>
-                {Array.from({ length: pageSize < 1 ? 1 : pageSize }).map(
+          <TableBody>
+            {tableQuery.isError ? (
+              <DataTableStateRow
+                columnsLength={columns.length}
+                icon={AlertCircle}
+                title="Unable to load records"
+                description="Check your connection and permissions, then try again."
+                tone="critical"
+                action={<Button variant="outline" size="sm" onClick={() => tableQuery.refetch()}>Try again</Button>}
+              />
+            ) : isLoading ? (
+                Array.from({ length: Math.min(Math.max(pageSize, 1), 8) }).map(
                   (_, rowIndex) => (
                     <TableRow
                       key={`skeleton-row-${rowIndex}`}
@@ -130,35 +146,14 @@ export function DataTable<TData extends BaseRecord>({
                               isOverflowing: isOverflowing,
                             }),
                           }}
-                          className={cn("truncate")}
+                          className="h-14"
                         >
-                          <div className="h-8" />
+                          <Skeleton className={cn("h-4", rowIndex % 3 === 0 ? "w-3/4" : "w-1/2")} />
                         </TableCell>
                       ))}
                     </TableRow>
                   )
-                )}
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className={cn("absolute", "inset-0", "pointer-events-none")}
-                  >
-                    <Loader2
-                      className={cn(
-                        "absolute",
-                        "top-1/2",
-                        "left-1/2",
-                        "animate-spin",
-                        "text-primary",
-                        "h-8",
-                        "w-8",
-                        "-translate-x-1/2",
-                        "-translate-y-1/2"
-                      )}
-                    />
-                  </TableCell>
-                </TableRow>
-              </>
+                )
             ) : getRowModel().rows?.length ? (
               getRowModel().rows.map((row) => {
                 return (
@@ -191,8 +186,9 @@ export function DataTable<TData extends BaseRecord>({
               })
             ) : (
               <DataTableNoData
-                isOverflowing={isOverflowing}
                 columnsLength={columns.length}
+                title={emptyTitle}
+                description={emptyDescription}
               />
             )}
           </TableBody>
@@ -213,45 +209,47 @@ export function DataTable<TData extends BaseRecord>({
 }
 
 function DataTableNoData({
-  isOverflowing,
   columnsLength,
+  title,
+  description,
 }: {
-  isOverflowing: { horizontal: boolean; vertical: boolean };
   columnsLength: number;
+  title: string;
+  description: string;
+}) {
+  return (
+    <DataTableStateRow
+      columnsLength={columnsLength}
+      icon={Inbox}
+      title={title}
+      description={description}
+    />
+  );
+}
+
+function DataTableStateRow({
+  columnsLength,
+  icon: Icon,
+  title,
+  description,
+  tone = "neutral",
+  action,
+}: {
+  columnsLength: number;
+  icon: typeof Inbox;
+  title: string;
+  description: string;
+  tone?: "neutral" | "critical";
+  action?: ReactNode;
 }) {
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell
-        colSpan={columnsLength}
-        className={cn("relative", "text-center")}
-        style={{ height: "490px" }}
-      >
-        <div
-          className={cn(
-            "absolute",
-            "inset-0",
-            "flex",
-            "flex-col",
-            "items-center",
-            "justify-center",
-            "gap-2",
-            "bg-background"
-          )}
-          style={{
-            position: isOverflowing.horizontal ? "sticky" : "absolute",
-            left: isOverflowing.horizontal ? "50%" : "50%",
-            transform: "translateX(-50%)",
-            zIndex: isOverflowing.horizontal ? 2 : 1,
-            width: isOverflowing.horizontal ? "fit-content" : "100%",
-            minWidth: "300px",
-          }}
-        >
-          <div className={cn("text-lg", "font-semibold", "text-foreground")}>
-            No data to display
-          </div>
-          <div className={cn("text-sm", "text-muted-foreground")}>
-            This table is empty for the time being.
-          </div>
+      <TableCell colSpan={columnsLength} className="h-56 whitespace-normal px-6 text-center">
+        <div className="mx-auto flex max-w-md flex-col items-center">
+          <Icon className={cn("h-5 w-5", tone === "critical" ? "text-destructive" : "text-muted-foreground")} aria-hidden="true" />
+          <p className="mt-3 text-sm font-medium text-foreground">{title}</p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
+          {action && <div className="mt-4">{action}</div>}
         </div>
       </TableCell>
     </TableRow>

@@ -15,13 +15,13 @@ export type StatusTone =
   | "critical";
 
 const TONE: Record<StatusTone, string> = {
-  neutral: "bg-muted text-muted-foreground ring-border",
-  info: "bg-blue-500/10 text-blue-700 ring-blue-500/20 dark:text-blue-300",
+  neutral: "border-border bg-muted/60 text-muted-foreground",
+  info: "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300",
   success:
-    "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
+    "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   warning:
-    "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
-  critical: "bg-red-500/10 text-red-700 ring-red-500/20 dark:text-red-300",
+    "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  critical: "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300",
 };
 
 interface StatusBadgeProps {
@@ -44,7 +44,7 @@ export function StatusBadge({
     <span
       title={title}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
         TONE[tone],
         className,
       )}

@@ -46,6 +46,8 @@ export function DataTablePagination({
     return Array.from(optionsSet).sort((a, b) => a - b);
   }, [pageSize]);
 
+  const safePageCount = Math.max(pageCount, 1);
+
   return (
     <div
       className={cn(
@@ -53,7 +55,7 @@ export function DataTablePagination({
         "items-center",
         "justify-between",
         "flex-wrap",
-        "px-2",
+        "px-1",
         "w-full",
         "gap-2"
       )}
@@ -66,11 +68,11 @@ export function DataTablePagination({
           "whitespace-nowrap"
         )}
       >
-        {typeof total === "number" ? `${total} row(s)` : null}
+        {typeof total === "number" ? `${total.toLocaleString()} ${total === 1 ? "record" : "records"}` : null}
       </div>
       <div className={cn("flex", "items-center", "flex-wrap", "gap-2")}>
         <div className={cn("flex", "items-center", "gap-2")}>
-          <span className={cn("text-sm", "font-medium")}>Rows per page</span>
+          <span className="hidden text-sm font-medium sm:inline">Rows per page</span>
           <Select
             value={`${pageSize}`}
             onValueChange={(v) => setPageSize(Number(v))}
@@ -97,7 +99,7 @@ export function DataTablePagination({
               "font-medium"
             )}
           >
-            Page {currentPage} of {pageCount}
+            Page {currentPage} of {safePageCount}
           </div>
           <div className={cn("flex", "items-center", "gap-2")}>
             <Button
@@ -122,7 +124,7 @@ export function DataTablePagination({
               variant="outline"
               className={cn("h-8", "w-8", "p-0")}
               onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === pageCount}
+              disabled={currentPage >= safePageCount}
               aria-label="Go to next page"
             >
               <ChevronRight />
@@ -130,8 +132,8 @@ export function DataTablePagination({
             <Button
               variant="outline"
               className={cn("hidden", "h-8", "w-8", "p-0", "lg:flex")}
-              onClick={() => setCurrentPage(pageCount)}
-              disabled={currentPage === pageCount}
+              onClick={() => setCurrentPage(safePageCount)}
+              disabled={currentPage >= safePageCount}
               aria-label="Go to last page"
             >
               <ChevronsRight />

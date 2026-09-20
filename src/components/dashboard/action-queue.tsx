@@ -67,7 +67,7 @@ export function ActionQueue({
   const overflow = items.length - shown.length;
 
   return (
-    <Card className={cn("flex flex-col", className)}>
+    <Card className={cn("flex flex-col", className)} aria-busy={isLoading}>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <ListIcon className="h-4 w-4 text-muted-foreground" />
@@ -80,7 +80,7 @@ export function ActionQueue({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1">
+      <CardContent className="flex-1" aria-live="polite">
         {isLoading ? (
           <ul className="space-y-1">
             {Array.from({ length: 3 }).map((_, i) => (

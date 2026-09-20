@@ -6,6 +6,7 @@ import { ArrowRight, FileText, Loader2, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { SearchInput } from "@/components/ui/search-input.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
@@ -64,11 +65,14 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
   const ungradedCount = submissions.filter((s) => s.status !== "graded").length;
 
   const [filter, setFilter] = useState<FilterKey>("ungraded");
+  const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
-    if (filter === "all") return submissions;
-    if (filter === "graded") return submissions.filter((s) => s.status === "graded");
-    return submissions.filter((s) => s.status !== "graded");
-  }, [submissions, filter]);
+    const query = search.trim().toLowerCase();
+    const byName = submissions.filter((s) => !query || `${s.student?.name ?? ""} ${s.student?.email ?? ""}`.toLowerCase().includes(query));
+    if (filter === "all") return byName;
+    if (filter === "graded") return byName.filter((s) => s.status === "graded");
+    return byName.filter((s) => s.status !== "graded");
+  }, [submissions, filter, search]);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // Keep a valid selection as data / filter change.
@@ -84,6 +88,8 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
   }, [submissions, filtered]);
 
   const selected = submissions.find((s) => s.id === selectedId) ?? null;
+  const gradedCount = submissions.length - ungradedCount;
+  const lateCount = submissions.filter((s) => s.status === "late").length;
 
   const [score, setScore] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -167,10 +173,30 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(240px,300px)_1fr]">
+    <div className="space-y-4">
+      <div className="overflow-x-auto">
+      <div className="grid min-w-[30rem] grid-cols-3 divide-x rounded-xl border bg-card" aria-label="Submission summary">
+        <div className="px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Total submissions</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">{submissions.length}</p>
+        </div>
+        <div className="px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Needs grading</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">{ungradedCount}</p>
+        </div>
+        <div className="px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Graded</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{gradedCount}<span className="ml-1 text-xs font-normal text-muted-foreground">{lateCount ? `· ${lateCount} late` : ""}</span></p>
+        </div>
+      </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(240px,300px)_1fr]">
       {/* ── Submission list ─────────────────────────────────────────────── */}
       <div className="rounded-xl border">
-        <div className="flex flex-wrap gap-1 border-b p-2">
+        <div className="space-y-2 border-b p-2">
+          <SearchInput value={search} onChange={setSearch} placeholder="Find a student..." aria-label="Search submissions by student" shortcut={null} />
+          <div className="flex flex-wrap gap-1">
           {FILTERS.map((f) => {
             const count =
               f.key === "all"
@@ -193,6 +219,7 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
               </button>
             );
           })}
+          </div>
         </div>
         <ul className="max-h-[420px] divide-y overflow-y-auto lg:max-h-[560px]">
           {filtered.length === 0 ? (
@@ -258,8 +285,8 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
                 </p>
               </div>
             </div>
-            <StatusBadge tone={selected.status === "graded" ? "success" : "info"}>
-              {selected.status === "graded" ? "Graded" : "Submitted"}
+            <StatusBadge tone={selected.status === "graded" ? "success" : selected.status === "late" ? "warning" : "info"}>
+              {selected.status === "graded" ? "Graded" : selected.status === "late" ? "Submitted late" : "Submitted"}
             </StatusBadge>
           </div>
 
@@ -352,6 +379,7 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

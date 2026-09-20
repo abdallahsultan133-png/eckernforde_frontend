@@ -1,5 +1,7 @@
-import {ListView} from "@/components/refine-ui/views/list-view.tsx";
 import {PageHeader} from "@/components/layout/page-header.tsx";
+import {PageContainer} from "@/components/layout/page-container.tsx";
+import {SectionHeader} from "@/components/layout/section-header.tsx";
+import {FilterBar} from "@/components/ui/filter-bar.tsx";
 import {SearchInput} from "@/components/ui/search-input.tsx";
 import {useMemo, useState} from "react";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
@@ -32,13 +34,6 @@ const SubjectsList = () => {
     ] : [];
 
     const subjectColumns = useMemo<ColumnDef<Subject>[]>(() => [
-        {
-            id: 'code',
-            accessorKey: 'code',
-            size: 100,
-            header: () => <p className="column-title ml-2">Code</p>,
-            cell: ({ getValue }) => <Badge>{getValue<string>()}</Badge>
-        },
         {
             id: 'name',
             accessorKey: 'name',
@@ -95,24 +90,39 @@ const SubjectsList = () => {
         }
     });
 
+    const totalSubjects = subjectTable.refineCore.tableQuery.data?.total ?? 0;
+    const subjectsQuery = subjectTable.refineCore.tableQuery;
+
     return (
-        <ListView>
+        <PageContainer className="subject-directory">
             <PageHeader
                 breadcrumb
                 title="Subjects"
-                description="Browse subjects, filter by department, and manage the catalogue."
-                actions={
-                    <>
+                description="Manage the curriculum catalogue used by classes, assignments, examinations, and academic records."
+                actions={<CreateButton resource="subjects" />}
+            />
+
+            <section aria-labelledby="subject-directory-title" className="space-y-4">
+                <SectionHeader
+                    title={<span id="subject-directory-title">Curriculum catalogue</span>}
+                    description="Subjects are grouped by department; class and teacher assignments are managed from their respective workspaces."
+                />
+                <FilterBar
+                    search={
                         <SearchInput
-                            placeholder="Search by name..."
+                            placeholder="Search subjects"
                             aria-label="Search subjects by name"
-                            containerClassName="w-full sm:max-w-56"
                             value={searchQuery}
                             onChange={setSearchQuery}
                             loading={subjectTable.refineCore.tableQuery.isFetching}
                         />
+                    }
+                    active={Boolean(searchQuery || selectedDepartment !== "all")}
+                    onClear={() => { setSearchQuery(""); setSelectedDepartment("all"); }}
+                    resultLabel={subjectsQuery.isLoading ? "Loading subjects…" : `${totalSubjects.toLocaleString()} ${totalSubjects === 1 ? "subject" : "subjects"} in this view`}
+                >
                         <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectTrigger className="h-10 w-full sm:w-[200px]" aria-label="Filter subjects by department">
                                 <SelectValue placeholder="Filter by department" />
                             </SelectTrigger>
                             <SelectContent>
@@ -124,13 +134,15 @@ const SubjectsList = () => {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <CreateButton />
-                    </>
-                }
-            />
-
-            <DataTable table={subjectTable} />
-        </ListView>
+                </FilterBar>
+                <DataTable
+                    table={subjectTable}
+                    ariaLabel="Subjects"
+                    emptyTitle="No subjects found"
+                    emptyDescription={searchQuery || selectedDepartment !== "all" ? "Try clearing or changing the current filters." : "Create a subject to begin building the curriculum catalogue."}
+                />
+            </section>
+        </PageContainer>
     )
 }
 

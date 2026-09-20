@@ -2,6 +2,7 @@ import { Refine, Authenticated } from "@refinedev/core";
 import { RefineKbarProvider } from "@refinedev/kbar";
 import { CommandPalette } from "@/components/layout/command-palette.tsx";
 import {Layout} from "@/components/layout/layout.tsx";
+import { PortalSetupShell } from "@/pages/portal/setup-shell.tsx";
 import routerProvider, {
   DocumentTitleHandler,
   UnsavedChangesNotifier,
@@ -35,10 +36,14 @@ import ContactPage from "@/pages/public/contact";
 import GalleryPage from "@/pages/public/gallery";
 import PublicNotFoundPage from "@/pages/public/not-found";
 import { ContentPage, pages as publicPages } from "@/pages/public/content-page";
+import PublicDetailPage from "@/pages/public/detail-page";
 
 // Route-level code splitting: each page is fetched only when its route is
 // visited instead of all ~30 pages shipping in a single bundle up front.
-const Dashboard = lazy(() => import("@/pages/dashboard.tsx"));
+const PortalEntry = lazy(() => import("@/pages/portal/entry.tsx"));
+const PortalSetup = lazy(() => import("@/pages/portal/setup.tsx"));
+const AcademicHistory = lazy(() => import("@/pages/portal/academic-history.tsx"));
+const AcademicArchive = lazy(() => import("@/pages/portal/academic-archive.tsx"));
 const ActivityPage = lazy(() => import("@/pages/activity.tsx"));
 const SubjectsList = lazy(() => import("@/pages/subjects/list.tsx"));
 const SubjectsCreate = lazy(() => import("@/pages/subjects/create.tsx"));
@@ -53,12 +58,14 @@ const AdmissionsEnquiries = lazy(() => import("@/pages/admin/admissions-enquirie
 const Publications = lazy(() => import("@/pages/admin/publications.tsx"));
 const PublicEvents = lazy(() => import("@/pages/admin/public-events.tsx"));
 const TermResultsPublishing = lazy(() => import("@/pages/admin/term-results-publishing.tsx"));
+const ReportCardTemplate = lazy(() => import("@/pages/admin/report-card-template.tsx"));
 const AttendanceIndex = lazy(() => import("@/pages/attendance/index.tsx"));
 const AttendanceReport = lazy(() => import("@/pages/attendance/report.tsx"));
 const QrAttendancePage = lazy(() => import("@/pages/attendance/qr.tsx"));
 const AssignmentsList = lazy(() => import("@/pages/assignments/list.tsx"));
 const AssignmentsCreate = lazy(() => import("@/pages/assignments/create.tsx"));
 const AssignmentShow = lazy(() => import("@/pages/assignments/show.tsx"));
+const AssignmentReport = lazy(() => import("@/pages/assignments/report.tsx"));
 const AnnouncementsList = lazy(() => import("@/pages/announcements/list.tsx"));
 const AnnouncementsCreate = lazy(() => import("@/pages/announcements/create.tsx"));
 const UsersList = lazy(() => import("@/pages/users/list.tsx"));
@@ -72,7 +79,10 @@ const InsightsPage = lazy(() => import("@/pages/insights/index.tsx"));
 const ProfilePage = lazy(() => import("@/pages/profile/index.tsx"));
 const StudentProfilePage = lazy(() => import("@/pages/profile/student.tsx"));
 const ParentDashboard = lazy(() => import("@/pages/parent/dashboard.tsx"));
+const ParentAcademicSelector = lazy(() => import("@/pages/parent/academic-selector.tsx").then((module) => ({ default: module.ParentAcademicSelector })));
+const ParentAttendance = lazy(() => import("@/pages/parent/attendance.tsx"));
 const MessagesPage = lazy(() => import("@/pages/messages/index.tsx"));
+const NotificationsPage = lazy(() => import("@/pages/notifications/index.tsx"));
 const AiAssistantPage = lazy(() => import("@/pages/ai-assistant/index.tsx"));
 const EnrollStudents = lazy(() => import("@/pages/classes/enroll.tsx"));
 const AuditLogsPage = lazy(() => import("@/pages/admin/audit-logs.tsx"));
@@ -200,6 +210,12 @@ function App() {
                           <Route path="community" element={<ContentPage {...publicPages.community} />} />
                           <Route path="contact" element={<ContactPage />} />
                           <Route path="gallery" element={<GalleryPage />} />
+                          <Route path="about/:slug" element={<PublicDetailPage />} />
+                          <Route path="academics/:slug" element={<PublicDetailPage />} />
+                          <Route path="admissions/:slug" element={<PublicDetailPage />} />
+                          <Route path="school-life/:slug" element={<PublicDetailPage />} />
+                          <Route path="community/:slug" element={<PublicDetailPage />} />
+                          <Route path="news-events/:slug" element={<PublicDetailPage />} />
                           <Route path="*" element={<PublicNotFoundPage />} />
                       </Route>
 
@@ -207,6 +223,11 @@ function App() {
                       <Route path="/register" element={<Register />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />
+
+                      {/* The first post-login decision is outside the portal shell.
+                          The dashboard shell mounts only after context is saved. */}
+                      <Route path="/portal" element={<Authenticated key="portal-entry" fallback={<Navigate to="/login" />}><PortalEntry /></Authenticated>} />
+                      <Route path="/portal/setup" element={<Authenticated key="portal-setup" fallback={<Navigate to="/login" />}><PortalSetupShell><PortalSetup /></PortalSetupShell></Authenticated>} />
 
                       <Route
                           element={
@@ -221,8 +242,10 @@ function App() {
                           }
                       >
 
-                          <Route path="/portal" element={<Dashboard />} />
+                          <Route path="/portal/history" element={<RequireRole roles={[UserRole.STUDENT]}><AcademicHistory /></RequireRole>} />
+                          <Route path="/portal/history/:academicYearId" element={<RequireRole roles={[UserRole.STUDENT]}><AcademicArchive /></RequireRole>} />
                           <Route path="activity" element={<ActivityPage />} />
+                          <Route path="notifications" element={<NotificationsPage />} />
 
                           <Route path="subjects">
                               <Route index element={<SubjectsList />} />
@@ -248,8 +271,14 @@ function App() {
                           <Route path="assignments">
                               <Route index element={<AssignmentsList />} />
                               <Route path="create" element={<RequireRole roles={STAFF_ROLES}><AssignmentsCreate /></RequireRole>} />
+                              <Route path=":id/report" element={<RequireRole roles={STAFF_ROLES}><AssignmentReport /></RequireRole>} />
                               <Route path=":id" element={<AssignmentShow />} />
                           </Route>
+
+                          <Route path="parent/assignments" element={<RequireRole roles={[UserRole.PARENT]}><ParentAcademicSelector mode="assignments" /></RequireRole>} />
+                          <Route path="parent/assignments/view" element={<RequireRole roles={[UserRole.PARENT]}><AssignmentsList /></RequireRole>} />
+                          <Route path="parent/attendance" element={<RequireRole roles={[UserRole.PARENT]}><ParentAcademicSelector mode="attendance" /></RequireRole>} />
+                          <Route path="parent/attendance/view" element={<RequireRole roles={[UserRole.PARENT]}><ParentAttendance /></RequireRole>} />
 
                           <Route path="announcements">
                               <Route index element={<AnnouncementsList />} />
@@ -257,6 +286,9 @@ function App() {
                           </Route>
 
                           <Route path="users" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
+                          <Route path="students" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
+                          <Route path="teachers" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
+                          <Route path="guardians" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
 
                           <Route path="grades">
                               <Route index element={<Gradebook />} />
@@ -273,7 +305,7 @@ function App() {
                           <Route path="students/:id" element={<StudentProfilePage />} />
                           <Route path="parent" element={<RequireRole roles={[UserRole.PARENT, ...ADMIN_ROLES]}><ParentDashboard /></RequireRole>} />
                           <Route path="messages" element={<MessagesPage />} />
-                          <Route path="ai-assistant" element={<RequireRole roles={STAFF_ROLES}><AiAssistantPage /></RequireRole>} />
+                          <Route path="ai-assistant" element={<RequireRole roles={ADMIN_ROLES}><AiAssistantPage /></RequireRole>} />
                           <Route path="unauthorized" element={<UnauthorizedPage />} />
                           <Route path="admin/audit-logs" element={<RequireRole roles={ADMIN_ROLES}><AuditLogsPage /></RequireRole>} />
                           <Route path="admin/departments" element={<RequireRole roles={ADMIN_ROLES}><DepartmentsPage /></RequireRole>} />
@@ -282,6 +314,7 @@ function App() {
                           <Route path="admin/publications" element={<RequireRole roles={ADMIN_ROLES}><Publications /></RequireRole>} />
                           <Route path="admin/public-events" element={<RequireRole roles={ADMIN_ROLES}><PublicEvents /></RequireRole>} />
                           <Route path="admin/publish-results" element={<RequireRole roles={ADMIN_ROLES}><TermResultsPublishing /></RequireRole>} />
+                          <Route path="admin/report-card-template" element={<RequireRole roles={ADMIN_ROLES}><ReportCardTemplate /></RequireRole>} />
                           <Route path="*" element={<NotFoundPage />} />
 
                       </Route>

@@ -20,6 +20,7 @@ type GradebookRow = {
 type ExamRow = {
   id: number;
   title: string;
+  examType: "midterm" | "annual";
   scheduledAt: string | null;
   maxScore: number;
   venue: string | null;
@@ -49,7 +50,7 @@ export function GradesTab({ classId, canManage }: { classId: number; canManage: 
     <Button asChild size="sm">
       <Link to={`/grades?classId=${classId}`}>
         <BarChart3 className="mr-1.5 h-4 w-4" />
-        Open gradebook
+        Open assignment grade book
       </Link>
     </Button>
   ) : undefined;
@@ -86,10 +87,10 @@ export function GradesTab({ classId, canManage }: { classId: number; canManage: 
               title="No grades yet"
               description={
                 canManage
-                  ? "Grade assignments and exams, then compute or override final grades in the gradebook."
+                  ? "Grade assignments, then compute or override final grades in the assignment grade book."
                   : "Final grades for this class haven't been posted yet."
               }
-              action={canManage ? { label: "Open gradebook", to: `/grades?classId=${classId}` } : undefined}
+              action={canManage ? { label: "Open assignment grade book", to: `/grades?classId=${classId}` } : undefined}
             />
           </div>
         ) : (
@@ -143,7 +144,7 @@ export function GradesTab({ classId, canManage }: { classId: number; canManage: 
                   <CalendarClock className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{e.title}</span>
+                  <span className="block truncate text-sm font-medium">{e.title} <span className="font-normal text-muted-foreground">({e.examType === "annual" ? "Terminal/Annual" : "Midterm"})</span></span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {e.scheduledAt
                       ? new Date(e.scheduledAt).toLocaleString(undefined, {

@@ -1,7 +1,7 @@
 import { UserAvatar } from "@/components/layout/user-avatar.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { cn } from "@/lib/utils.ts";
-import type { User } from "@/types";
+import { UserRole, type User } from "@/types";
 import { useGetIdentity } from "@refinedev/core";
 
 export function UserInfo() {
@@ -36,7 +36,7 @@ export function UserInfo() {
         <span className={cn("text-sm", "font-medium", "text-muted-foreground")}>
           {name}
         </span>
-        <span className={cn("text-xs", "text-muted-foreground")}>{email}</span>
+        {user.role !== UserRole.STUDENT && <span className={cn("text-xs", "text-muted-foreground")}>{email}</span>}
       </div>
     </div>
   );

@@ -4,7 +4,8 @@ import { useGetIdentity, useList, useOne } from "@refinedev/core";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { SectionHeader } from "@/components/layout/section-header.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Field } from "@/components/ui/field.tsx";
@@ -26,7 +27,6 @@ const SubjectsEdit = () => {
     const subject = subjectQuery?.data?.data;
 
     const [name, setName] = useState("");
-    const [code, setCode] = useState("");
     const [description, setDescription] = useState("");
     const [departmentId, setDepartmentId] = useState("");
     const [submitting, setSubmitting] = useState(false);
@@ -34,7 +34,6 @@ const SubjectsEdit = () => {
     useEffect(() => {
         if (!subject) return;
         setName(subject.name ?? "");
-        setCode(subject.code ?? "");
         setDescription(subject.description ?? "");
         setDepartmentId(subject.department?.id ? String(subject.department.id) : "");
     }, [subject]);
@@ -42,7 +41,6 @@ const SubjectsEdit = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) return toast.error("Name is required.");
-        if (!code.trim()) return toast.error("Code is required.");
         if (!departmentId) return toast.error("Department is required.");
 
         setSubmitting(true);
@@ -50,7 +48,7 @@ const SubjectsEdit = () => {
             const res = await fetch(`${BACKEND_BASE_URL}/subjects/${id}`, {
                 method: "PUT", credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: name.trim(), code: code.trim().toUpperCase(), description: description.trim() || undefined, departmentId: Number(departmentId) }),
+                body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined, departmentId: Number(departmentId) }),
             });
             if (!res.ok) throw new Error((await res.json())?.error ?? "Failed");
             toast.success("Subject updated.");
@@ -62,9 +60,9 @@ const SubjectsEdit = () => {
 
     if (subjectQuery.isLoading) {
         return (
-            <div className="flex items-center justify-center py-24">
+            <PageContainer className="flex items-center justify-center py-24" aria-label="Loading subject" aria-busy="true">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            </PageContainer>
         );
     }
 
@@ -78,30 +76,31 @@ const SubjectsEdit = () => {
     }
 
     return (
-        <div className="space-y-6 max-w-xl">
-            <PageHeader breadcrumb title="Edit Subject" description="Update this subject's details." />
-            <Card>
-                <CardHeader><CardTitle>Subject details</CardTitle></CardHeader>
-                <Separator />
-                <CardContent className="mt-6">
-                    <form onSubmit={handleSubmit} className="space-y-4">
+        <PageContainer className="max-w-3xl">
+            <PageHeader breadcrumb title="Edit subject" description="Update this learning area's curriculum details." />
+            <form onSubmit={handleSubmit} className="overflow-hidden rounded-lg border bg-background">
+                <div className="p-5 sm:p-6">
+                    <SectionHeader title="Subject details" description="Changes apply wherever this subject is used." />
+                    <div className="mt-5 grid gap-5 sm:grid-cols-2">
                         <Field label="Name" required><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mathematics" /></Field>
-                        <Field label="Code" required><Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="MATH101" /></Field>
                         <Field label="Department" required htmlFor="subject-department">
                             <Select value={departmentId} onValueChange={setDepartmentId}>
                                 <SelectTrigger id="subject-department" className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
                                 <SelectContent>{departments.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}</SelectContent>
                             </Select>
                         </Field>
-                        <Field label="Description"><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></Field>
-                        <Separator />
-                        <Button type="submit" className="w-full" disabled={submitting}>
-                            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Changes
-                        </Button>
-                    </form>
-                </CardContent>
-            </Card>
-        </div>
+                        <Field label="Description" className="sm:col-span-2"><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} /></Field>
+                    </div>
+                </div>
+                <Separator />
+                <div className="flex flex-col-reverse gap-2 bg-muted/20 p-4 sm:flex-row sm:justify-end">
+                    <Button type="button" variant="outline" onClick={() => navigate("/subjects")} disabled={submitting}>Cancel</Button>
+                    <Button type="submit" disabled={submitting}>
+                        {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes
+                    </Button>
+                </div>
+            </form>
+        </PageContainer>
     );
 };
 export default SubjectsEdit;

@@ -28,8 +28,9 @@ export function ClassListPanel({
   showTeacher = false,
   max = 6,
 }: ClassListPanelProps) {
+  const scope = variant === "mine" ? "&mine=1" : "";
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: ClassRow[] }>(
-    `/classes?limit=${Math.max(max, 12)}`,
+    `/classes?limit=${Math.max(max, 12)}${scope}`,
   );
   const classes = data?.data ?? [];
 

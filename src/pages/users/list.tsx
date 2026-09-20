@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGetIdentity } from "@refinedev/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { Navigate } from "react-router";
+import { Link, Navigate, useLocation } from "react-router";
 import { toast } from "sonner";
-import { Check, Copy, Download, KeyRound, Loader2, Mail, MoreHorizontal, ShieldAlert, Trash2 } from "lucide-react";
+import { Check, Copy, Download, KeyRound, Loader2, Mail, MoreHorizontal, ShieldAlert, Trash2, Users as UsersIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { SectionHeader } from "@/components/layout/section-header.tsx";
+import { FilterBar } from "@/components/ui/filter-bar.tsx";
 import { SearchInput } from "@/components/ui/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
+import { ErrorState } from "@/components/ui/error-state.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import {
   DropdownMenu,
@@ -65,6 +70,16 @@ const ROLE_LABELS: Record<UserRole, string> = {
 const getInitials = (name = "") => name.trim().split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 const UsersList = () => {
+  const { pathname } = useLocation();
+  const directoryRole = pathname === "/students" ? UserRole.STUDENT : pathname === "/teachers" ? UserRole.TEACHER : pathname === "/guardians" ? UserRole.PARENT : null;
+  const isAccessView = directoryRole === null;
+  const directoryCopy = directoryRole === UserRole.STUDENT
+    ? { title: "Students", description: "Find student accounts and open their connected academic records.", singular: "student" }
+    : directoryRole === UserRole.TEACHER
+      ? { title: "Teachers", description: "Find teaching accounts and review their portal access.", singular: "teacher" }
+      : directoryRole === UserRole.PARENT
+        ? { title: "Parents & guardians", description: "Find family portal accounts. Child relationships are managed from the student record.", singular: "guardian" }
+        : { title: "People & access", description: "Find school accounts, review their access, and manage roles permitted by your administrator level.", singular: "person" };
   const { data: identity, isLoading: identityLoading } = useGetIdentity<User>();
   const isAdminLike = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
   const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
@@ -73,7 +88,7 @@ const UsersList = () => {
   const { download } = useDownload();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
-  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>(directoryRole ?? "all");
   const [savingId, setSavingId] = useState<string | null>(null);
 
   // Admin-initiated password reset: a pending confirm (target + mode), the
@@ -83,6 +98,33 @@ const UsersList = () => {
   const [resetting, setResetting] = useState(false);
   const [tempResult, setTempResult] = useState<{ name: string; email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [systemSaving, setSystemSaving] = useState(false);
+  const { data: systemData } = useApiQuery<{ data: { enabled: boolean; teachersEnabled: boolean; studentsParentsEnabled: boolean } }>(isSuperAdmin ? "/system/status" : null);
+  const systemEnabled = systemData?.data?.enabled ?? true;
+  const teachersEnabled = systemData?.data?.teachersEnabled ?? true;
+  const studentsParentsEnabled = systemData?.data?.studentsParentsEnabled ?? true;
+
+  useEffect(() => {
+    setRoleFilter(directoryRole ?? "all");
+  }, [directoryRole]);
+
+  const toggleSystem = async (setting: "enabled" | "teachersEnabled" | "studentsParentsEnabled", value: boolean) => {
+    setSystemSaving(true);
+    try {
+      const response = await fetch(`${BACKEND_BASE_URL}/system/status`, {
+        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [setting]: value }),
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({})))?.error ?? "Could not update system status");
+      queryClient.setQueryData(["/system/status"], (previous: { data?: Record<string, boolean> } | undefined) => ({
+        data: { ...(previous?.data ?? {}), [setting]: value },
+      }));
+      const labels = { enabled: "System access", teachersEnabled: "Teacher login", studentsParentsEnabled: "Student and parent login" };
+      toast.success(`${labels[setting]} ${value ? "enabled" : "disabled"}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update system status");
+    } finally { setSystemSaving(false); }
+  };
 
   // Permanent user deletion: the row pending confirmation + the in-flight flag.
   const [deleteTarget, setDeleteTarget] = useState<ManagedUser | null>(null);
@@ -97,7 +139,7 @@ const UsersList = () => {
       })()
     : null;
 
-  const { data, isLoading: loading, isFetching } = useApiQuery<{ data: ManagedUser[] }>(usersPath);
+  const { data, isLoading: loading, isFetching, isError, refetch } = useApiQuery<{ data: ManagedUser[] }>(usersPath);
   const users = data?.data ?? [];
 
   const handleRoleChange = async (userId: string, role: UserRole) => {
@@ -136,7 +178,7 @@ const UsersList = () => {
       if (!res.ok) throw new Error(json?.error ?? json?.message ?? "Failed to reset password");
 
       if (resetMode === "email") {
-        toast.success(`Reset link sent to ${resetTarget.email}.`);
+        toast.success("Password reset link sent.");
       } else {
         setTempResult({
           name: resetTarget.name,
@@ -195,59 +237,96 @@ const UsersList = () => {
   };
 
   return (
-    <div className="users-list space-y-6">
+    <PageContainer className="users-list">
       <PageHeader
         breadcrumb
-        title="Manage Users"
-        description="Search users and change their role."
+        title={directoryCopy.title}
+        description={directoryCopy.description}
         actions={
-          users.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleExportCsv}>
-              <Download className="mr-1.5 h-4 w-4" /> Export CSV
-            </Button>
-          )
+          <div className="flex items-center gap-3">
+            {users.length > 0 && <Button variant="outline" size="sm" onClick={handleExportCsv}><Download className="mr-1.5 h-4 w-4" /> Export CSV</Button>}
+          </div>
         }
       />
 
-      {!isSuperAdmin && (
+      {isAccessView && !isSuperAdmin && (
         <div className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-300">
           <ShieldAlert className="h-4 w-4 shrink-0" />
           Only a super admin can grant admin-level roles. You can manage student/teacher/parent roles.
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <SearchInput
-          placeholder="Search by name or email..."
-          aria-label="Search users by name or email"
-          containerClassName="min-w-[240px] flex-1"
-          value={search}
-          onChange={setSearch}
-          loading={isFetching}
+      {isAccessView && isSuperAdmin && (
+        <section aria-labelledby="login-access-title" className="border-y border-border bg-card py-5">
+          <div className="space-y-4 px-4 sm:px-5">
+            <SectionHeader
+              title={<span id="login-access-title">Login access controls</span>}
+              description="Control which role groups can enter the school portal. Super administrators always retain access."
+            />
+            <div className="divide-y divide-border border-y border-border md:grid md:grid-cols-3 md:divide-x md:divide-y-0">
+              {[
+                { key: "enabled" as const, checked: systemEnabled, title: "System access", description: "Master switch for all non-super-admin users." },
+                { key: "teachersEnabled" as const, checked: teachersEnabled, title: "Teacher login", description: "Allow teachers to sign in and use the portal." },
+                { key: "studentsParentsEnabled" as const, checked: studentsParentsEnabled, title: "Student & parent login", description: "Allow students and parents to sign in." },
+              ].map((item) => (
+                <div key={item.key} className="flex items-start justify-between gap-4 px-3 py-4 md:px-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+                  </div>
+                  <Switch aria-label={`Toggle ${item.title}`} checked={item.checked} disabled={systemSaving} onCheckedChange={(value) => toggleSystem(item.key, value)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section aria-labelledby="people-directory-title" className="space-y-4">
+        <SectionHeader
+          title={<span id="people-directory-title">School directory</span>}
+          description="Roles shown here are account permissions, not academic enrollment records."
         />
+        <FilterBar
+          search={
+            <SearchInput
+              placeholder="Search by name or email"
+              aria-label="Search users by name or email"
+              value={search}
+              onChange={setSearch}
+              loading={isFetching}
+            />
+          }
+          active={Boolean(search || (isAccessView && roleFilter !== "all"))}
+          onClear={() => { setSearch(""); setRoleFilter(directoryRole ?? "all"); }}
+          resultLabel={loading ? `Loading ${directoryCopy.title.toLowerCase()}…` : `${users.length.toLocaleString()} ${users.length === 1 ? directoryCopy.singular : directoryCopy.singular === "person" ? "people" : `${directoryCopy.singular}s`} in this view`}
+        >
+          {isAccessView && (
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="h-10 w-full sm:w-[180px]" aria-label="Filter people by role">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              {Object.values(UserRole).map((r) => (
+                <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          )}
+        </FilterBar>
 
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All roles</SelectItem>
-            {Object.values(UserRole).map((r) => (
-              <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Card>
         {loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
           </div>
+        ) : isError ? (
+          <ErrorState title="Unable to load people" description="Check your connection and access, then try again." onRetry={refetch} />
         ) : users.length === 0 ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">No users match your search.</div>
+          <EmptyState icon={UsersIcon} title={`No ${directoryCopy.title.toLowerCase()} found`} description={search || (isAccessView && roleFilter !== "all") ? "Try clearing or changing the current filters." : "No matching school accounts are available to you."} />
         ) : (
-          <Table>
+          <div className="overflow-hidden border-y border-border bg-card sm:rounded-lg sm:border">
+          <Table aria-label="School people and access">
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
@@ -267,7 +346,11 @@ const UsersList = () => {
                           {u.image && <AvatarImage src={u.image} />}
                           <AvatarFallback>{getInitials(u.name)}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{u.name}</span>
+                        {u.role === UserRole.STUDENT ? (
+                          <Link to={`/students/${u.id}`} className="font-medium underline-offset-4 hover:text-primary hover:underline">{u.name}</Link>
+                        ) : (
+                          <span className="font-medium">{u.name}</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
@@ -329,8 +412,9 @@ const UsersList = () => {
               })}
             </TableBody>
           </Table>
+          </div>
         )}
-      </Card>
+      </section>
 
       {/* Confirm a reset before it happens */}
       <AlertDialog
@@ -348,9 +432,7 @@ const UsersList = () => {
               <div>
                 {resetMode === "email" ? (
                   <>
-                    We&apos;ll email{" "}
-                    <span className="font-medium text-foreground">{resetTarget?.email}</span> a link to
-                    choose a new password. It expires in 1 hour.
+                    We&apos;ll send a link to choose a new password. It expires in 1 hour.
                   </>
                 ) : (
                   <>
@@ -384,7 +466,7 @@ const UsersList = () => {
           <DialogHeader>
             <DialogTitle>Temporary password for {tempResult?.name}</DialogTitle>
             <DialogDescription>
-              Give this to {tempResult?.email}. It won&apos;t be shown again. They can sign in with it,
+              Give this to {tempResult?.name}. It won&apos;t be shown again. They can sign in with it,
               then set their own password from their profile.
             </DialogDescription>
           </DialogHeader>
@@ -424,7 +506,7 @@ const UsersList = () => {
             <AlertDialogDescription asChild>
               <div>
                 This permanently removes{" "}
-                <span className="font-medium text-foreground">{deleteTarget?.email}</span> and their
+                <span className="font-medium text-foreground">{deleteTarget?.name}</span> and their
                 sign-in, enrollments, submissions, grades, attendance and messages. It can&apos;t be
                 undone. If this person teaches classes or authored assignments, announcements or exams,
                 the delete will be blocked until those are reassigned or removed.
@@ -444,7 +526,7 @@ const UsersList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 };
 

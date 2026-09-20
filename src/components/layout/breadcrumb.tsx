@@ -8,10 +8,8 @@ import {
   BreadcrumbSeparator as ShadcnBreadcrumbSeparator,
 } from "@/components/ui/breadcrumb.tsx";
 import {
-  matchResourceFromRoute,
   useBreadcrumb,
   useLink,
-  useResourceParams,
 } from "@refinedev/core";
 import { Home } from "lucide-react";
 import { Fragment, useMemo } from "react";
@@ -19,8 +17,6 @@ import { Fragment, useMemo } from "react";
 export function Breadcrumb() {
   const Link = useLink();
   const { breadcrumbs } = useBreadcrumb();
-  const { resources } = useResourceParams();
-  const rootRouteResource = matchResourceFromRoute("/", resources);
 
   const breadCrumbItems = useMemo(() => {
     const list: {
@@ -31,12 +27,10 @@ export function Breadcrumb() {
 
     list.push({
       key: "breadcrumb-item-home",
-      href: rootRouteResource.matchedRoute ?? "/",
+      href: "/portal",
       Component: (
-        <Link to={rootRouteResource.matchedRoute ?? "/"}>
-          {rootRouteResource?.resource?.meta?.icon ?? (
-            <Home className="h-4 w-4" />
-          )}
+        <Link to="/portal" aria-label="Dashboard" title="Dashboard">
+          <Home className="h-4 w-4" />
         </Link>
       ),
     });
@@ -50,7 +44,7 @@ export function Breadcrumb() {
     }
 
     return list;
-  }, [breadcrumbs, Link, rootRouteResource]);
+  }, [breadcrumbs, Link]);
 
   return (
     <ShadcnBreadcrumb>

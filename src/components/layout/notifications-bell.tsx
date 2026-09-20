@@ -93,7 +93,7 @@ export function NotificationsBell() {
                 </Button>
             </PopoverTrigger>
 
-            <PopoverContent align="end" className="w-[360px] p-0">
+            <PopoverContent align="end" className="portal-notifications w-[360px] p-0">
                 <div className="flex items-center justify-between px-4 py-3">
                     <h3 className="font-semibold">Notifications</h3>
                     {unreadCount > 0 && (
@@ -130,7 +130,7 @@ export function NotificationsBell() {
                                     onClick={() => !n.read && markRead(n.id)}
                                     className={cn(
                                         "flex gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors",
-                                        !n.read && "bg-blue-50/60 dark:bg-blue-950/30"
+                                        !n.read && "bg-secondary/45"
                                     )}
                                 >
                                     <div className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
@@ -172,8 +172,9 @@ export function NotificationsBell() {
                 {items.length > 0 && (
                     <>
                         <Separator />
-                        <div className="p-2 text-center">
-                            <span className="text-xs text-muted-foreground">{items.length} shown · notifications auto-expire after 30 days</span>
+                        <div className="flex items-center justify-between gap-3 p-2">
+                            <span className="text-xs text-muted-foreground">{items.length} shown</span>
+                            <Link to="/notifications" onClick={() => setOpen(false)} className="text-xs font-semibold text-primary hover:underline">View all</Link>
                         </div>
                     </>
                 )}

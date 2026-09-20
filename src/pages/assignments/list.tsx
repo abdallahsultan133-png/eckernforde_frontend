@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { useGetIdentity, useList } from "@refinedev/core";
+import { Link, useSearchParams } from "react-router";
+import { useGetIdentity } from "@refinedev/core";
 import { FileText, Plus } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { SectionHeader } from "@/components/layout/section-header.tsx";
+import { FilterBar } from "@/components/ui/filter-bar.tsx";
 import { DeadlineCountdown } from "@/components/deadline-countdown.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -11,10 +14,12 @@ import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { ErrorState } from "@/components/ui/error-state.tsx";
 import { StatusBadge } from "@/components/ui/status-badge.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { SearchInput } from "@/components/ui/search-input.tsx";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { isStaff } from "@/lib/roles.ts";
 import { cn } from "@/lib/utils.ts";
-import type { ClassDetails, User } from "@/types";
+import { UserRole, type User } from "@/types";
+import { ParentAcademicSelector } from "@/pages/parent/academic-selector";
 
 type AssignmentItem = {
   id: number;
@@ -23,6 +28,7 @@ type AssignmentItem = {
   dueAt: string | null;
   maxScore: number;
   class: { id: number; name: string };
+  subject: { id: number; name: string } | null;
   creator: { id: string; name: string };
   submissionCount: number;
   gradedCount: number;
@@ -76,44 +82,47 @@ const STUDENT_FILTERS: Filter[] = [
   },
 ];
 
-const ALL_CLASSES = "all";
+const ALL_SUBJECTS = "all";
 
 const AssignmentsList = () => {
   const { data: identity } = useGetIdentity<User>();
   const staff = isStaff(identity?.role);
+  const isParent = identity?.role === UserRole.PARENT;
+  const [searchParams] = useSearchParams();
+  const selectedChildId = searchParams.get("childId");
+  const selectedAcademicYearId = searchParams.get("academicYearId");
+  const hasParentContext = Boolean(selectedChildId && selectedAcademicYearId);
+  const assignmentsPath = isParent && hasParentContext
+    ? `/assignments?limit=100&childId=${encodeURIComponent(selectedChildId!)}&academicYearId=${encodeURIComponent(selectedAcademicYearId!)}`
+    : isParent ? null : "/assignments?limit=100";
 
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: AssignmentItem[] }>(
-    "/assignments?limit=100",
+    assignmentsPath,
   );
   const assignments = useMemo(() => data?.data ?? [], [data]);
 
-  // Staff pick from the classes they teach; a student's options are derived from
-  // whatever classes their assignments belong to.
-  const { query: classesQuery } = useList<ClassDetails>({
-    resource: "classes",
-    pagination: { pageSize: 100 },
-    queryOptions: { enabled: staff },
-  });
-  const classOptions = useMemo(() => {
-    if (staff) {
-      return (classesQuery?.data?.data ?? []).map((c) => ({ id: String(c.id), name: c.name }));
-    }
+  const subjectOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const a of assignments) seen.set(String(a.class.id), a.class.name);
+    for (const a of assignments) {
+      if (a.subject) seen.set(String(a.subject.id), a.subject.name);
+    }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [staff, classesQuery?.data?.data, assignments]);
+  }, [assignments]);
 
   const filters = staff ? STAFF_FILTERS : STUDENT_FILTERS;
-  const [filterKey, setFilterKey] = useState("all");
-  const [classId, setClassId] = useState(ALL_CLASSES);
+  const [filterKey, setFilterKey] = useState(searchParams.get("filter") ?? "all");
+  const [subjectId, setSubjectId] = useState(searchParams.get("subjectId") ?? ALL_SUBJECTS);
+  const [search, setSearch] = useState("");
 
   const now = Date.now();
-  const byClass = classId === ALL_CLASSES
+  const bySubject = subjectId === ALL_SUBJECTS
     ? assignments
-    : assignments.filter((a) => String(a.class.id) === classId);
+    : assignments.filter((a) => String(a.subject?.id) === subjectId);
 
   const activeFilter = filters.find((f) => f.key === filterKey) ?? ALL_FILTER;
-  const visible = byClass
+  const normalizedSearch = search.trim().toLowerCase();
+  const visible = bySubject
+    .filter((a) => !normalizedSearch || `${a.title} ${a.description ?? ""} ${a.class.name} ${a.subject?.name ?? ""} ${a.creator.name}`.toLowerCase().includes(normalizedSearch))
     .filter((a) => activeFilter.match(a, now))
     .sort((a, b) => {
       // Undated last; otherwise soonest due first.
@@ -123,79 +132,89 @@ const AssignmentsList = () => {
     });
 
   const filterCounts = Object.fromEntries(
-    filters.map((f) => [f.key, byClass.filter((a) => f.match(a, now)).length]),
+    filters.map((f) => [f.key, bySubject.filter((a) => f.match(a, now)).length]),
   ) as Record<string, number>;
 
+  if (isParent && !hasParentContext) return <ParentAcademicSelector mode="assignments" />;
+
   return (
-    <div className="space-y-5">
+    <PageContainer className="assignment-list">
       <PageHeader
         breadcrumb
-        title="Assignments"
+        title={isParent ? "Assignments" : "Assignments"}
         description={
           staff
             ? "Track submissions and grading across your classes."
-            : "Everything assigned across your classes, and where each one stands."
+            : isParent
+              ? "Coursework for the selected child and academic year."
+              : "Everything assigned across your classes, and where each one stands."
         }
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {classOptions.length > 1 && (
-              <Select value={classId} onValueChange={setClassId}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_CLASSES}>All classes</SelectItem>
-                  {classOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {staff && (
+          staff ? (
               <Button asChild>
                 <Link to="/assignments/create">
                   <Plus className="mr-1.5 h-4 w-4" />
                   New assignment
                 </Link>
               </Button>
-            )}
-          </div>
+          ) : undefined
         }
       />
 
       {!isLoading && !isError && assignments.length > 0 && (
-        <div role="group" aria-label="Filter assignments" className="flex flex-wrap gap-1.5">
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilterKey(f.key)}
-              aria-pressed={filterKey === f.key}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
-                filterKey === f.key
-                  ? "border-transparent bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {f.label}
-              <span
+        <section aria-labelledby="assignment-worklist-title" className="space-y-4">
+          <SectionHeader
+            title={<span id="assignment-worklist-title">{staff ? "Assignment worklist" : "Coursework"}</span>}
+            description={staff ? "Prioritized by due date, with submission and grading progress." : "Prioritized by due date and your submission status."}
+          />
+          <FilterBar
+            search={<SearchInput value={search} onChange={setSearch} placeholder="Search assignments" aria-label="Search assignments" />}
+            active={Boolean(search || filterKey !== "all" || subjectId !== ALL_SUBJECTS)}
+            onClear={() => { setSearch(""); setFilterKey("all"); setSubjectId(ALL_SUBJECTS); }}
+            resultLabel={`${visible.length.toLocaleString()} ${visible.length === 1 ? "assignment" : "assignments"} in this view`}
+          >
+            {subjectOptions.length > 1 && (
+              <Select value={subjectId} onValueChange={setSubjectId}>
+                <SelectTrigger className="h-10 w-full sm:w-[200px]" aria-label="Filter assignments by subject">
+                  <SelectValue placeholder="All subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_SUBJECTS}>All subjects</SelectItem>
+                  {subjectOptions.map((subject) => <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </FilterBar>
+          <div role="group" aria-label="Filter assignments by workflow state" className="flex gap-1 overflow-x-auto border-b border-border">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilterKey(f.key)}
+                aria-pressed={filterKey === f.key}
                 className={cn(
-                  "rounded-full px-1.5 text-xs font-semibold tabular-nums",
-                  filterKey === f.key ? "bg-background/20" : "bg-muted",
+                  "inline-flex min-h-10 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-medium transition-colors",
+                  filterKey === f.key
+                    ? "border-primary text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {filterCounts[f.key] ?? 0}
-              </span>
-            </button>
-          ))}
-        </div>
+                {f.label}
+                <span
+                  className={cn(
+                    "rounded-md bg-muted px-1.5 text-xs font-semibold tabular-nums",
+                  )}
+                >
+                  {filterCounts[f.key] ?? 0}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {isLoading ? (
-        <div className="divide-y rounded-xl border">
+        <div className="divide-y border-y border-border">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-5 py-4">
               <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
@@ -224,17 +243,17 @@ const AssignmentsList = () => {
         <EmptyState
           icon={FileText}
           title="Nothing here"
-          description={`No assignments match "${activeFilter.label}".`}
+          description={normalizedSearch ? `No assignments match "${search}" with the ${activeFilter.label.toLowerCase()} filter.` : `No assignments match "${activeFilter.label}".`}
         />
       ) : (
-        <ul className="divide-y rounded-xl border">
+        <ul className="assignment-list-items divide-y border-y border-border bg-card">
           {visible.map((a) => (
             <li key={a.id}>
               <Link
                 to={`/assignments/${a.id}`}
-                className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/50"
+                className="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-secondary/35 sm:px-5"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
                   <FileText className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -252,7 +271,7 @@ const AssignmentsList = () => {
           ))}
         </ul>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

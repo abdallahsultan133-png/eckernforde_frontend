@@ -61,7 +61,7 @@ export function ClassActivityChart({ personal = false }: ClassActivityChartProps
     const chartHeight = Math.max(220, classes.length * 56 + 40);
 
     return (
-        <div className="rounded-xl border p-6">
+        <div className="rounded-xl border p-4">
             <h2 className="text-xl font-semibold">Class Activity</h2>
             <p className="mb-4 mt-1 text-sm text-muted-foreground">
                 {personal

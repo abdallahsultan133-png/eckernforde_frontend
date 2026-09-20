@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router";
 import { useGetIdentity, useLogout } from "@refinedev/core";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { BookOpen, House, LogOut, User as UserIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu.tsx";
 import { UserAvatar } from "@/components/layout/user-avatar.tsx";
 import { cn } from "@/lib/utils.ts";
-import type { User } from "@/types";
+import { UserRole, type User } from "@/types";
 
 type AccountMenuProps = {
   /** The trigger element (avatar button, full account row, …). */
@@ -56,7 +56,7 @@ export function AccountMenu({
             <span className="block truncate text-[13px] font-medium">
               {user?.name ?? "Account"}
             </span>
-            {user?.email && (
+            {user?.email && user.role !== UserRole.STUDENT && (
               <span className="block truncate text-[11px] font-normal text-muted-foreground">
                 {user.email}
               </span>
@@ -72,6 +72,36 @@ export function AccountMenu({
           >
             <UserIcon className="h-4 w-4" />
             Profile &amp; Settings
+          </Link>
+        </DropdownMenuItem>
+        {user?.role === UserRole.TEACHER && <DropdownMenuItem asChild>
+          <Link
+            to="/portal/setup?change=1"
+            onClick={onNavigate}
+            className="flex cursor-pointer items-center gap-2"
+          >
+            <BookOpen className="h-4 w-4" />
+            Change form or class
+          </Link>
+        </DropdownMenuItem>}
+        {user?.role === UserRole.STUDENT && <DropdownMenuItem asChild>
+          <Link
+            to="/portal/setup?change=1"
+            onClick={onNavigate}
+            className="flex cursor-pointer items-center gap-2"
+          >
+            <BookOpen className="h-4 w-4" />
+            Change form or class
+          </Link>
+        </DropdownMenuItem>}
+        <DropdownMenuItem asChild>
+          <Link
+            to="/"
+            onClick={onNavigate}
+            className="flex cursor-pointer items-center gap-2"
+          >
+            <House className="h-4 w-4" />
+            School website
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

@@ -5,6 +5,7 @@ import { AdvancedImage } from "@cloudinary/react";
 import {
     Check,
     Copy,
+    FileBarChart,
     GraduationCap,
     PencilLine,
     UsersRound,
@@ -90,7 +91,7 @@ const Show = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="class-workspace space-y-6">
             <PageHeader
                 breadcrumb
                 title={
@@ -105,8 +106,15 @@ const Show = () => {
                     [cls.subject?.name, cls.department?.name].filter(Boolean).join("  ·  ") || undefined
                 }
                 actions={
-                    staff && (
-                        <>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button asChild variant="outline" size="sm">
+                            <Link to="/insights">
+                                <FileBarChart className="mr-1.5 h-4 w-4" />
+                                Insights
+                            </Link>
+                        </Button>
+                        {staff && (
+                          <>
                             <Button asChild variant="outline" size="sm">
                                 <Link to={`/classes/${cls.id}/enroll`}>
                                     <UsersRound className="mr-1.5 h-4 w-4" />
@@ -119,10 +127,18 @@ const Show = () => {
                                     Edit class
                                 </Link>
                             </Button>
-                        </>
-                    )
+                          </>
+                        )}
+                    </div>
                 }
             />
+
+            <div className="class-context-strip grid gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60 sm:grid-cols-2 lg:grid-cols-4" aria-label="Class summary">
+                <ContextMetric label="Level" value={cls.schoolLevel ? cls.schoolLevel.replace("_", " ") : "Not set"} />
+                <ContextMetric label="Subject" value={cls.subject?.name ?? cls.courseName ?? "Not assigned"} />
+                <ContextMetric label="Capacity" value={`${cls.capacity} seats`} />
+                <ContextMetric label="Schedule" value={cls.schedules?.length ? `${cls.schedules.length} session${cls.schedules.length === 1 ? "" : "s"}` : "Not set"} />
+            </div>
 
             {cls.bannerUrl && (
                 <div className="overflow-hidden rounded-xl border">
@@ -134,8 +150,8 @@ const Show = () => {
             )}
 
             <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-                <div className="overflow-x-auto">
-                    <TabsList className="w-max">
+                <div className="class-workspace-nav overflow-x-auto">
+                    <TabsList className="w-max min-w-full justify-start sm:min-w-0">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="students">Students</TabsTrigger>
                         <TabsTrigger value="assignments">Assignments</TabsTrigger>
@@ -146,7 +162,7 @@ const Show = () => {
                 </div>
 
                 <TabsContent value="overview">
-                    <Overview cls={cls} />
+                    <Overview cls={cls} staff={staff} />
                 </TabsContent>
                 <TabsContent value="students">
                     <StudentsTab classId={classId} canManage={staff} />
@@ -169,7 +185,7 @@ const Show = () => {
 };
 
 // ── Overview ─────────────────────────────────────────────────────────────────
-function Overview({ cls }: { cls: ClassDetails }) {
+function Overview({ cls, staff }: { cls: ClassDetails; staff: boolean }) {
     return (
         <div className="grid gap-5 lg:grid-cols-3">
             <div className="space-y-5 lg:col-span-2">
@@ -246,9 +262,32 @@ function Overview({ cls }: { cls: ClassDetails }) {
                         </div>
                     </DetailBlock>
                 )}
+
+                <section className="rounded-xl border bg-muted/20 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h2 className="text-sm font-semibold">Class workspace</h2>
+                            <p className="mt-1 text-sm text-muted-foreground">Move directly to the work that matters for this class.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button asChild variant="outline" size="sm"><Link to={`/assignments?classId=${cls.id}`}>Assignments</Link></Button>
+                            <Button asChild variant="outline" size="sm"><Link to={`/attendance?classId=${cls.id}`}>Attendance</Link></Button>
+                            {staff && <Button asChild size="sm"><Link to={`/grades?classId=${cls.id}`}>Assignment Grade Book</Link></Button>}
+                        </div>
+                    </div>
+                </section>
             </div>
 
             {cls.inviteCode && <JoinCard code={cls.inviteCode} />}
+        </div>
+    );
+}
+
+function ContextMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="bg-card px-4 py-3.5 sm:px-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+            <p className="mt-1 truncate text-sm font-semibold capitalize">{value}</p>
         </div>
     );
 }

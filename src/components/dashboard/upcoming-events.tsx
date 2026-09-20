@@ -85,7 +85,7 @@ export function UpcomingEvents() {
 
     return (
         <Card>
-            <CardContent className="space-y-4 p-6">
+            <CardContent className="space-y-4 p-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Upcoming</h2>
                     <Link to="/calendar" className="text-xs text-muted-foreground hover:text-foreground">

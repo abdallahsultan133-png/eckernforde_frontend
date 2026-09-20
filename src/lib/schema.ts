@@ -51,6 +51,7 @@ export const classSchema = z.object({
         .min(1, "Capacity must be at least 1"),
     status: z.enum(["active", "inactive"]),
     schoolLevel: z.enum(["nursery", "primary", "secondary"]).optional().nullable(),
+    academicYearId: z.coerce.number().int().positive().optional().nullable(),
     bannerUrl: z
         .string({ required_error: "Class banner is required" })
         .min(1, "Class banner is required"),

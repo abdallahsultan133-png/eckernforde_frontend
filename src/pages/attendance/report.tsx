@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ComponentType } from "react";
 import { useGetIdentity, useList } from "@refinedev/core";
-import { Download, Loader2, Printer } from "lucide-react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { Printer } from "lucide-react";
 import { useDownload } from "@/hooks/use-download.ts";
+import { DeferredPdfDownload, type PdfModule } from "@/components/pdf/deferred-pdf-download.tsx";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { SearchInput } from "@/components/ui/search-input.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
@@ -14,7 +16,6 @@ import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { ErrorState } from "@/components/ui/error-state.tsx";
 import { SummaryBar, type SummaryItem } from "@/components/ui/summary-bar.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
-import { AttendanceReportDocument } from "@/components/pdf/attendance-report-document.tsx";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { UserRole, type ClassDetails, type User } from "@/types";
 
@@ -30,12 +31,23 @@ type ReportRow = {
   attendanceRate: number | null;
 };
 
+const loadAttendancePdf = async () => {
+  const [{ PDFDownloadLink }, { AttendanceReportDocument }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/pdf/attendance-report-document.tsx"),
+  ]);
+  return { PDFDownloadLink: PDFDownloadLink as unknown as PdfModule["PDFDownloadLink"], DocumentComponent: AttendanceReportDocument as unknown as ComponentType<Record<string, unknown>> };
+};
+
 const rateColor = (rate: number | null) => {
   if (rate === null) return "text-muted-foreground";
   if (rate >= 90) return "text-emerald-600 dark:text-emerald-400";
   if (rate >= 75) return "text-amber-600 dark:text-amber-400";
   return "text-red-600 dark:text-red-400";
 };
+
+const attendanceClassLabel = (classItem: ClassDetails) =>
+  classItem.subject?.name ? `${classItem.subject.name} — ${classItem.name}` : classItem.name;
 
 const AttendanceReport = () => {
   const { data: identity } = useGetIdentity<User>();
@@ -64,8 +76,10 @@ const AttendanceReport = () => {
     classId ? `/attendance/class/${classId}/report` : null,
   );
   const rows = data?.data ?? [];
+  const [studentSearch, setStudentSearch] = useState("");
 
-  const selectedClassName = classes.find((c) => String(c.id) === classId)?.name ?? "";
+  const selectedClass = classes.find((c) => String(c.id) === classId);
+  const selectedClassName = selectedClass ? attendanceClassLabel(selectedClass) : "";
   const pdfFileName = `attendance-report-${selectedClassName.replace(/\s+/g, "-").toLowerCase() || classId}.pdf`;
 
   const withData = rows.filter((r) => r.totalMarked > 0);
@@ -74,6 +88,8 @@ const AttendanceReport = () => {
       ? Math.round(withData.reduce((s, r) => s + (r.attendanceRate ?? 0), 0) / withData.length)
       : null;
   const belowThreshold = withData.filter((r) => (r.attendanceRate ?? 0) < 75).length;
+  const normalizedStudentSearch = studentSearch.trim().toLowerCase();
+  const visibleRows = rows.filter((row) => !normalizedStudentSearch || `${row.name} ${row.email}`.toLowerCase().includes(normalizedStudentSearch));
 
   const summaryItems: SummaryItem[] = isStudent
     ? [
@@ -88,7 +104,7 @@ const AttendanceReport = () => {
       ];
 
   return (
-    <div className="attendance-report space-y-6">
+    <PageContainer className="attendance-report">
       <PageHeader
         className="print:hidden"
         breadcrumb
@@ -106,7 +122,7 @@ const AttendanceReport = () => {
               </SelectTrigger>
               <SelectContent>
                 {classes.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={String(c.id)}>{attendanceClassLabel(c)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -114,21 +130,12 @@ const AttendanceReport = () => {
               <Printer className="mr-1.5 h-4 w-4" /> Print
             </Button>
             {!isLoading && rows.length > 0 && (
-              <PDFDownloadLink
-                document={<AttendanceReportDocument className={selectedClassName} rows={rows} />}
+              <DeferredPdfDownload
                 fileName={pdfFileName}
-              >
-                {({ loading: pdfLoading }) => (
-                  <Button
-                    size="sm"
-                    disabled={pdfLoading}
-                    onClick={() => !pdfLoading && narrateDownload(pdfFileName)}
-                  >
-                    {pdfLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
-                    Download PDF
-                  </Button>
-                )}
-              </PDFDownloadLink>
+                load={loadAttendancePdf}
+                documentProps={{ className: selectedClassName, rows }}
+                onDownload={() => narrateDownload(pdfFileName)}
+              />
             )}
           </>
         }
@@ -143,10 +150,14 @@ const AttendanceReport = () => {
 
       {!isLoading && !isError && rows.length > 0 && <SummaryBar items={summaryItems} />}
 
+      {!isLoading && !isError && rows.length > 0 && (
+        <SearchInput value={studentSearch} onChange={setStudentSearch} placeholder="Search students..." aria-label="Search attendance report students" />
+      )}
+
       {isLoading ? (
-        <Card className="space-y-3 p-4">
+        <div className="space-y-3 border-y border-border p-4" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-        </Card>
+        </div>
       ) : isError ? (
         <ErrorState description="Couldn't load the attendance report." onRetry={refetch} />
       ) : rows.length === 0 ? (
@@ -162,7 +173,7 @@ const AttendanceReport = () => {
           }
         />
       ) : (
-        <Card className="overflow-x-auto">
+        <div className="overflow-x-auto border-y border-border bg-card sm:rounded-lg sm:border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -175,11 +186,10 @@ const AttendanceReport = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <TableRow key={row.studentId}>
                   <TableCell>
                     <div className="font-medium">{row.name}</div>
-                    <div className="text-xs text-muted-foreground">{row.email}</div>
                   </TableCell>
                   <TableCell className="text-center">{row.presentCount}</TableCell>
                   <TableCell className="text-center">{row.absentCount}</TableCell>
@@ -197,9 +207,10 @@ const AttendanceReport = () => {
               ))}
             </TableBody>
           </Table>
-        </Card>
+          {visibleRows.length === 0 && <p className="p-6 text-center text-sm text-muted-foreground">No students match “{studentSearch}”.</p>}
+        </div>
       )}
-    </div>
+    </PageContainer>
   );
 };
 
