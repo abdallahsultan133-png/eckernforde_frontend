@@ -1,11 +1,12 @@
 import { Link } from "react-router";
 import { ArrowLeft, Activity } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 
 const ActivityPage = () => {
     return (
-        <div className="space-y-6">
+        <PageContainer>
             <PageHeader
                 above={
                     <Link
@@ -22,11 +23,11 @@ const ActivityPage = () => {
                         All Activity
                     </span>
                 }
-                description="Every recent announcement, assignment, and submission across the school."
+                description="Recent announcements, assignments, submissions, and administrative changes available to your role."
             />
 
             <RecentActivity limit={100} showReadMore={false} />
-        </div>
+        </PageContainer>
     );
 };
 

@@ -5,13 +5,13 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { SectionHeader } from "@/components/layout/section-header.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Field } from "@/components/ui/field.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { Separator } from "@/components/ui/separator.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import FileUploadWidget, { type FileUploadValue } from "@/components/file-upload-widget.tsx";
 import { BACKEND_BASE_URL } from "@/constants";
@@ -70,20 +70,30 @@ const AssignmentsCreate = () => {
   };
 
   return (
-    <div className="assignments-create space-y-6">
+    <PageContainer className="assignments-create">
       <PageHeader
         breadcrumb
-        title="New Assignment"
-        description="Give it a title, a due date, and optionally attach a file."
+        title="Create assignment"
+        description="Set the learning task, choose its class, and define the submission deadline and score."
       />
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Assignment details</CardTitle>
-        </CardHeader>
-        <Separator />
-        <CardContent className="mt-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="max-w-4xl space-y-8">
+        <section aria-labelledby="assignment-basic-title" className="border-t border-border pt-4">
+          <SectionHeader title={<span id="assignment-basic-title">Basic information</span>} description="Use a specific title and give students enough detail to complete the work." />
+          <div className="mt-5 space-y-5">
+            <Field label="Title" required>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Essay: The causes of World War I" />
+            </Field>
+
+            <Field label="Instructions">
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Explain the task, required format, and any assessment criteria." rows={6} />
+            </Field>
+          </div>
+        </section>
+
+        <section aria-labelledby="assignment-context-title" className="border-t border-border pt-4">
+          <SectionHeader title={<span id="assignment-context-title">Academic context</span>} description="The selected class determines the subject and students who receive this assignment." />
+          <div className="mt-5 max-w-xl">
             <Field label="Class" required htmlFor="assignment-class">
               <Select value={classId} onValueChange={setClassId}>
                 <SelectTrigger id="assignment-class" className="w-full">
@@ -91,21 +101,17 @@ const AssignmentsCreate = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.subject?.name ? ` · ${c.subject.name}` : ""}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
+          </div>
+        </section>
 
-            <Field label="Title" required>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Essay: The Causes of WWI" />
-            </Field>
-
-            <Field label="Description">
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Instructions for students..." rows={5} />
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+        <section aria-labelledby="assignment-schedule-title" className="border-t border-border pt-4">
+          <SectionHeader title={<span id="assignment-schedule-title">Schedule and scoring</span>} description="A due date is optional. The maximum score is used when grading submissions." />
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <Field
                 label="Due date"
                 hint="Students see a live countdown to this moment; submissions close automatically once it passes."
@@ -115,23 +121,26 @@ const AssignmentsCreate = () => {
               <Field label="Max score">
                 <Input type="number" min={1} value={maxScore} onChange={(e) => setMaxScore(e.target.value)} />
               </Field>
-            </div>
+          </div>
+        </section>
 
+        <section aria-labelledby="assignment-resources-title" className="border-t border-border pt-4">
+          <SectionHeader title={<span id="assignment-resources-title">Resources</span>} description="Attach one supporting file when students need a worksheet, brief, or reference." />
             <div className="space-y-2">
               <Label>Attachment</Label>
               <FileUploadWidget value={attachment} onChange={setAttachment} />
             </div>
+        </section>
 
-            <Separator />
-
-            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+        <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={submitting}>Cancel</Button>
+            <Button type="submit" disabled={submitting}>
               {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {submitting ? "Creating..." : "Create Assignment"}
+              {submitting ? "Creating…" : "Create assignment"}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </form>
+    </PageContainer>
   );
 };
 

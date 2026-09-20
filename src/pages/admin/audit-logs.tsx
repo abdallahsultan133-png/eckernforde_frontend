@@ -3,8 +3,8 @@ import { useGetIdentity } from "@refinedev/core";
 import { useNavigate } from "react-router";
 import { Shield } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card } from "@/components/ui/card.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { ErrorState } from "@/components/ui/error-state.tsx";
@@ -23,12 +23,11 @@ type AuditLog = {
     user: { id: string; name: string; email: string } | null;
 };
 
-const actionColor = (action: string) => {
-    if (action.includes("create")) return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-    if (action.includes("delete")) return "bg-red-500/10 text-red-700 dark:text-red-300";
-    if (action.includes("update") || action.includes("grade")) return "bg-blue-500/10 text-blue-700 dark:text-blue-300";
-    if (action.includes("enroll")) return "bg-violet-500/10 text-violet-700 dark:text-violet-300";
-    return "bg-muted text-muted-foreground";
+const actionTone = (action: string): StatusTone => {
+    if (action.includes("create") || action.includes("enroll")) return "success";
+    if (action.includes("delete")) return "critical";
+    if (action.includes("update") || action.includes("grade")) return "info";
+    return "neutral";
 };
 
 const AuditLogsPage = () => {
@@ -46,7 +45,7 @@ const AuditLogsPage = () => {
     const logs = data?.data ?? [];
 
     return (
-        <div className="audit-logs space-y-6">
+        <PageContainer className="audit-logs">
             <PageHeader
                 breadcrumb
                 title={
@@ -55,7 +54,7 @@ const AuditLogsPage = () => {
                         Audit Logs
                     </span>
                 }
-                description="System activity log. Admin only."
+                description="A read-only record of administrative changes, the affected resource, actor, and time."
                 actions={
                     <Select value={limit} onValueChange={setLimit}>
                         <SelectTrigger className="w-36">
@@ -72,15 +71,15 @@ const AuditLogsPage = () => {
             />
 
             {loading ? (
-                <Card className="space-y-3 p-4">
+                <div className="space-y-3 border-y border-border p-4" aria-busy="true">
                     {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                </Card>
+                </div>
             ) : isError ? (
                 <ErrorState description="Couldn't load the audit log." onRetry={refetch} />
             ) : logs.length === 0 ? (
                 <EmptyState icon={Shield} title="No audit logs yet" description="Administrative actions across the school will be recorded here." />
             ) : (
-                <Card className="overflow-x-auto">
+                <div className="overflow-x-auto border-y border-border bg-card sm:rounded-lg sm:border">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -95,7 +94,7 @@ const AuditLogsPage = () => {
                             {logs.map((log) => (
                                 <TableRow key={log.id}>
                                     <TableCell>
-                                        <Badge className={actionColor(log.action)}>{log.action}</Badge>
+                                        <StatusBadge tone={actionTone(log.action)}>{log.action}</StatusBadge>
                                     </TableCell>
                                     <TableCell className="text-sm">
                                         <span className="font-medium">{log.resource}</span>
@@ -117,9 +116,9 @@ const AuditLogsPage = () => {
                             ))}
                         </TableBody>
                     </Table>
-                </Card>
+                </div>
             )}
-        </div>
+        </PageContainer>
     );
 };
 

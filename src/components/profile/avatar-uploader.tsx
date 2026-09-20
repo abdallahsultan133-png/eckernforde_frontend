@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useGetIdentity } from "@refinedev/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { toast } from "sonner";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, BookOpenCheck, Camera, ChevronDown, Loader2, Settings2, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { CLOUDINARY_API_KEY, CLOUDINARY_CLOUD_NAME, BACKEND_BASE_URL } from "@/constants";
 import { applyAvatarCrop, signUploadParams } from "@/lib/cloudinary.ts";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
-import type { User } from "@/types";
+import { UserRole, type User } from "@/types";
 
 const getInitials = (name = "") =>
   name.trim().split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
@@ -34,6 +35,7 @@ export function AvatarUploader() {
 
   const widgetRef = useRef<CloudinaryWidget | null>(null);
   const [busy, setBusy] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const save = async (url: string | null, publicId: string | null) => {
     setBusy(true);
@@ -106,6 +108,8 @@ export function AvatarUploader() {
   }, []);
 
   const hasPhoto = !!identity?.image;
+  const canChangeClass = identity?.role === UserRole.TEACHER;
+  const canViewHistory = identity?.role === UserRole.STUDENT;
 
   return (
     <div className="flex items-center gap-5">
@@ -121,12 +125,19 @@ export function AvatarUploader() {
         )}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium">Display photo</p>
-        <p className="text-xs text-muted-foreground">
-          Upload a photo so people see your face instead of your initials. Square, PNG or JPG, up to 5&nbsp;MB.
-        </p>
-        <div className="flex flex-wrap gap-2 pt-0.5">
+      <div className="min-w-0 space-y-2">
+        <button
+          type="button"
+          onClick={() => setOptionsOpen((open) => !open)}
+          aria-expanded={optionsOpen}
+          className="flex items-center gap-1.5 text-sm font-medium hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Display photo <ChevronDown className={`h-3.5 w-3.5 transition-transform ${optionsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+        </button>
+        <p className="text-xs text-muted-foreground">Select to manage your photo and account shortcuts.</p>
+        {optionsOpen && <div className="space-y-3 border-t pt-3">
+          <p className="text-xs text-muted-foreground">Square PNG, JPG or WebP, up to 5 MB.</p>
+          <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             size="sm"
@@ -149,7 +160,22 @@ export function AvatarUploader() {
               <Trash2 className="mr-1.5 h-4 w-4" /> Remove
             </Button>
           )}
-        </div>
+          </div>
+          <div className="grid gap-1 border-t pt-2">
+            <Link to="/profile" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Settings2 className="h-3.5 w-3.5" /> Profile &amp; Settings
+            </Link>
+            <Link to="/" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ArrowLeft className="h-3.5 w-3.5" /> School website
+            </Link>
+            {canChangeClass && <Link to="/portal/setup?change=1" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <BookOpen className="h-3.5 w-3.5" /> Change form or class
+            </Link>}
+            {canViewHistory && <Link to="/portal/history" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <BookOpenCheck className="h-3.5 w-3.5" /> Change form or class
+            </Link>}
+          </div>
+        </div>}
       </div>
     </div>
   );

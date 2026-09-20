@@ -21,6 +21,7 @@ export function Layout({ children }: PropsWithChildren) {
   return (
       <SidebarProvider
         defaultOpen={getDefaultSidebarOpen()}
+        className="portal-shell"
         style={{ "--sidebar-width-icon": "3.25rem" } as CSSProperties}
       >
         <a
@@ -32,14 +33,15 @@ export function Layout({ children }: PropsWithChildren) {
         <Sidebar />
         {/* SidebarInset renders the page's single <main> landmark; the skip
             link targets it and it takes programmatic focus once. */}
-        <SidebarInset id="main-content" tabIndex={-1} className="outline-none">
+        <SidebarInset id="main-content" tabIndex={-1} className="portal-main outline-none">
           <div className="print:hidden">
-            <Header />
+              <Header />
           </div>
 
           <div
               className={cn(
-                  "@container/main",
+              "portal-content",
+              "@container/main",
                   "container",
                   "mx-auto",
                   "relative",
@@ -47,11 +49,11 @@ export function Layout({ children }: PropsWithChildren) {
                   "flex",
                   "flex-col",
                   "flex-1",
-                  "px-2",
-                  "pt-4",
-                  "md:p-4",
-                  "lg:px-6",
-                  "lg:pt-6",
+                  "px-4",
+                  "pt-5",
+                  "md:px-6",
+                  "md:pt-6",
+                  "xl:px-8",
                   "print:p-0"
               )}
           >

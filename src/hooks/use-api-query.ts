@@ -7,7 +7,10 @@ import { BACKEND_BASE_URL } from "@/constants";
  * error state is populated correctly.
  */
 export async function fetchJson<T>(path: string): Promise<T> {
-    const res = await fetch(`${BACKEND_BASE_URL}${path}`, { credentials: "include" });
+    // React Query owns in-app caching. Bypassing the browser's HTTP cache here
+    // ensures a changed teacher form/class never briefly paints the prior
+    // context's dashboard rollups after query invalidation.
+    const res = await fetch(`${BACKEND_BASE_URL}${path}`, { credentials: "include", cache: "no-store" });
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? body?.message ?? "Request failed");

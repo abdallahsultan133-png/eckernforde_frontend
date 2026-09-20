@@ -9,3 +9,16 @@ Disallow: /admin
 Disallow: /grades
 Disallow: /classes
 Disallow: /students
+Disallow: /subjects
+Disallow: /attendance
+Disallow: /assignments
+Disallow: /announcements
+Disallow: /calendar
+Disallow: /insights
+Disallow: /profile
+Disallow: /parent
+Disallow: /messages
+Disallow: /activity
+Disallow: /users
+Disallow: /ai-assistant
+Disallow: /unauthorized

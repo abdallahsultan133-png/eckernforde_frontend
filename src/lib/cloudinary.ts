@@ -24,9 +24,16 @@ export const signUploadParams = (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paramsToSign }),
     })
-        .then((res) => res.json())
-        .then((data: { signature: string }) => callback(data.signature))
-        .catch((e) => console.error("Cloudinary signing failed:", e));
+        .then(async (res) => {
+            const data = await res.json().catch(() => ({})) as { signature?: unknown; error?: string };
+            if (!res.ok) throw new Error(data.error || `Upload signing failed (${res.status}).`);
+            if (typeof data.signature !== "string" || data.signature.length === 0) {
+                throw new Error("Upload signing returned an invalid signature.");
+            }
+            return data.signature;
+        })
+        .then(callback)
+        .catch((error) => console.error("Cloudinary signing failed:", error));
 };
 
 /**

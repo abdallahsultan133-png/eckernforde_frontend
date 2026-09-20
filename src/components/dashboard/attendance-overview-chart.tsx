@@ -107,7 +107,7 @@ export function AttendanceOverviewChart({ personal = false }: AttendanceOverview
     const rangeLabel = RANGE_OPTIONS.find((o) => o.value === range)?.label ?? `${range} days`;
 
     return (
-        <div className="rounded-xl border p-6">
+        <div className="rounded-xl border p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h2 className="text-xl font-semibold">Attendance Overview</h2>

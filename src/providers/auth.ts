@@ -2,8 +2,20 @@ import type { AuthProvider } from "@refinedev/core";
 
 const API_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
-export const authProvider: AuthProvider = {
-    login: async ({ email, password }) => {
+const RETRYABLE_SIGN_IN_STATUSES = new Set([408, 425, 500, 502, 503, 504]);
+
+const wait = (milliseconds: number) =>
+    new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+
+/**
+ * A first request can occasionally reach the API while its database pool is
+ * reconnecting after an idle period. Retry that narrow class of failures once;
+ * never retry an invalid password, a security block, or a rate limit.
+ */
+async function requestEmailSignIn(email: string, password: string): Promise<Response> {
+    let latestError: unknown;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
             const response = await fetch(`${API_URL}/auth/sign-in/email`, {
                 method: "POST",
@@ -11,18 +23,76 @@ export const authProvider: AuthProvider = {
                     "Content-Type": "application/json",
                 },
                 credentials: "include",
-                body: JSON.stringify({
-                    email,
-                    password,
-                }),
+                body: JSON.stringify({ email, password }),
             });
 
+            if (attempt === 0 && RETRYABLE_SIGN_IN_STATUSES.has(response.status)) {
+                await wait(350);
+                continue;
+            }
+
+            return response;
+        } catch (error) {
+            latestError = error;
+            if (attempt === 0) {
+                await wait(350);
+                continue;
+            }
+        }
+    }
+
+    throw latestError instanceof Error ? latestError : new Error("Sign-in request failed");
+}
+
+export const authProvider: AuthProvider = {
+    login: async ({ email, password }) => {
+        try {
+            const response = await requestEmailSignIn(email, password);
+
             if (!response.ok) {
+                if (response.status === 401) {
+                    return {
+                        success: false,
+                        error: {
+                            message: "The email address or password is incorrect.",
+                            name: "Invalid credentials",
+                        },
+                    };
+                }
+
+                if (response.status === 429) {
+                    return {
+                        success: false,
+                        error: {
+                            message: "Too many sign-in attempts. Please wait a minute and try again.",
+                            name: "Please wait",
+                        },
+                    };
+                }
+
+                if (response.status === 403) {
+                    const blocked = await response.clone().json().catch(() => ({})) as { code?: string; message?: string; error?: string };
+                    const blockedMessage = blocked.code === "TEACHER_LOGIN_DISABLED"
+                        ? "Teacher login is temporarily disabled by the super administrator."
+                        : blocked.code === "STUDENT_PARENT_LOGIN_DISABLED"
+                            ? "Student and parent login is temporarily disabled by the super administrator."
+                            : blocked.code === "SYSTEM_OFFLINE"
+                                ? "The school system is temporarily offline. Please try again later."
+                                : blocked.message ?? blocked.error;
+                    return {
+                        success: false,
+                        error: {
+                            message: blockedMessage ?? "This sign-in request was blocked. Refresh the page and try again.",
+                            name: "Sign-in blocked",
+                        },
+                    };
+                }
+
                 return {
                     success: false,
                     error: {
-                        message: "Login failed",
-                        name: "Invalid credentials",
+                        message: "The sign-in service is temporarily unavailable. Please try again.",
+                        name: "Sign-in unavailable",
                     },
                 };
             }
@@ -37,7 +107,7 @@ export const authProvider: AuthProvider = {
             return {
                 success: false,
                 error: {
-                    message: "Login error",
+                    message: "We couldn't reach the sign-in service. Check your connection and try again.",
                     name: "Network error",
                 },
             };
@@ -116,12 +186,11 @@ export const authProvider: AuthProvider = {
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
                 return {
                     success: false,
                     error: {
                         name: "Couldn't send reset link",
-                        message: data?.message ?? "Something went wrong. Please try again.",
+                        message: "We couldn't send the reset link. Please check the address and try again.",
                     },
                 };
             }
@@ -183,14 +252,11 @@ export const authProvider: AuthProvider = {
             });
 
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
                 return {
                     success: false,
                     error: {
                         name: "Couldn't reset password",
-                        message:
-                            data?.message ??
-                            "This link may have expired or already been used. Request a new one.",
+                        message: "This link may have expired or already been used. Request a new one.",
                     },
                 };
             }
@@ -217,16 +283,23 @@ export const authProvider: AuthProvider = {
             const response = await fetch(`${API_URL}/auth/get-session`, {
                 credentials: "include",
             });
-            const data = response.ok ? await response.json().catch(() => null) : null;
+            // Only an explicit authentication failure should remove someone
+            // from a protected route. A 5xx response during a context switch
+            // is temporary and must not send a signed-in teacher to /login.
+            if (response.status === 401 || response.status === 403) {
+                return { authenticated: false, redirectTo: "/login" };
+            }
+            if (!response.ok) return { authenticated: true };
+            const data = await response.json().catch(() => null);
 
             if (data?.user) {
                 return { authenticated: true };
             }
         } catch (error) {
-            // A local backend can be restarting or temporarily unavailable.
-            // Treat that as an unauthenticated session so routing remains
-            // usable; the sign-in screen gives a clear configuration message.
-            console.warn("Session check unavailable:", error);
+            // Keep the active route during a transient network failure. The
+            // backend continues to enforce every API authorization boundary.
+            console.warn("Session check unavailable; retaining current route:", error);
+            return { authenticated: true };
         }
 
         return { authenticated: false, redirectTo: "/login" };
@@ -245,7 +318,31 @@ export const authProvider: AuthProvider = {
 
             if (!response.ok) return null;
             const data = await response.json().catch(() => null);
-            return data?.user ?? null;
+            const sessionUser = data?.user;
+            if (!sessionUser) return null;
+
+            // Better Auth can return a cached session user without custom
+            // additional fields (including `role`). The profile endpoint reads
+            // the same authenticated account directly from the users table,
+            // so hydrate the identity before role-aware navigation renders.
+            if (!sessionUser.role) {
+                try {
+                    const profileResponse = await fetch(`${API_URL}/profile/me`, {
+                        credentials: "include",
+                    });
+                    if (profileResponse.ok) {
+                        const profilePayload = await profileResponse.json().catch(() => null);
+                        const profileUser = profilePayload?.data;
+                        if (profileUser?.role) {
+                            return { ...sessionUser, ...profileUser };
+                        }
+                    }
+                } catch (profileError) {
+                    console.warn("Profile identity hydration unavailable:", profileError);
+                }
+            }
+
+            return sessionUser;
         } catch (error) {
             console.warn("Identity check unavailable:", error);
             return null;

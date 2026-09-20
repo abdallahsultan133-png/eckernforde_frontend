@@ -1,9 +1,9 @@
 import {CreateView} from "@/components/refine-ui/views/create-view.tsx";
 import {PageHeader} from "@/components/layout/page-header.tsx";
+import {SectionHeader} from "@/components/layout/section-header.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {useBack, useGetIdentity, useList} from "@refinedev/core";
 import {Separator} from "@/components/ui/separator.tsx";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card.tsx"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "@refinedev/react-hook-form"
 import type { ControllerRenderProps } from "react-hook-form";
@@ -28,12 +28,17 @@ import {Textarea} from "@/components/ui/textarea.tsx";
 import {Loader2} from "lucide-react";
 import UploadWidget from "@/components/upload-widget.tsx";
 import {Subject, User, UserRole} from "@/types";
+import { useApiQuery } from "@/hooks/use-api-query";
+
+type AcademicYear = { id: number; name: string; startsOn: string; endsOn: string; active: boolean };
 
 const Create = () => {
     const back = useBack();
     const { data: identity } = useGetIdentity<User>();
     const isTeacher = identity?.role === UserRole.TEACHER;
     const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const { data: yearsData } = useApiQuery<{ data: AcademicYear[] }>(isAdmin ? "/grades/academic-years" : null);
+    const academicYears = yearsData?.data ?? [];
 
     const form = useForm({
         resolver: zodResolver(classSchema),
@@ -118,24 +123,14 @@ const Create = () => {
         <CreateView className="class-view">
             <PageHeader
                 breadcrumb
-                title="Create a Class"
-                description="Provide the required information below to add a class."
-                actions={<Button variant="outline" onClick={() => back()}>Go Back</Button>}
+                title="Create class"
+                description="Set up the class context, teaching responsibility and capacity."
+                actions={<Button variant="outline" onClick={() => back()}>Cancel</Button>}
             />
-
-            <Separator />
-
-            <div className="my-4 flex items-center">
-                <Card className="class-form-card">
-                    <CardHeader className="relative z-10">
-                        <CardTitle className="text-2xl pb-0 font-bold text-gradient-orange">
-                            Fill out form
-                        </CardTitle>
-                    </CardHeader>
-
-                    <Separator />
-
-                    <CardContent className="mt-7">
+            <section className="max-w-4xl overflow-hidden rounded-lg border bg-background">
+                <div className="p-5 sm:p-6">
+                    <SectionHeader title="Class details" description="Fields marked as required must be completed before the class can be created." />
+                    <div className="mt-5">
                         <Form {...form}>
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                                 <FormField
@@ -205,7 +200,7 @@ const Create = () => {
                                                                 key={subject.id}
                                                                 value={subject.id.toString()}
                                                             >
-                                                                {subject.name} ({subject.code})
+                                                                {subject.name}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -323,6 +318,7 @@ const Create = () => {
                                             </FormItem>
                                         )}
                                     />}
+                                    {isAdmin && <FormField control={control} name="academicYearId" render={({ field }) => <FormItem><FormLabel>Academic year</FormLabel><Select onValueChange={(value) => field.onChange(Number(value))} value={field.value ? String(field.value) : undefined}><FormControl><SelectTrigger className="w-full"><SelectValue placeholder="Use active academic year" /></SelectTrigger></FormControl><SelectContent>{academicYears.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " (active)" : ""}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>} />}
                                 </div>
 
                                 <FormField
@@ -343,31 +339,20 @@ const Create = () => {
                                 />
 
                                 <Separator />
-
-
-                                <Button
-                                    type="submit"
-                                    size="lg"
-                                    className="w-full"
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? (
-                                        <div className="flex gap-1">
-                                            <span>Creating Class...</span>
-                                            <Loader2 className="inline-block ml-2 animate-spin" />
-                                        </div>
-                                    ) : (
-                                        "Create Class"
-                                    )}
-                                </Button>
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                    <Button type="button" variant="outline" onClick={() => back()} disabled={isSubmitting}>Cancel</Button>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isSubmitting ? "Creating class..." : "Create class"}
+                                    </Button>
+                                </div>
                             </form>
                         </Form>
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </div>
+            </section>
         </CreateView>
     );
 };
 
 export default Create;
-

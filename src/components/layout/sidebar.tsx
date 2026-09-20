@@ -11,6 +11,7 @@ import { useKBar } from "kbar";
 import { useLocation } from "react-router";
 import {
   Activity,
+  Bell,
   BarChart3,
   BookOpen,
   Building2,
@@ -23,13 +24,13 @@ import {
   LineChart,
   Megaphone,
   MessagesSquare,
-  PanelLeftClose,
+  PanelLeft,
   ScrollText,
   Search,
   Sparkles,
   UserCheck,
+  UserRound,
   Users,
-  CalendarPlus,
   Globe2,
   Inbox,
   X,
@@ -51,7 +52,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { cn } from "@/lib/utils.ts";
-import { APP_NAME, APP_TAGLINE } from "@/constants";
+import { APP_TAGLINE } from "@/constants";
 import { ROLE_LABEL, STAFF_ROLES, ADMIN_ROLES } from "@/lib/roles";
 import { UserRole, type User } from "@/types";
 import { UserAvatar } from "./user-avatar";
@@ -92,13 +93,7 @@ const NAV: NavGroup[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", to: "/portal", icon: LayoutDashboard, exact: true },
-      {
-        label: "Children",
-        to: "/parent",
-        icon: HeartHandshake,
-        roles: [UserRole.PARENT, ...ADMIN_ROLES],
-      },
-      { label: "Activity", to: "/activity", icon: Activity },
+      { label: "Activity", to: "/activity", icon: Activity, roles: [UserRole.STUDENT, ...STAFF_ROLES] },
     ],
   },
   {
@@ -108,13 +103,12 @@ const NAV: NavGroup[] = [
         label: "Classes",
         to: "/classes",
         icon: GraduationCap,
+        roles: [UserRole.TEACHER, ...ADMIN_ROLES],
         labelByRole: {
-          [UserRole.STUDENT]: "My Classes",
           [UserRole.TEACHER]: "My Classes",
         },
       },
-      { label: "Subjects", to: "/subjects", icon: BookOpen },
-      { label: "People", to: "/users", icon: Users, roles: ADMIN_ROLES },
+      { label: "Subjects", to: "/subjects", icon: BookOpen, roles: STAFF_ROLES },
       {
         label: "Departments",
         to: "/admin/departments",
@@ -124,16 +118,26 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "People",
+    items: [
+      { label: "Students", to: "/students", icon: GraduationCap, roles: ADMIN_ROLES },
+      { label: "Teachers", to: "/teachers", icon: UserRound, roles: ADMIN_ROLES },
+      { label: "Parents & Guardians", to: "/guardians", icon: HeartHandshake, roles: ADMIN_ROLES },
+      { label: "Users & Access", to: "/users", icon: Users, roles: ADMIN_ROLES },
+    ],
+  },
+  {
     label: "Learning",
     items: [
-      { label: "Assignments", to: "/assignments", icon: FileText },
-      { label: "Attendance", to: "/attendance", icon: UserCheck },
+      { label: "Assignments", to: "/assignments", icon: FileText, toByRole: { [UserRole.PARENT]: "/parent/assignments" } },
+      { label: "Attendance", to: "/attendance", icon: UserCheck, toByRole: { [UserRole.PARENT]: "/parent/attendance" } },
       {
         label: "Grades",
         to: "/grades",
         icon: BarChart3,
-        labelByRole: { [UserRole.STUDENT]: "Term Results", [UserRole.PARENT]: "Children's Results" },
-        toByRole: { [UserRole.STUDENT]: "/grades/term-results", [UserRole.PARENT]: "/grades/term-results" },
+        roles: [UserRole.STUDENT, ...STAFF_ROLES],
+        labelByRole: { [UserRole.STUDENT]: "Report" },
+        toByRole: { [UserRole.STUDENT]: "/grades/term-results" },
       },
       {
         label: "Insights",
@@ -147,19 +151,20 @@ const NAV: NavGroup[] = [
   {
     label: "Communication",
     items: [
-      { label: "Announcements", to: "/announcements", icon: Megaphone },
+      { label: "Announcements", to: "/announcements", icon: Megaphone, roles: [UserRole.STUDENT, ...STAFF_ROLES] },
+      { label: "Notifications", to: "/notifications", icon: Bell, roles: [UserRole.STUDENT, ...STAFF_ROLES] },
       { label: "Messages", to: "/messages", icon: MessagesSquare, badge: "messages" },
     ],
   },
   {
     label: "Management",
     items: [
-      { label: "AI Assistant", to: "/ai-assistant", icon: Sparkles, roles: STAFF_ROLES },
+      { label: "AI Assistant", to: "/ai-assistant", icon: Sparkles, roles: ADMIN_ROLES },
       { label: "Audit Log", to: "/admin/audit-logs", icon: ScrollText, roles: ADMIN_ROLES },
-      { label: "Academic Calendar", to: "/admin/academic-calendar", icon: CalendarPlus, roles: ADMIN_ROLES },
       { label: "Admissions Enquiries", to: "/admin/admissions", icon: Inbox, roles: ADMIN_ROLES },
       { label: "Publications", to: "/admin/publications", icon: Globe2, roles: ADMIN_ROLES },
       { label: "Public Events", to: "/admin/public-events", icon: CalendarDays, roles: ADMIN_ROLES },
+      { label: "Report Card Template", to: "/admin/report-card-template", icon: FileText, roles: ADMIN_ROLES },
     ],
   },
 ];
@@ -195,7 +200,7 @@ export function Sidebar() {
   const badges = { messages: unread?.count ?? 0 };
 
   return (
-    <ShadcnSidebar collapsible="icon" className={cn("border-none", "print:hidden")}>
+    <ShadcnSidebar collapsible="icon" className={cn("portal-sidebar border-none", "print:hidden")}>
       <ShadcnSidebarRail />
       <BrandHeader />
       <SidebarSearch />
@@ -216,7 +221,7 @@ export function Sidebar() {
                   key={item.to}
                   item={item}
                   role={role}
-                  active={isRouteActive(pathname, item.to, item.exact)}
+                  active={isRouteActive(pathname, (role && item.toByRole?.[role]) || item.to, item.exact)}
                   badge={item.badge ? badges[item.badge] : 0}
                 />
               ))}
@@ -312,7 +317,7 @@ function NavItemRow({
         if (isMobile) setOpenMobile(false);
       }}
       className={cn(
-        "group/nav relative flex h-9 items-center rounded-lg text-[13px] outline-none",
+        "group/nav relative flex min-h-11 items-center rounded-lg text-[13px] outline-none",
         "transition-[background-color,color] duration-150 ease-out",
         "focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
         collapsed ? "w-9 justify-center px-0" : "gap-3 px-2.5",
@@ -386,25 +391,46 @@ function NavItemRow({
 // ── Brand ────────────────────────────────────────────────────────────────────
 function BrandHeader() {
   const { title } = useRefineOptions();
+  const { data: identity } = useGetIdentity<User>();
+  const isAdmin = Boolean(identity?.role && ADMIN_ROLES.includes(identity.role));
+  const isParent = identity?.role === UserRole.PARENT;
+  const usesAcademyBrand = isAdmin || isParent;
+  const isSchoolStaff = identity?.role === UserRole.TEACHER || identity?.role === UserRole.STUDENT;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
   const { open, isMobile, toggleSidebar, setOpenMobile } = useShadcnSidebar();
   const expanded = open || isMobile;
+  // Keep the primary brand compact enough to remain legible in the expanded
+  // sidebar. The school-band detail remains available in the tagline below.
+  const schoolName = "Eckernforde Academy";
+  const schoolTagline = usesAcademyBrand
+    ? "School Portal"
+    : portal?.data.context?.schoolBand === "secondary"
+    ? "Cambridge Secondary School"
+    : portal?.data.context?.schoolBand === "primary"
+      ? "English Medium Primary School"
+      : APP_TAGLINE;
+  const schoolLogo = isSchoolStaff && portal?.data.context?.schoolBand === "secondary"
+    ? "/eckernforde-cambridge-badge.png"
+    : isSchoolStaff && portal?.data.context?.schoolBand === "primary"
+      ? "/eckernforde-english-medium-primary-badge.png"
+      : null;
 
   const mark = (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-sidebar-primary text-sidebar-primary-foreground shadow-sm [&>svg]:h-[18px] [&>svg]:w-[18px]">
-      {title.icon}
+    <span className={cn("flex h-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-sidebar-primary-foreground [&>svg]:h-[18px] [&>svg]:w-[18px]", usesAcademyBrand ? "w-auto gap-0.5 bg-transparent px-0 shadow-none" : "w-9", schoolLogo ? "bg-transparent shadow-none" : !usesAcademyBrand ? "bg-sidebar-primary shadow-sm" : "")}>
+      {usesAcademyBrand && expanded ? <><img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Cambridge Secondary School" className="h-8 w-8 object-contain" /><img src="/eckernforde-english-medium-primary-badge.png" alt="Eckernforde English Medium Primary School" className="h-8 w-8 object-contain" /></> : usesAcademyBrand ? <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Academy" className="h-9 w-9 object-contain" /> : schoolLogo ? <img src={schoolLogo} alt={schoolName} className="h-full w-full object-contain" /> : title.icon}
     </span>
   );
 
   return (
-    <ShadcnSidebarHeader className="h-14 flex-row items-center gap-2.5 border-b border-sidebar-border bg-sidebar px-3">
+    <ShadcnSidebarHeader className="h-14 flex-row items-center gap-1.5 border-b border-sidebar-border bg-sidebar px-2.5">
       {expanded ? (
         <>
           {mark}
           <div className="min-w-0 flex-1 leading-none">
-            <p className="truncate text-[13px] font-semibold tracking-tight text-sidebar-foreground">
-              {APP_NAME}
+            <p className="whitespace-nowrap text-[13px] font-semibold tracking-tight text-sidebar-foreground">
+              {schoolName}
             </p>
-            <p className="truncate text-[11px] text-muted-foreground">{APP_TAGLINE}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{schoolTagline}</p>
           </div>
 
           {isMobile ? (
@@ -424,7 +450,7 @@ function BrandHeader() {
               title="Collapse sidebar (Ctrl+B)"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
             >
-              <PanelLeftClose className="h-4 w-4" />
+              <PanelLeft className="h-4 w-4" />
             </button>
           )}
         </>
@@ -436,9 +462,9 @@ function BrandHeader() {
               onClick={toggleSidebar}
               aria-label="Expand sidebar"
               title="Expand sidebar (Ctrl+B)"
-              className="mx-auto flex h-8 w-8 items-center justify-center rounded-[10px] bg-sidebar-primary text-sidebar-primary-foreground shadow-sm outline-none transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-sidebar-ring [&>svg]:h-[18px] [&>svg]:w-[18px]"
+              className="mx-auto flex h-9 w-9 items-center justify-center rounded-[10px] outline-none transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-sidebar-ring"
             >
-              {title.icon}
+              {mark}
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Expand sidebar</TooltipContent>

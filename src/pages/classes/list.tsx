@@ -1,8 +1,10 @@
-import {ListView} from "@/components/refine-ui/views/list-view.tsx";
 import {PageHeader} from "@/components/layout/page-header.tsx";
+import {PageContainer} from "@/components/layout/page-container.tsx";
+import {SectionHeader} from "@/components/layout/section-header.tsx";
+import {FilterBar} from "@/components/ui/filter-bar.tsx";
 import {
     Check, DoorOpen, Loader2, GraduationCap, BookOpen, Users, Gauge,
-    CheckCircle2, MoreHorizontal, Eye, Pencil, Trash2, School, X,
+    CheckCircle2, MoreHorizontal, Eye, Pencil, Trash2, School,
 } from "lucide-react";
 import type {LucideIcon} from "lucide-react";
 import {Input} from "@/components/ui/input.tsx";
@@ -11,10 +13,10 @@ import {useCallback, useMemo, useState} from "react";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {CreateButton} from "@/components/refine-ui/buttons/create.tsx";
 import {Button} from "@/components/ui/button.tsx";
-import {Card, CardContent} from "@/components/ui/card.tsx";
 import {Skeleton} from "@/components/ui/skeleton.tsx";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar.tsx";
 import {EmptyState} from "@/components/ui/empty-state.tsx";
+import {ErrorState} from "@/components/ui/error-state.tsx";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
@@ -89,25 +91,17 @@ function ClassBanner({ url, name }: { url?: string; name: string }) {
     );
 }
 
-function SummaryCard({
+function SummaryMetric({
     icon: Icon, label, value, loading,
 }: { icon: LucideIcon; label: string; value: string | number; loading: boolean }) {
     return (
-        <Card className="gap-0 py-0 shadow-sm">
-            <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <Icon className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                    {loading ? (
-                        <Skeleton className="mb-1 h-6 w-10" />
-                    ) : (
-                        <p className="text-xl font-semibold leading-tight tracking-tight">{value}</p>
-                    )}
-                    <p className="truncate text-xs text-muted-foreground">{label}</p>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="flex min-w-0 items-center gap-3 bg-card px-4 py-4 sm:px-5">
+            <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <div className="min-w-0">
+                <p className="truncate text-xs text-muted-foreground">{label}</p>
+                {loading ? <Skeleton className="mt-1 h-6 w-10" /> : <p className="mt-0.5 text-xl font-semibold leading-tight tracking-tight tabular-nums">{value}</p>}
+            </div>
+        </div>
     );
 }
 
@@ -460,35 +454,41 @@ const ClassesList = () => {
     const showEmpty = !tableQuery.isLoading && filteredTotal === 0;
 
     return (
-        <ListView>
+        <PageContainer>
             <PageHeader
                 breadcrumb
                 title="Classes"
-                description="Manage your classes, subjects, and teachers."
+                description={isStudent ? "Open your learning spaces or join a class using a teacher-provided code." : "Manage class rosters, teaching responsibilities, subjects, and academic workspaces."}
             />
 
             {/* Overview */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <SummaryCard icon={GraduationCap} label={isStudent ? "Classes in catalog" : "Total classes"} value={totalClasses} loading={summaryLoading} />
-                <SummaryCard icon={CheckCircle2} label="Active classes" value={activeClasses} loading={summaryLoading} />
-                <SummaryCard icon={BookOpen} label="Subjects covered" value={subjectsCovered} loading={summaryLoading} />
-                <SummaryCard icon={Gauge} label="Avg. capacity" value={avgCapacity || "—"} loading={summaryLoading} />
-            </div>
+            <section className="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden border border-border lg:grid-cols-4 lg:divide-y-0" aria-label="Class summary">
+                <SummaryMetric icon={GraduationCap} label={isStudent ? "Classes in catalog" : "Total classes"} value={totalClasses} loading={summaryLoading} />
+                <SummaryMetric icon={CheckCircle2} label="Active classes" value={activeClasses} loading={summaryLoading} />
+                <SummaryMetric icon={BookOpen} label="Subjects covered" value={subjectsCovered} loading={summaryLoading} />
+                <SummaryMetric icon={Gauge} label="Avg. capacity" value={avgCapacity || "—"} loading={summaryLoading} />
+            </section>
 
-            {/* Toolbar */}
-            <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                    <SearchInput
-                        placeholder="Search by name or invite code..."
+            <section aria-labelledby="class-directory-title" className="space-y-4">
+                <SectionHeader
+                    title={<span id="class-directory-title">{isStudent ? "Class catalogue" : "Class directory"}</span>}
+                    description={isStudent ? "Your enrolled classes and available learning spaces." : "Find a class, then open its operational workspace."}
+                />
+                <FilterBar
+                    search={<SearchInput
+                        placeholder="Search classes"
                         aria-label="Search classes"
-                        containerClassName="sm:max-w-xs"
                         value={searchQuery}
                         onChange={setSearchQuery}
                         loading={tableQuery.isFetching}
-                    />
+                    />}
+                    active={hasActiveFilters}
+                    onClear={clearFilters}
+                    trailing={isStudent ? <JoinClassDialog /> : <CreateButton resource="classes" />}
+                >
 
                     <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                        <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by subject">
+                        <SelectTrigger className="h-10 w-full sm:w-[180px]" aria-label="Filter by subject">
                             <SelectValue placeholder="All subjects" />
                         </SelectTrigger>
                         <SelectContent>
@@ -500,7 +500,7 @@ const ClassesList = () => {
                     </Select>
 
                     <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                        <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by teacher">
+                        <SelectTrigger className="h-10 w-full sm:w-[180px]" aria-label="Filter by teacher">
                             <SelectValue placeholder="All teachers" />
                         </SelectTrigger>
                         <SelectContent>
@@ -511,21 +511,7 @@ const ClassesList = () => {
                         </SelectContent>
                     </Select>
 
-                    {hasActiveFilters && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearFilters}
-                            className="text-muted-foreground hover:text-foreground"
-                        >
-                            <X className="mr-1 h-3.5 w-3.5" /> Clear
-                        </Button>
-                    )}
-
-                    <div className="sm:ml-auto">
-                        {isStudent ? <JoinClassDialog /> : <CreateButton resource="classes" />}
-                    </div>
-                </div>
+                </FilterBar>
 
                 <p className="text-xs text-muted-foreground" aria-live="polite">
                     {tableQuery.isLoading
@@ -534,10 +520,15 @@ const ClassesList = () => {
                             ? `${filteredTotal} ${filteredTotal === 1 ? "class matches" : "classes match"} your filters`
                             : `${filteredTotal} ${filteredTotal === 1 ? "class" : "classes"}`}
                 </p>
-            </div>
+            </section>
 
             {/* Table / empty states */}
-            {showEmpty ? (
+            {tableQuery.isError ? (
+                <ErrorState
+                    description="Unable to load classes. Check your connection and try again."
+                    onRetry={tableQuery.refetch}
+                />
+            ) : showEmpty ? (
                 hasActiveFilters ? (
                     <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-6 py-12 text-center">
                         <div className="mb-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -570,7 +561,7 @@ const ClassesList = () => {
                     </div>
                 </div>
             )}
-        </ListView>
+        </PageContainer>
     )
 }
 

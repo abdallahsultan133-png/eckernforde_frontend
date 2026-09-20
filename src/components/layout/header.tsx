@@ -14,18 +14,15 @@ import {
 import { useSidebar } from "@/components/ui/sidebar.tsx";
 import { AccountMenu } from "@/components/layout/account-menu.tsx";
 import { cn } from "@/lib/utils.ts";
-import { PAGE_META } from "@/constants";
+import { portalPage } from "@/lib/portal-page";
 import { ROLE_LABEL_SHORT } from "@/lib/roles";
 import { UserRole, type User } from "@/types";
 import {
   useActiveAuthProvider,
   useGetIdentity,
-  useMenu,
-  useRefineOptions,
-  type TreeMenuItem,
 } from "@refinedev/core";
 import { useKBar } from "kbar";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import {
   Menu,
   X,
@@ -45,13 +42,21 @@ import {
 type QuickAction = { label: string; href: string; icon: LucideIcon };
 
 function quickActionsForRole(role?: UserRole): QuickAction[] {
-  if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN) {
+  if (role === UserRole.SUPER_ADMIN) {
+    return [
+      { label: "Accounts & Roles", href: "/users", icon: Users },
+      { label: "Audit Log", href: "/admin/audit-logs", icon: FileText },
+      { label: "Departments", href: "/admin/departments", icon: Building2 },
+      { label: "Academic Insights", href: "/insights", icon: BarChart3 },
+    ];
+  }
+  if (role === UserRole.ADMIN) {
     return [
       { label: "Manage Users", href: "/users", icon: Users },
       { label: "Create Class", href: "/classes/create", icon: School },
       { label: "Add Subject", href: "/subjects/create", icon: BookOpen },
       { label: "Send Announcement", href: "/announcements/create", icon: Megaphone },
-      { label: "Departments", href: "/admin/departments", icon: Building2 },
+      { label: "Publish Results", href: "/admin/publish-results", icon: BarChart3 },
     ];
   }
   if (role === UserRole.TEACHER) {
@@ -64,7 +69,7 @@ function quickActionsForRole(role?: UserRole): QuickAction[] {
   if (role === UserRole.STUDENT) {
     return [
       { label: "View Assignments", href: "/assignments", icon: FileText },
-      { label: "View Grades", href: "/grades", icon: BarChart3 },
+      { label: "View Report", href: "/grades/term-results", icon: BarChart3 },
     ];
   }
   if (role === UserRole.PARENT) {
@@ -73,17 +78,8 @@ function quickActionsForRole(role?: UserRole): QuickAction[] {
   return [];
 }
 
-function getDisplayName(item?: TreeMenuItem) {
-  return item?.meta?.label ?? item?.label ?? item?.name;
-}
-
 function usePageTitle() {
-  const { menuItems, selectedKey } = useMenu();
-  const current = (menuItems as TreeMenuItem[]).find((item) => item.key === selectedKey);
-  return {
-    title: getDisplayName(current) ?? "Dashboard",
-    description: current ? PAGE_META[current.name] : undefined,
-  };
+  return portalPage(useLocation().pathname);
 }
 
 export const Header = () => {
@@ -98,6 +94,7 @@ function DesktopHeader() {
   return (
     <header
       className={cn(
+        "portal-header",
         "sticky",
         "top-0",
         "flex",
@@ -115,7 +112,7 @@ function DesktopHeader() {
       )}
     >
       <div className="min-w-0">
-        <h1 className="truncate text-base font-semibold leading-tight">{title}</h1>
+        <p className="truncate text-base font-semibold leading-tight">{title}</p>
         {description && <p className="truncate text-xs text-muted-foreground">{description}</p>}
       </div>
 
@@ -137,7 +134,7 @@ function MobileMenuButton() {
         <Button
             variant="ghost"
             size="icon"
-            className="ml-1 h-8 w-8 text-muted-foreground"
+            className="ml-1 h-11 w-11 shrink-0 text-muted-foreground"
             aria-label={openMobile ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={openMobile}
             onClick={() => setOpenMobile(!openMobile)}
@@ -148,15 +145,16 @@ function MobileMenuButton() {
 }
 
 function MobileHeader() {
-    const { title } = useRefineOptions();
+    const { title } = usePageTitle();
 
     return (
         <header
             className={cn(
+                "portal-header",
                 "sticky",
                 "top-0",
                 "flex",
-                "h-12",
+                "h-14",
                 "shrink-0",
                 "items-center",
                 "gap-2",
@@ -171,17 +169,14 @@ function MobileHeader() {
 
             <MobileMenuButton />
 
-            <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground [&>svg]:h-4 [&>svg]:w-4">
-                    {title.icon}
-                </span>
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                    {title.text}
-                </h2>
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                    {title}
+                </p>
             </div>
             <div className="flex items-center gap-1">
-                <SearchButton className="h-8 w-8" />
-                <ThemeToggle className={cn("h-8", "w-8")} />
+                <SearchButton className="h-11 w-11" />
+                <ThemeToggle className="h-11 w-11" />
                 <NotificationsBell />
                 <UserDropdown />
             </div>

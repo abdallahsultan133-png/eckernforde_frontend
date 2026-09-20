@@ -6,6 +6,7 @@ import { QrCode, RefreshCw, CheckCircle2, Clock, Users, XCircle, Loader2 } from 
 import { QRCodeSVG } from "qrcode.react";
 
 import { Breadcrumb } from "@/components/layout/breadcrumb.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
@@ -22,6 +23,9 @@ type QrSession = {
 };
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+
+const attendanceClassLabel = (classItem: ClassDetails) =>
+    classItem.subject?.name ? `${classItem.subject.name} — ${classItem.name}` : classItem.name;
 
 const QrAttendancePage = () => {
     const { token: routeToken } = useParams<{ token?: string }>();
@@ -120,7 +124,7 @@ const QrAttendancePage = () => {
     const isExpiringSoon = secondsLeft > 0 && secondsLeft <= 60;
 
     return (
-        <div className="qr-attendance space-y-6">
+        <PageContainer className="qr-attendance space-y-6">
             <Breadcrumb />
 
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -151,7 +155,7 @@ const QrAttendancePage = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map((c) => (
-                                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={String(c.id)}>{attendanceClassLabel(c)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -276,7 +280,7 @@ const QrAttendancePage = () => {
                     </CardContent>
                 </Card>
             )}
-        </div>
+        </PageContainer>
     );
 };
 

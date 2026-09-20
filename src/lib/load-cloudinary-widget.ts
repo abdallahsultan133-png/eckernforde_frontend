@@ -7,7 +7,7 @@ export function loadCloudinaryWidget(): Promise<void> {
   if (typeof window === "undefined" || window.cloudinary) return Promise.resolve();
   if (loading) return loading;
 
-  loading = new Promise((resolve, reject) => {
+  loading = new Promise<void>((resolve, reject) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${WIDGET_SRC}"]`);
     const script = existing ?? document.createElement("script");
     const done = () => window.cloudinary ? resolve() : reject(new Error("Cloudinary widget did not initialise"));
@@ -23,5 +23,5 @@ export function loadCloudinaryWidget(): Promise<void> {
     throw error;
   });
 
-  return loading;
+  return loading!;
 }

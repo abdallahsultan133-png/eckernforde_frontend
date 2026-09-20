@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { SearchInput } from "@/components/ui/search-input.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { ErrorState } from "@/components/ui/error-state.tsx";
@@ -41,6 +42,8 @@ const getInitials = (name = "") =>
   name.trim().split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const attendanceClassLabel = (classItem: ClassDetails) =>
+  classItem.subject?.name ? `${classItem.subject.name} — ${classItem.name}` : classItem.name;
 
 const MarkAttendance = () => {
   // Prefill the class when arriving from a class workspace (/attendance?classId=5).
@@ -48,6 +51,7 @@ const MarkAttendance = () => {
   const [classId, setClassId] = useState<string>(searchParams.get("classId") ?? "");
   const [date, setDate] = useState<string>(todayISO());
   const [pendingStatus, setPendingStatus] = useState<Record<string, AttendanceStatus>>({});
+  const [studentSearch, setStudentSearch] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { query: classesQuery } = useList<ClassDetails>({
@@ -93,6 +97,8 @@ const MarkAttendance = () => {
 
   const marked = summary.present + summary.absent + summary.late + summary.excused;
   const unmarked = roster.length - marked;
+  const normalizedStudentSearch = studentSearch.trim().toLowerCase();
+  const visibleRoster = roster.filter((row) => !normalizedStudentSearch || `${row.name} ${row.email}`.toLowerCase().includes(normalizedStudentSearch));
 
   const handleSave = async () => {
     const records = roster
@@ -146,7 +152,7 @@ const MarkAttendance = () => {
               </SelectTrigger>
               <SelectContent>
                 {classes.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={String(c.id)}>{attendanceClassLabel(c)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -163,36 +169,39 @@ const MarkAttendance = () => {
       />
 
       {!isLoading && !isError && roster.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => markAll("present")}>
-            <Check className="mr-1.5 h-4 w-4" /> Mark all present
-          </Button>
-          {(dirtyCount > 0 || marked > 0) && (
-            <Button size="sm" variant="outline" onClick={clearPending} disabled={dirtyCount === 0}>
-              <CircleSlash className="mr-1.5 h-4 w-4" /> Reset changes
+        <div className="space-y-3">
+          <SearchInput value={studentSearch} onChange={setStudentSearch} placeholder="Find a student..." aria-label="Search students in attendance register" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => markAll("present")}>
+              <Check className="mr-1.5 h-4 w-4" /> Mark all present
             </Button>
-          )}
-
-          <span className="ml-auto flex flex-wrap items-center gap-2">
-            {STATUS_KEYS.map((s) => (
-              <span key={s} className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                <span className={cn("h-2 w-2 rounded-full", STATUS_CONFIG[s].dot)} />
-                {STATUS_CONFIG[s].label} {summary[s]}
-              </span>
-            ))}
-            {unmarked > 0 && (
-              <span className="rounded-full border border-dashed px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                Unmarked {unmarked}
-              </span>
+            {(dirtyCount > 0 || marked > 0) && (
+              <Button size="sm" variant="outline" onClick={clearPending} disabled={dirtyCount === 0}>
+                <CircleSlash className="mr-1.5 h-4 w-4" /> Reset changes
+              </Button>
             )}
-          </span>
+
+            <span className="ml-auto flex flex-wrap items-center gap-2">
+              {STATUS_KEYS.map((s) => (
+                <span key={s} className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  <span className={cn("h-2 w-2 rounded-full", STATUS_CONFIG[s].dot)} />
+                  {STATUS_CONFIG[s].label} {summary[s]}
+                </span>
+              ))}
+              {unmarked > 0 && (
+                <span className="rounded-full border border-dashed px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  Unmarked {unmarked}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
       )}
 
       {isLoading ? (
-        <Card className="divide-y">
+        <Card className="attendance-register gap-0 divide-y py-0">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4">
+            <div key={i} className="flex items-center gap-4 px-4 py-2">
               <Skeleton className="h-10 w-10 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-40" />
@@ -209,12 +218,14 @@ const MarkAttendance = () => {
       ) : roster.length === 0 ? (
         <EmptyState icon={FileText} title="No students enrolled" description="This class has no students to mark yet." />
       ) : (
-        <Card className="divide-y">
-          {roster.map((row) => {
+        <Card className="!gap-0 divide-y !py-0">
+          {visibleRoster.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">No students match “{studentSearch}”.</div>
+          ) : visibleRoster.map((row) => {
             const active = effective(row);
             const isDirty = pendingStatus[row.studentId] !== undefined && pendingStatus[row.studentId] !== row.status;
             return (
-              <div key={row.studentId} className="flex flex-wrap items-center gap-4 p-4">
+              <div key={row.studentId} className="attendance-register-row flex flex-wrap items-center gap-x-4 gap-y-0 px-4 !py-0">
                 <Avatar className="h-10 w-10">
                   {row.image && <AvatarImage src={row.image} alt={row.name} />}
                   <AvatarFallback>{getInitials(row.name)}</AvatarFallback>
@@ -224,7 +235,6 @@ const MarkAttendance = () => {
                     {row.name}
                     {isDirty && <span className="ml-2 text-xs font-normal text-amber-600 dark:text-amber-400">unsaved</span>}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{row.email}</p>
                 </div>
                 <div className="flex flex-wrap gap-2" role="group" aria-label={`Attendance status for ${row.name}`}>
                   {STATUS_KEYS.map((s) => {
@@ -237,7 +247,7 @@ const MarkAttendance = () => {
                         aria-pressed={active === s}
                         onClick={() => setStatus(row.studentId, s)}
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent",
+                          "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent",
                           activeCls,
                         )}
                       >

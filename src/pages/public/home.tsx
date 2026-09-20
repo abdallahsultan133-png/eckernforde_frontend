@@ -1,46 +1,42 @@
-import { ArrowRight, CalendarDays, ChevronRight, CirclePlay, MapPin, ShieldCheck } from "lucide-react";
+import { ArrowDownRight, ArrowRight, BookOpen, CalendarDays, Compass, MapPin, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 
 const stages = [
-  ["Nursery & Kindergarten", "A joyful beginning built around curiosity, care and discovery.", "Explore early years"],
-  ["Primary", "A strong foundation for confident learners from Standard I to VII.", "Explore primary"],
-  ["Secondary", "Purposeful learning, character and preparation through Form I to IV.", "Explore secondary"],
+  { number: "01", label: "Early Years", title: "Begin with wonder.", copy: "Nursery and Kindergarten give children the time, care and confidence to explore the world around them.", href: "/academics", image: "/images/kijani-community-voice.png" },
+  { number: "02", label: "Primary", title: "Build strong foundations.", copy: "From Standard I to VII, curiosity becomes fluency, independence and a love of learning.", href: "/academics", image: "/images/kijani-creative-learning.png" },
+  { number: "03", label: "Secondary", title: "Find your direction.", copy: "Form I to IV brings challenge, responsibility and the confidence to make thoughtful choices.", href: "/academics", image: "/images/kijani-hero.png" },
+] as const;
+
+const stories = [
+  { label: "Learning", title: "The classroom is only the beginning.", copy: "Projects, questions, experiments and conversations turn knowledge into something students can use.", image: "/images/kijani-creative-learning.png", href: "/academics" },
+  { label: "Belonging", title: "A school day is made of many moments.", copy: "Sport, music, service and friendship create a community where every learner has a place to contribute.", image: "/images/kijani-community-voice.png", href: "/school-life" },
 ] as const;
 
 export default function PublicHome() {
-  return <>
-    <section className="public-hero">
-      <div className="public-hero-copy">
-        <p className="public-eyebrow">A school identity, ready to be made real</p>
-        <h1>Every stage of learning deserves a clear sense of possibility.</h1>
-        <p className="public-lede">A new digital home for Nursery, Primary and Secondary education—built around real school life, trusted information and meaningful next steps for families.</p>
-        <div className="flex flex-wrap gap-3"><Link className="public-primary-button" to="/admissions">Start your admissions journey <ArrowRight aria-hidden="true" /></Link><Link className="public-secondary-button" to="/academics">Explore learning</Link></div>
-      </div>
-      <div className="public-image-placeholder public-hero-art" role="img" aria-label="Placeholder for an approved school photograph showing students learning together">
-        <span>Approved school photography will shape this moment.</span>
-      </div>
+  return <div className="home-cinematic">
+    <section className="home-hero" aria-labelledby="hero-heading">
+      <img className="home-hero-image" src="/images/kijani-hero.png" alt="Students collaborating on a school project" fetchPriority="high" decoding="async" />
+      <div className="home-hero-shade" />
+      <div className="home-hero-content"><p className="home-kicker">Nursery · Primary · Secondary</p><h1 id="hero-heading">Begin with wonder.<br /><em>Grow with purpose.</em></h1><p className="home-hero-lede">A school for curious minds, kind character and the confidence to take the next step.</p><div className="home-hero-actions"><Link className="home-button home-button-light" to="/admissions">Discover our school <ArrowRight aria-hidden="true" /></Link><Link className="home-quiet-link" to="/academics">Explore learning <ArrowDownRight aria-hidden="true" /></Link></div></div>
+      <div className="home-hero-note"><span>01</span><span>Learning in action</span><span className="home-hero-line" /></div>
     </section>
 
-    <section className="public-intro-grid">
-      <p className="public-eyebrow">One school, three journeys</p>
-      <div><h2>Growing with purpose, from first questions to future choices.</h2><p>This homepage intentionally avoids invented results, testimonials and statistics. Once approved school stories, photography and outcomes are supplied, this section will make the school’s educational promise tangible.</p></div>
-    </section>
+    <section className="home-introduction home-container" aria-labelledby="intro-heading"><div className="home-section-marker"><span>01</span><span>Our school</span></div><div className="home-introduction-copy"><h2 id="intro-heading">A steady journey from first questions to future choices.</h2><p>Children grow best when they are known well, challenged thoughtfully and encouraged to take part. Our school brings the early years, primary and secondary journeys together in one connected community.</p><Link className="home-arrow-link" to="/about">Meet the school <ArrowRight aria-hidden="true" /></Link></div><div className="home-introduction-aside"><Sparkles aria-hidden="true" /><p>Learning is not a straight line. It is a widening circle of confidence, curiosity and connection.</p></div></section>
 
-    <section className="public-stage-section" aria-labelledby="journey-heading">
-      <div className="public-section-heading"><p className="public-eyebrow">Educational journey</p><h2 id="journey-heading">A distinct experience at every stage.</h2></div>
-      <div className="public-stage-grid">{stages.map(([title, copy, action], index) => <article className="public-stage" key={title}><span className="public-stage-number">0{index + 1}</span><h3>{title}</h3><p>{copy}</p><Link to="/academics" className="public-text-link">{action} <ChevronRight aria-hidden="true" /></Link></article>)}</div>
-    </section>
+    <section className="home-stage-section" aria-labelledby="stage-heading"><div className="home-container"><div className="home-section-header"><div><p className="home-kicker home-kicker-dark">The journey</p><h2 id="stage-heading">One school. Three chapters.</h2></div><p>Every stage has its own rhythm, relationships and possibilities. Together, they make a complete education.</p></div><div className="home-stage-grid">{stages.map((stage) => <Link className="home-stage-card" to={stage.href} key={stage.number}><div className="home-stage-media"><img src={stage.image} alt="" /><span>{stage.number}</span></div><div className="home-stage-body"><p>{stage.label}</p><h3>{stage.title}</h3><span>{stage.copy}</span><ArrowRight aria-hidden="true" /></div></Link>)}</div></div></section>
 
-    <section className="public-story-band">
-      <div className="public-image-placeholder public-story-art" role="img" aria-label="Placeholder for approved imagery of school life"><CirclePlay aria-hidden="true" className="h-11 w-11" /><span>School film / campus story</span></div>
-      <div><p className="public-eyebrow">Learning in action</p><h2>Show the work. Tell the story. Let families see the culture.</h2><p>Real student projects, classroom moments, arts, sports and community service should be the proof—not generic marketing claims.</p><Link className="public-text-link" to="/school-life">Discover school life <ArrowRight aria-hidden="true" /></Link></div>
-    </section>
+    <section className="home-film-section" aria-labelledby="film-heading"><div className="home-film-media"><img src="/images/kijani-creative-learning.png" alt="Students working together during a creative learning activity" loading="lazy" decoding="async" /><Link to="/gallery" className="home-play-button" aria-label="Explore the school gallery"><Play fill="currentColor" aria-hidden="true" /></Link><span className="home-film-caption">A day at school / Explore the gallery</span></div><div className="home-film-copy"><p className="home-kicker">See the difference</p><h2 id="film-heading">The best way to understand a school is to see its people at work.</h2><p>From a Nursery discovery table to a Secondary science project, real learning is active, social and full of small moments that matter.</p><Link className="home-arrow-link" to="/school-life">Explore school life <ArrowRight aria-hidden="true" /></Link></div></section>
 
-    <section className="public-utility-section">
-      <div><p className="public-eyebrow">For the school community</p><h2>The right information, in the right place.</h2></div>
-      <div className="public-utility-list"><Link to="/news-events"><CalendarDays aria-hidden="true" /><span><b>News & events</b><small>Public stories, announcements and calendar highlights.</small></span><ArrowRight aria-hidden="true" /></Link><Link to="/portal"><ShieldCheck aria-hidden="true" /><span><b>Secure portal</b><small>Personal academic, attendance and daily-school information.</small></span><ArrowRight aria-hidden="true" /></Link><Link to="/contact"><MapPin aria-hidden="true" /><span><b>Visit and connect</b><small>Contact details and campus directions after approval.</small></span><ArrowRight aria-hidden="true" /></Link></div>
-    </section>
+    <section className="home-academics home-container" aria-labelledby="academic-heading"><div className="home-section-marker"><span>02</span><span>Academic life</span></div><div className="home-academic-grid"><div><p className="home-kicker home-kicker-dark">Teaching with purpose</p><h2 id="academic-heading">Strong foundations.<br /><em>Open horizons.</em></h2><p className="home-body-copy">Our curriculum gives students the knowledge to understand their world and the habits to keep learning beyond the classroom.</p><Link className="home-button home-button-dark" to="/academics">Explore academics <ArrowRight aria-hidden="true" /></Link></div><div className="home-academic-list"><Link to="/academics"><BookOpen aria-hidden="true" /><span><b>Curriculum & subjects</b><small>See how learning is shaped at every stage.</small></span><ArrowRight aria-hidden="true" /></Link><Link to="/academics"><Compass aria-hidden="true" /><span><b>Learning support</b><small>Every learner deserves the right kind of challenge.</small></span><ArrowRight aria-hidden="true" /></Link><Link to="/school-life"><Sparkles aria-hidden="true" /><span><b>Beyond the classroom</b><small>Sport, arts, making, service and leadership.</small></span><ArrowRight aria-hidden="true" /></Link></div></div></section>
 
-    <section className="public-admissions-cta"><p className="public-eyebrow">Admissions</p><h2>Begin with a conversation.</h2><p>Explore the application process, arrange a visit, or contact the admissions team.</p><Link className="public-primary-button" to="/admissions">Explore admissions <ArrowRight aria-hidden="true" /></Link></section>
-  </>;
+    <section className="home-story-section" aria-labelledby="story-heading"><div className="home-container"><div className="home-section-header"><div><p className="home-kicker">School life</p><h2 id="story-heading">Room to become yourself.</h2></div><Link className="home-arrow-link home-arrow-link-light" to="/school-life">Discover more <ArrowRight aria-hidden="true" /></Link></div><div className="home-story-grid">{stories.map((story) => <Link className="home-story-card" to={story.href} key={story.title}><img src={story.image} alt="" /><div className="home-story-overlay"><p>{story.label}</p><h3>{story.title}</h3><span>{story.copy}</span><ArrowRight aria-hidden="true" /></div></Link>)}</div></div></section>
+
+    <section className="home-proof-section" aria-labelledby="proof-heading"><div className="home-container home-proof-grid"><div><p className="home-kicker home-kicker-dark">The school community</p><h2 id="proof-heading">The everyday is where character grows.</h2><p className="home-body-copy">A trusted school is built through relationships: a teacher who notices, a friend who includes, a student who steps forward and a family who feels welcome.</p></div><div className="home-proof-numbers"><div><strong>3</strong><span>stages of learning</span></div><div><strong>14</strong><span>years of growth</span></div><div><strong>1</strong><span>connected community</span></div></div></div></section>
+
+    <section className="home-admissions-section" aria-labelledby="admissions-heading"><div className="home-container home-admissions-grid"><div><p className="home-kicker">Admissions</p><h2 id="admissions-heading">Take the first step.</h2><p>Choosing a school is a conversation. We are here to help you understand the journey, visit the campus and decide what is right for your child.</p></div><div className="home-admission-steps"><Link to="/admissions"><span>01</span><b>Discover</b><ArrowRight aria-hidden="true" /></Link><Link to="/contact"><span>02</span><b>Book a visit</b><ArrowRight aria-hidden="true" /></Link><Link to="/admissions"><span>03</span><b>Request information</b><ArrowRight aria-hidden="true" /></Link><Link to="/admissions"><span>04</span><b>Apply</b><ArrowRight aria-hidden="true" /></Link></div></div></section>
+
+    <section className="home-community-section home-container" aria-labelledby="connect-heading"><div><p className="home-kicker home-kicker-dark">Stay connected</p><h2 id="connect-heading">The right door, at the right time.</h2></div><div className="home-community-links"><Link to="/news-events"><CalendarDays aria-hidden="true" /><span><b>News & events</b><small>Stories and dates from the school community.</small></span><ArrowRight aria-hidden="true" /></Link><Link to="/contact"><MapPin aria-hidden="true" /><span><b>Visit the school</b><small>Come and experience the campus for yourself.</small></span><ArrowRight aria-hidden="true" /></Link><Link to="/portal"><ShieldCheck aria-hidden="true" /><span><b>School portal</b><small>Secure access for current families, students and staff.</small></span><ArrowRight aria-hidden="true" /></Link></div></section>
+
+    <section className="home-final-cta"><div className="home-container"><p className="home-kicker">Your next chapter</p><h2>Let’s start a conversation.</h2><div><Link className="home-button home-button-light" to="/admissions">Explore admissions <ArrowRight aria-hidden="true" /></Link><Link className="home-text-button" to="/contact">Contact the school</Link></div></div></section>
+  </div>;
 }

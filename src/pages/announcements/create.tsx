@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { SectionHeader } from "@/components/layout/section-header.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Field } from "@/components/ui/field.tsx";
@@ -64,20 +65,17 @@ const AnnouncementsCreate = () => {
   };
 
   return (
-    <div className="announcements-create space-y-6">
+    <PageContainer className="announcements-create max-w-4xl">
       <PageHeader
         breadcrumb
         title="New Announcement"
         description="Post to a specific class, or school-wide."
       />
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Announcement details</CardTitle>
-        </CardHeader>
-        <Separator />
-        <CardContent className="mt-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="overflow-hidden rounded-lg border bg-background">
+        <div className="p-5 sm:p-6">
+          <SectionHeader title="Announcement details" description="Choose who should see this notice and provide the message." />
+          <div className="mt-5 space-y-5">
             <Field label="Audience" htmlFor="announcement-audience">
               <Select value={classId} onValueChange={setClassId}>
                 <SelectTrigger id="announcement-audience" className="w-full">
@@ -108,16 +106,18 @@ const AnnouncementsCreate = () => {
               <Switch checked={pinned} onCheckedChange={setPinned} aria-labelledby="pin-to-top-label" />
             </div>
 
-            <Separator />
-
-            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          </div>
+        </div>
+        <Separator />
+        <div className="flex flex-col-reverse gap-2 bg-muted/20 p-4 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => navigate("/announcements")} disabled={submitting}>Cancel</Button>
+            <Button type="submit" disabled={submitting}>
               {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {submitting ? "Posting..." : "Post Announcement"}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </form>
+    </PageContainer>
   );
 };
 

@@ -34,7 +34,7 @@ export function StudentsTab({ classId, canManage }: { classId: number; canManage
       {isLoading ? (
         <div className="divide-y">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+            <div key={i} className="flex items-center gap-3 px-5 py-2">
               <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
               <div className="flex-1 space-y-1.5">
                 <Skeleton className="h-3.5 w-40" />
@@ -67,7 +67,7 @@ export function StudentsTab({ classId, canManage }: { classId: number; canManage
       ) : (
         <ul className="divide-y">
           {students.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-5 py-3">
+            <li key={s.id} className="flex items-center gap-3 px-5 py-2">
               <Avatar className="h-9 w-9">
                 {s.image && <AvatarImage src={s.image} alt={s.name} />}
                 <AvatarFallback>{getInitials(s.name)}</AvatarFallback>
@@ -76,7 +76,6 @@ export function StudentsTab({ classId, canManage }: { classId: number; canManage
                 <Link to={`/students/${s.id}`} className="text-sm font-medium hover:underline">
                   {s.name}
                 </Link>
-                <p className="truncate text-xs text-muted-foreground">{s.email}</p>
               </div>
             </li>
           ))}

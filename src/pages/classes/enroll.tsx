@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router";
+import { useGetIdentity } from "@refinedev/core";
 import { toast } from "sonner";
 import { UserMinus, UserPlus, ArrowLeft, Upload, Loader2, Search } from "lucide-react";
 import { Breadcrumb } from "@/components/layout/breadcrumb.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { ErrorState } from "@/components/ui/error-state.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -15,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { BACKEND_BASE_URL } from "@/constants";
 import { parseSingleColumnCsv } from "@/lib/csv.ts";
+import { UserRole, type User } from "@/types";
 
 type Student = { id: string; name: string; email: string; image: string | null };
 
@@ -22,8 +26,11 @@ const getInitials = (name = "") => name.trim().split(" ").filter(Boolean).slice(
 
 const EnrollStudents = () => {
     const { id: classId } = useParams();
+    const { data: identity } = useGetIdentity<User>();
+    const isTeacher = identity?.role === UserRole.TEACHER;
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [bulkImporting, setBulkImporting] = useState(false);
     const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,29 +40,34 @@ const EnrollStudents = () => {
     // add one exact email at a time.
     const [allStudents, setAllStudents] = useState<Student[]>([]);
     const [directoryLoading, setDirectoryLoading] = useState(true);
+    const [directoryError, setDirectoryError] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [enrollingSelected, setEnrollingSelected] = useState(false);
 
-    const load = () => {
+    const load = useCallback(() => {
         setLoading(true);
+        setLoadError(false);
         fetch(`${BACKEND_BASE_URL}/classes/${classId}/students`, { credentials: "include" })
-            .then(async (r) => r.ok ? r.json() : { data: [] })
+            .then(async (r) => { if (!r.ok) throw new Error("Failed to load enrolled students"); return r.json(); })
             .then((j) => setStudents(j.data ?? []))
-            .catch(() => toast.error("Failed to load students"))
+            .catch(() => { setLoadError(true); toast.error("Failed to load students"); })
             .finally(() => setLoading(false));
-    };
+    }, [classId]);
 
-    const loadDirectory = () => {
+    const loadDirectory = useCallback(() => {
         setDirectoryLoading(true);
-        fetch(`${BACKEND_BASE_URL}/users/students`, { credentials: "include" })
-            .then(async (r) => r.ok ? r.json() : { data: [] })
+        setDirectoryError(false);
+        const query = isTeacher && classId ? `?classId=${encodeURIComponent(classId)}` : "";
+        fetch(`${BACKEND_BASE_URL}/users/students${query}`, { credentials: "include" })
+            .then(async (r) => { if (!r.ok) throw new Error("Failed to load student directory"); return r.json(); })
             .then((j) => setAllStudents(j.data ?? []))
-            .catch(() => toast.error("Failed to load student directory"))
+            .catch(() => { setDirectoryError(true); toast.error("Failed to load student directory"); })
             .finally(() => setDirectoryLoading(false));
-    };
+    }, [classId, isTeacher]);
 
-    useEffect(() => { load(); loadDirectory(); }, [classId]);
+    useEffect(() => { load(); }, [load]);
+    useEffect(() => { if (identity) loadDirectory(); }, [identity, loadDirectory]);
 
     const enrolledIds = useMemo(() => new Set(students.map((s) => s.id)), [students]);
 
@@ -65,6 +77,17 @@ const EnrollStudents = () => {
             .filter((s) => !enrolledIds.has(s.id))
             .filter((s) => !q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
     }, [allStudents, enrolledIds, search]);
+
+    const allVisibleSelected = availableStudents.length > 0 && availableStudents.every((student) => selectedIds.has(student.id));
+
+    const toggleAllVisible = () => {
+        setSelectedIds((previous) => {
+            const next = new Set(previous);
+            if (allVisibleSelected) availableStudents.forEach((student) => next.delete(student.id));
+            else availableStudents.forEach((student) => next.add(student.id));
+            return next;
+        });
+    };
 
     const toggleSelected = (studentId: string) => {
         setSelectedIds((prev) => {
@@ -159,7 +182,7 @@ const EnrollStudents = () => {
     };
 
     return (
-        <div className="enroll-students space-y-6">
+        <PageContainer className="enroll-students space-y-6">
             <Breadcrumb />
 
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -175,21 +198,28 @@ const EnrollStudents = () => {
             <Card className="p-4">
                 <p className="text-sm font-medium mb-1">Enroll students</p>
                 <p className="text-xs text-muted-foreground mb-3">
-                    Browse or search the student directory by name or email, then select everyone who should be enrolled.
+                    Browse or search the student directory by name, then select everyone who should be enrolled.
                 </p>
 
                 <div className="relative mb-3">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                        placeholder="Search by name or email…"
+                        placeholder="Search by name…"
                         className="pl-8"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
 
+                {availableStudents.length > 0 && (
+                    <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm font-medium">
+                        <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} aria-label="Select all visible students" />
+                        Select all visible students
+                    </label>
+                )}
+
                 <div className="max-h-72 overflow-y-auto rounded-md border divide-y">
-                    {directoryLoading ? (
+                {directoryError ? <ErrorState title="Unable to load student directory" description="Try again to choose students for this class." onRetry={loadDirectory} /> : directoryLoading ? (
                         Array.from({ length: 4 }).map((_, i) => (
                             <div key={i} className="flex items-center gap-3 p-3">
                                 <Skeleton className="h-8 w-8 rounded-full" />
@@ -214,7 +244,6 @@ const EnrollStudents = () => {
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{s.name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{s.email}</p>
                                 </div>
                             </label>
                         ))
@@ -271,9 +300,9 @@ const EnrollStudents = () => {
                     <p className="text-sm font-medium">Enrolled Students ({students.length})</p>
                 </div>
 
-                {loading ? (
+                {loadError ? <div className="p-5"><ErrorState title="Unable to load enrolled students" description="Try again to refresh this class roster." onRetry={load} /></div> : loading ? (
                     Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-3 p-4">
+                        <div key={i} className="flex items-center gap-3 px-4 py-2">
                             <Skeleton className="h-9 w-9 rounded-full" />
                             <div className="flex-1 space-y-1.5"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-28" /></div>
                         </div>
@@ -282,14 +311,13 @@ const EnrollStudents = () => {
                     <p className="p-8 text-center text-sm text-muted-foreground">No students enrolled yet. Use the form above to add the first one.</p>
                 ) : (
                     students.map((s) => (
-                        <div key={s.id} className="flex items-center gap-3 p-4">
+                        <div key={s.id} className="flex items-center gap-3 px-4 py-2">
                             <Avatar className="h-9 w-9">
                                 {s.image && <AvatarImage src={s.image} />}
                                 <AvatarFallback>{getInitials(s.name)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                                 <Link to={`/students/${s.id}`} className="text-sm font-medium hover:underline">{s.name}</Link>
-                                <p className="text-xs text-muted-foreground">{s.email}</p>
                             </div>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -312,7 +340,7 @@ const EnrollStudents = () => {
                     ))
                 )}
             </Card>
-        </div>
+        </PageContainer>
     );
 };
 

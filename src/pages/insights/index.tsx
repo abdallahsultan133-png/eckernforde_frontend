@@ -3,6 +3,7 @@ import { useGetIdentity } from "@refinedev/core";
 import { ClipboardList, FileBarChart } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { AttendanceOverviewChart } from "@/components/dashboard/attendance-overview-chart.tsx";
 import { PerformanceChart } from "@/components/dashboard/performance-chart.tsx";
@@ -23,14 +24,14 @@ const InsightsPage = () => {
   const student = identity?.role === UserRole.STUDENT;
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
         breadcrumb
-        title="Insights"
+        title="Academic insights"
         description={
           staff
-            ? "Attendance, performance, and activity trends across your classes."
-            : "How your attendance and grades are trending this term."
+            ? "Role-scoped attendance, grade distribution, and class activity from recorded school data."
+            : "Your recorded attendance and published academic performance over time."
         }
         actions={
           <>
@@ -43,7 +44,7 @@ const InsightsPage = () => {
             <Button asChild variant="outline" size="sm">
               <Link to={student ? "/grades/report-card" : "/grades"}>
                 <FileBarChart className="mr-1.5 h-4 w-4" />
-                {student ? "Report card" : "Gradebook"}
+                {student ? "Report card" : "Assignment Grade Book"}
               </Link>
             </Button>
           </>
@@ -56,7 +57,7 @@ const InsightsPage = () => {
         <PerformanceChart personal={student} showClassRanking={staff} />
         <ClassActivityChart personal={student} />
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

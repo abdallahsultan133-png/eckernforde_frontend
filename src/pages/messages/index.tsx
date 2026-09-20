@@ -4,7 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Send, MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
+import { ErrorState } from "@/components/ui/error-state.tsx";
+import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
@@ -44,13 +46,13 @@ const MessagesPage = () => {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     const conversationsPath = "/messages/conversations";
-    const { data: conversationsData, isLoading: convsLoading } = useApiQuery<{ data: Conversation[] }>(conversationsPath, {
+    const { data: conversationsData, isLoading: convsLoading, isError: conversationsError, refetch: refetchConversations } = useApiQuery<{ data: Conversation[] }>(conversationsPath, {
         refetchInterval: 15000,
     });
     const conversations = conversationsData?.data ?? [];
 
     const threadPath = activePartner ? `/messages/thread/${activePartner.id}` : null;
-    const { data: threadData, isLoading: threadLoading } = useApiQuery<{ data: Message[] }>(threadPath, {
+    const { data: threadData, isLoading: threadLoading, isError: threadError, refetch: refetchThread } = useApiQuery<{ data: Message[] }>(threadPath, {
         refetchInterval: activePartner ? 4000 : false,
     });
     const thread = useMemo(() => threadData?.data ?? [], [threadData]);
@@ -95,12 +97,12 @@ const MessagesPage = () => {
     };
 
     return (
-        <div className="messages-page space-y-4">
-            <PageHeader breadcrumb title="Messages" description="Direct messages with your school community." />
+        <PageContainer className="messages-page">
+            <PageHeader breadcrumb title="Messages" description="Private, account-to-account conversations within your school community." />
 
             <div className="grid gap-4 md:grid-cols-3 h-[calc(100vh-220px)] min-h-[500px]">
                 {/* Conversations sidebar — hidden on mobile once a thread is open */}
-                <Card className={cn("flex-col overflow-hidden", activePartner ? "hidden md:flex" : "flex")}>
+                <section aria-label="Conversations" className={cn("flex-col overflow-hidden border-y border-border bg-card sm:rounded-lg sm:border", activePartner ? "hidden md:flex" : "flex")}>
                     <div className="p-3 border-b">
                         <div className="flex gap-2">
                             <Input aria-label="Start a new conversation by email" placeholder="Start new: enter email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
@@ -117,10 +119,10 @@ const MessagesPage = () => {
                                     <div className="flex-1 space-y-1.5"><Skeleton className="h-3.5 w-28" /><Skeleton className="h-3 w-40" /></div>
                                 </div>
                             ))
+                        ) : conversationsError ? (
+                            <ErrorState variant="inline" title="Unable to load conversations" onRetry={refetchConversations} />
                         ) : conversations.length === 0 ? (
-                            <div className="p-6 text-center text-sm text-muted-foreground">
-                                <MessageSquare className="mx-auto mb-2 h-5 w-5" />No conversations yet.
-                            </div>
+                            <EmptyState variant="inline" icon={MessageSquare} title="No conversations yet" description="Start one by entering a school account email above." className="px-4" />
                         ) : (
                             conversations.map((conv) => (
                                 <div key={conv.partner.id}
@@ -151,10 +153,10 @@ const MessagesPage = () => {
                             ))
                         )}
                     </ScrollArea>
-                </Card>
+                </section>
 
                 {/* Chat thread — full-width on mobile, hidden until a thread is open */}
-                <Card className={cn("md:col-span-2 flex-col overflow-hidden", activePartner ? "flex" : "hidden md:flex")}>
+                <section aria-label={activePartner ? `Conversation with ${activePartner.name}` : "Message thread"} className={cn("md:col-span-2 flex-col overflow-hidden border-y border-border bg-card sm:rounded-lg sm:border", activePartner ? "flex" : "hidden md:flex")}>
                     {!activePartner ? (
                         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
                             <div className="text-center">
@@ -191,6 +193,8 @@ const MessagesPage = () => {
                                             <Skeleton className="h-9 w-48 rounded-2xl" />
                                         </div>
                                     ))
+                                ) : threadError ? (
+                                    <ErrorState variant="inline" title="Unable to load messages" onRetry={refetchThread} />
                                 ) : thread.length === 0 ? (
                                     <p className="text-center text-sm text-muted-foreground py-8">No messages yet. Say hello!</p>
                                 ) : (
@@ -231,9 +235,9 @@ const MessagesPage = () => {
                             </div>
                         </>
                     )}
-                </Card>
+                </section>
             </div>
-        </div>
+        </PageContainer>
     );
 };
 

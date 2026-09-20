@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Megaphone, Pin, Plus, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -64,11 +64,11 @@ const AnnouncementsList = () => {
   };
 
   return (
-    <div className="announcements-list space-y-6">
+    <PageContainer className="announcements-list">
       <PageHeader
         breadcrumb
         title="Announcements"
-        description="School-wide and class updates, pinned first."
+        description="Official school and class communication, with important notices kept visible at the top."
         actions={
           isTeacherOrAdmin && (
             <Button asChild>
@@ -99,13 +99,13 @@ const AnnouncementsList = () => {
           action={isTeacherOrAdmin ? { label: "New announcement", to: "/announcements/create" } : undefined}
         />
       ) : (
-        <div className="space-y-4">
+        <section aria-label="Published announcements" className="divide-y divide-border border-y border-border bg-card">
           {items.map((a) => (
-            <Card
+            <article
               key={a.id}
               className={cn(
-                "p-5",
-                a.pinned && "border-amber-500/40 bg-amber-500/5",
+                "relative px-4 py-5 sm:px-5",
+                a.pinned && "border-l-2 border-l-amber-500 bg-amber-500/[0.04]",
               )}
             >
               <div className="flex items-start justify-between gap-3">
@@ -116,7 +116,7 @@ const AnnouncementsList = () => {
                   </Avatar>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold leading-snug">{a.title}</h3>
+                      <h2 className="font-semibold leading-snug">{a.title}</h2>
                       {a.pinned && (
                         <StatusBadge tone="warning" icon={<Pin className="h-3 w-3" />}>
                           Pinned
@@ -151,11 +151,11 @@ const AnnouncementsList = () => {
               </div>
 
               <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{a.content}</p>
-            </Card>
+            </article>
           ))}
-        </div>
+        </section>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

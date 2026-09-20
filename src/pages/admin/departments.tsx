@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Building2, Loader2, Pencil, Plus, Trash } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { Card } from "@/components/ui/card.tsx";
+import { PageContainer } from "@/components/layout/page-container.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Field } from "@/components/ui/field.tsx";
@@ -92,7 +92,7 @@ const DepartmentsPage = () => {
     };
 
     return (
-        <div className="departments space-y-6">
+        <PageContainer className="departments">
             <PageHeader
                 breadcrumb
                 title={
@@ -101,7 +101,7 @@ const DepartmentsPage = () => {
                         Departments
                     </span>
                 }
-                description="Manage academic departments. Admin only."
+                description="Organize subjects and teaching responsibilities into stable academic departments."
                 actions={
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
@@ -137,9 +137,9 @@ const DepartmentsPage = () => {
             />
 
             {loading ? (
-                <Card className="space-y-3 p-4">
+                <div className="space-y-3 border-y border-border p-4" aria-busy="true">
                     {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                </Card>
+                </div>
             ) : isError ? (
                 <ErrorState description="Couldn't load departments." onRetry={refetch} />
             ) : departments.length === 0 ? (
@@ -149,7 +149,7 @@ const DepartmentsPage = () => {
                     description="Add a department to organise subjects and classes under it."
                 />
             ) : (
-                <Card className="overflow-x-auto">
+                <div className="overflow-x-auto border-y border-border bg-card sm:rounded-lg sm:border">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -195,9 +195,9 @@ const DepartmentsPage = () => {
                             ))}
                         </TableBody>
                     </Table>
-                </Card>
+                </div>
             )}
-        </div>
+        </PageContainer>
     );
 };
 
