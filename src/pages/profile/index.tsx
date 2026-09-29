@@ -3,7 +3,7 @@ import { useGetIdentity } from "@refinedev/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { ArrowRight, CheckCircle2, GraduationCap, IdCard, LayoutDashboard, Loader2, LockKeyhole, Mail, Moon, School, ShieldCheck, UserRound } from "lucide-react";
+import { CheckCircle2, GraduationCap, IdCard, Loader2, LockKeyhole, Mail, Moon, School, ShieldCheck, UserRound } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
 import { PageContainer } from "@/components/layout/page-container.tsx";
@@ -135,29 +135,15 @@ const ProfilePage = () => {
             </CardHeader>
             <Separator />
             <CardContent className="space-y-1 p-2">
-              {isStudent && <a href="#profile-details" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <UserRound className="h-4 w-4 text-muted-foreground" /> Personal details
-              </a>}
+              <a href={isStudent ? "#profile-details" : "#account-details"} className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <UserRound className="h-4 w-4 text-muted-foreground" /> {isStudent ? "Personal details" : "Account details"}
+              </a>
               <a href="#security" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <LockKeyhole className="h-4 w-4 text-muted-foreground" /> Password & security
               </a>
               <a href="#appearance" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Moon className="h-4 w-4 text-muted-foreground" /> Appearance
               </a>
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/20 bg-primary/[0.03]">
-            <CardContent className="space-y-3 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Quick access</p>
-              <Button asChild variant="outline" size="sm" className="w-full justify-between bg-background">
-                <Link to="/portal">Open dashboard <LayoutDashboard className="h-4 w-4" /></Link>
-              </Button>
-              {(identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER) && (
-                <Button asChild variant="ghost" size="sm" className="w-full justify-between">
-                  <Link to="/portal/setup?change=1">Change portal context <ArrowRight className="h-4 w-4" /></Link>
-                </Button>
-              )}
             </CardContent>
           </Card>
 
@@ -178,7 +164,7 @@ const ProfilePage = () => {
         </aside>
 
         <main className="min-w-0 space-y-4">
-          {isStudent && (
+          {isStudent ? (
             <Card id="profile-details" className="scroll-mt-6">
               <CardHeader>
                 <CardTitle>Personal details</CardTitle>
@@ -240,6 +226,35 @@ const ProfilePage = () => {
                     </div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card id="account-details" className="scroll-mt-6">
+              <CardHeader>
+                <CardTitle>Account details</CardTitle>
+                <CardDescription>Your identity and role in the school portal.</CardDescription>
+              </CardHeader>
+              <Separator />
+              <CardContent className="mt-4 space-y-4">
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Full name</dt>
+                    <dd className="mt-1 text-sm font-medium">{identity?.name ?? "Not available"}</dd>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Email address</dt>
+                    <dd className="mt-1 break-words text-sm font-medium">{identity?.email ?? "Not available"}</dd>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Portal role</dt>
+                    <dd className="mt-1 text-sm font-medium">{identity?.role ? ROLE_LABEL[identity.role] : "Portal user"}</dd>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Account ID</dt>
+                    <dd className="mt-1 truncate font-mono text-xs text-muted-foreground">{identity?.id ?? "Not available"}</dd>
+                  </div>
+                </dl>
+                <p className="flex items-start gap-2 border-t pt-4 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Account identity is managed by the school. Contact the school office if your name or email needs to be corrected.</p>
               </CardContent>
             </Card>
           )}

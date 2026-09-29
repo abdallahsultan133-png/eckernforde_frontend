@@ -98,14 +98,14 @@ const SubjectsList = () => {
             <PageHeader
                 breadcrumb
                 title="Subjects"
-                description="Manage the curriculum catalogue used by classes, assignments, examinations, and academic records."
+                description="Manage the curriculum catalogue used by classes, homework, examinations, and academic records."
                 actions={<CreateButton resource="subjects" />}
             />
 
             <section aria-labelledby="subject-directory-title" className="space-y-4">
                 <SectionHeader
                     title={<span id="subject-directory-title">Curriculum catalogue</span>}
-                    description="Subjects are grouped by department; class and teacher assignments are managed from their respective workspaces."
+                    description="Subjects are grouped by department; class and teacher allocations are managed from their respective workspaces."
                 />
                 <FilterBar
                     search={

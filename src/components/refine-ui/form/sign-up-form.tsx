@@ -38,7 +38,7 @@ export const SignUpForm = () => {
     });
   };
 
-  return <AuthLayout title="Create your account" description="Join the Eckernforde Academy school portal.">
+  return <AuthLayout title="Create your account" description="Join the school portal.">
     {!BACKEND_BASE_URL && <div className="auth-alert" role="alert"><strong>Portal connection is not configured.</strong><br />Set <code>VITE_BACKEND_BASE_URL</code> in the frontend environment, then restart the app.</div>}
     {error && <div className="auth-form-error" role="alert">{error}</div>}
     <form onSubmit={handleSignUp} className="auth-form">

@@ -50,8 +50,10 @@ interface AttendanceOverviewChartProps {
      * Render the student-facing version: the data is the signed-in student's own
      * attendance, so the copy, tooltip and a summary read in "your check-ins"
      * terms rather than the org-wide "records over time".
-     */
+    */
     personal?: boolean;
+    /** Show the longer interpretation guidance on the dedicated Insights page. */
+    showExplanation?: boolean;
 }
 
 type RatePoint = TrendPoint & { label: string; total: number };
@@ -87,7 +89,7 @@ function RateTooltip({
     );
 }
 
-export function AttendanceOverviewChart({ personal = false }: AttendanceOverviewChartProps) {
+export function AttendanceOverviewChart({ personal = false, showExplanation = false }: AttendanceOverviewChartProps) {
     const [range, setRange] = useState<string>("30");
     const { data, isLoading, isError, refetch } = useApiQuery<{ data: TrendPoint[] }>(
         `/dashboard/attendance-trend?range=${range}`
@@ -110,12 +112,12 @@ export function AttendanceOverviewChart({ personal = false }: AttendanceOverview
         <div className="rounded-xl border p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-semibold">Attendance Overview</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {personal
-                            ? "The share of your recorded classes you showed up to, day by day."
-                            : "Share of recorded classes marked present, day by day."}
-                    </p>
+                    <h2 className="text-xl font-semibold">Attendance summary</h2>
+                    {showExplanation && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {personal ? "Your recorded attendance by day." : "The recorded present rate across the school data."}
+                        </p>
+                    )}
                 </div>
                 <Tabs value={range} onValueChange={setRange}>
                     <TabsList>
@@ -142,20 +144,18 @@ export function AttendanceOverviewChart({ personal = false }: AttendanceOverview
                     icon={CalendarRange}
                     title="No attendance recorded yet"
                     description={
-                        personal
-                            ? "Once your teachers start recording attendance for your classes, your day-by-day trend shows up here."
-                            : "Mark attendance for a class to see the trend here."
+                            personal ? "No recorded attendance yet." : "No attendance recorded yet."
                     }
                     action={{ label: personal ? "View my attendance" : "Mark attendance", to: "/attendance" }}
                 />
             ) : (
                 <>
                     {totalMarks > 0 && (
-                        <p className="mb-3 text-sm text-muted-foreground">
-                            <span className="font-semibold text-foreground">{presentRate}%</span> present overall across{" "}
-                            <span className="tabular-nums">{totalMarks.toLocaleString()}</span>{" "}
-                            {personal ? "check-ins" : "records"} in the {rangeLabel.toLowerCase()}.
-                        </p>
+                        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                            <span className="font-semibold text-foreground">{presentRate}% present</span>
+                            <span className="tabular-nums">{totalMarks.toLocaleString()} {personal ? "check-ins" : "records"}</span>
+                            <span>{rangeLabel}</span>
+                        </div>
                     )}
                     <ResponsiveContainer width="100%" height={288}>
                         <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
@@ -203,37 +203,20 @@ export function AttendanceOverviewChart({ personal = false }: AttendanceOverview
                         </AreaChart>
                     </ResponsiveContainer>
 
-                    {personal && (
-                        <div className="mt-4 space-y-2 border-t pt-4">
-                            <p className="text-sm text-foreground">
-                                You were present at{" "}
-                                <span className="font-medium">{presentRate}%</span> of your{" "}
-                                <span className="font-medium">{totalMarks}</span>{" "}
-                                recorded class check-in{totalMarks === 1 ? "" : "s"} in the {rangeLabel.toLowerCase()}
-                                {totalMarks > 0 ? (
-                                    <>
-                                        {" "}— {totals.present} present, {totals.late} late, {totals.absent} absent.
-                                    </>
-                                ) : (
-                                    "."
-                                )}
-                            </p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                {STATUS.map((s) => (
-                                    <span key={s.key} className="flex items-center gap-1.5">
-                                        <span
-                                            className="h-2 w-2 rounded-[3px]"
-                                            style={{ backgroundColor: s.color }}
-                                            aria-hidden="true"
-                                        />
-                                        {s.label} — {totals[s.key]}
-                                    </span>
-                                ))}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Each point is one day. Only sessions a teacher recorded attendance for are shown — if a class looks missing, ask your teacher.
-                            </p>
+                    {totalMarks > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t pt-4 text-xs text-muted-foreground">
+                            {STATUS.map((s) => (
+                                <span key={s.key} className="flex items-center gap-1.5">
+                                    <span className="h-2 w-2 rounded-[3px]" style={{ backgroundColor: s.color }} aria-hidden="true" />
+                                    {s.label} {totals[s.key]}
+                                </span>
+                            ))}
                         </div>
+                    )}
+                    {showExplanation && (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            Each point represents one day. Only sessions with recorded attendance are included.
+                        </p>
                     )}
                 </>
             )}

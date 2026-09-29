@@ -10,7 +10,7 @@ const ActivityPage = () => {
             <PageHeader
                 above={
                     <Link
-                        to="/"
+                        to="/portal"
                         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" />
@@ -23,7 +23,7 @@ const ActivityPage = () => {
                         All Activity
                     </span>
                 }
-                description="Recent announcements, assignments, submissions, and administrative changes available to your role."
+      description="Recent announcements, homework, submissions, and administrative changes available to your role."
             />
 
             <RecentActivity limit={100} showReadMore={false} />

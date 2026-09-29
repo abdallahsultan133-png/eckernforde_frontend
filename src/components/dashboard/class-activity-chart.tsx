@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
     BarChart,
     Bar,
@@ -18,81 +19,108 @@ import { VizTooltip } from "./viz-tooltip";
 
 type ClassActivity = {
     classId: number;
-    className: string;
+    assignments: number;
+    submissions: number;
+    attendanceMarks: number;
+};
+
+type ClassLookup = {
+    id: number;
+    subject?: { name?: string | null } | null;
+};
+
+type SubjectActivity = {
+    subjectName: string;
+    label: string;
     assignments: number;
     submissions: number;
     attendanceMarks: number;
 };
 
 interface ClassActivityChartProps {
-    /**
-     * Render the student-facing version: the rows are the signed-in student's
-     * own enrolled classes, so the copy explains this is a read on which of
-     * *your* classes are busiest (counts are class-wide, not just your own work).
-     */
+    /** Render the student-facing version for the student's enrolled subjects. */
     personal?: boolean;
 }
-
-// Categorical — fixed slot order, colour follows the metric (never its rank).
 const SERIES = [
-    { key: "assignments", label: "Assignments", color: VIZ.cat[0] },
+    { key: "assignments", label: "Homework", color: VIZ.cat[0] },
     { key: "submissions", label: "Submissions", color: VIZ.cat[1] },
     { key: "attendanceMarks", label: "Attendance", color: VIZ.cat[2] },
 ] as const;
 
-const truncate = (name: string, max = 16) => (name.length > max ? `${name.slice(0, max - 1)}…` : name);
+const truncate = (name: string, max = 16) => (name.length > max ? `${name.slice(0, max - 1)}...` : name);
 
 export function ClassActivityChart({ personal = false }: ClassActivityChartProps) {
     const { data, isLoading, isError, refetch } = useApiQuery<{ data: ClassActivity[] }>("/dashboard/class-activity");
-    const classes = (data?.data ?? []).map((c) => ({ ...c, label: truncate(c.className) }));
+    const { data: classData, isLoading: classesLoading } = useApiQuery<{ data: ClassLookup[] }>("/classes?limit=100");
+    const subjectByClassId = useMemo(
+        () => new Map((classData?.data ?? []).map((item) => [item.id, item.subject?.name?.trim() || "Other subjects"])),
+        [classData?.data],
+    );
+    const subjects = useMemo<SubjectActivity[]>(() => {
+        const grouped = new Map<string, SubjectActivity>();
+        for (const item of data?.data ?? []) {
+            const subjectName = subjectByClassId.get(item.classId) ?? "Other subjects";
+            const current = grouped.get(subjectName) ?? {
+                subjectName,
+                label: truncate(subjectName),
+                assignments: 0,
+                submissions: 0,
+                attendanceMarks: 0,
+            };
+            current.assignments += item.assignments;
+            current.submissions += item.submissions;
+            current.attendanceMarks += item.attendanceMarks;
+            grouped.set(subjectName, current);
+        }
+        return Array.from(grouped.values());
+    }, [data?.data, subjectByClassId]);
 
-    const totals = classes.reduce(
-        (acc, c) => ({
-            assignments: acc.assignments + c.assignments,
-            submissions: acc.submissions + c.submissions,
-            attendanceMarks: acc.attendanceMarks + c.attendanceMarks,
+    const totals = subjects.reduce(
+        (acc, subject) => ({
+            assignments: acc.assignments + subject.assignments,
+            submissions: acc.submissions + subject.submissions,
+            attendanceMarks: acc.attendanceMarks + subject.attendanceMarks,
         }),
         { assignments: 0, submissions: 0, attendanceMarks: 0 },
     );
-    const busiest = classes
-        .map((c) => ({ name: c.className, score: c.assignments + c.submissions + c.attendanceMarks }))
+    const busiest = subjects
+        .map((subject) => ({ name: subject.subjectName, score: subject.assignments + subject.submissions + subject.attendanceMarks }))
         .sort((a, b) => b.score - a.score)[0];
-
-    const chartHeight = Math.max(220, classes.length * 56 + 40);
+    const chartHeight = Math.max(220, subjects.length * 56 + 40);
 
     return (
         <div className="rounded-xl border p-4">
-            <h2 className="text-xl font-semibold">Class Activity</h2>
+            <h2 className="text-xl font-semibold">Subject Activity</h2>
             <p className="mb-4 mt-1 text-sm text-muted-foreground">
                 {personal
-                    ? "How busy each of your classes has been over the last 30 days — new assignments set, work submitted, and attendance taken."
-                    : "Assignments set, work submitted, and attendance taken per class — last 30 days."}
+                    ? "How active each of your subjects has been over the last 30 days."
+                    : "Homework, submissions, and attendance by subject over the last 30 days."}
             </p>
 
-            {isLoading ? (
+            {isLoading || classesLoading ? (
                 <Skeleton className="h-[280px] w-full" />
             ) : isError ? (
                 <ErrorState
                     className="h-[280px] justify-center"
-                    description="Unable to load class activity."
+                    description="Unable to load subject activity."
                     onRetry={refetch}
                 />
-            ) : classes.length === 0 ? (
+            ) : subjects.length === 0 ? (
                 <EmptyState
                     className="h-[280px] justify-center"
                     icon={Activity}
-                    title="No class activity yet"
+                    title="No subject activity yet"
                     description={
                         personal
-                            ? "Once your classes start setting assignments and taking attendance, you'll see which ones are most active here."
-                            : "Activity will show up here once classes start recording work."
+                            ? "Subject activity will appear once homework and attendance are recorded."
+                            : "Subject activity will appear once the school records work."
                     }
                 />
             ) : (
                 <>
                     <ResponsiveContainer width="100%" height={chartHeight}>
                         <BarChart
-                            data={classes}
+                            data={subjects}
                             layout="vertical"
                             margin={{ top: 4, right: 12, bottom: 0, left: 4 }}
                             barGap={2}
@@ -107,20 +135,18 @@ export function ClassActivityChart({ personal = false }: ClassActivityChartProps
                                     <VizTooltip
                                         active={active}
                                         payload={payload}
-                                        heading={
-                                            (payload?.[0]?.payload as ClassActivity | undefined)?.className
-                                        }
+                                        heading={(payload?.[0]?.payload as SubjectActivity | undefined)?.subjectName}
                                         unit="items"
                                     />
                                 )}
                             />
                             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }} iconType="circle" iconSize={9} />
-                            {SERIES.map((s) => (
+                            {SERIES.map((series) => (
                                 <Bar
-                                    key={s.key}
-                                    dataKey={s.key}
-                                    name={s.label}
-                                    fill={s.color}
+                                    key={series.key}
+                                    dataKey={series.key}
+                                    name={series.label}
+                                    fill={series.color}
                                     radius={[0, 4, 4, 0]}
                                     maxBarSize={13}
                                     isAnimationActive={false}
@@ -132,31 +158,25 @@ export function ClassActivityChart({ personal = false }: ClassActivityChartProps
                     {personal && (
                         <div className="mt-4 space-y-2 border-t pt-4">
                             <p className="text-sm text-foreground">
-                                Across your <span className="font-medium">{classes.length}</span>{" "}
-                                {classes.length === 1 ? "class" : "classes"} in the last 30 days:{" "}
-                                {totals.assignments} assignment{totals.assignments === 1 ? "" : "s"} set,{" "}
+                                Across your <span className="font-medium">{subjects.length}</span>{" "}
+                                {subjects.length === 1 ? "subject" : "subjects"} in the last 30 days:{" "}
+                                {totals.assignments} homework item{totals.assignments === 1 ? "" : "s"} set,{" "}
                                 {totals.submissions} submission{totals.submissions === 1 ? "" : "s"},{" "}
                                 {totals.attendanceMarks} attendance record{totals.attendanceMarks === 1 ? "" : "s"}
                                 {busiest && busiest.score > 0 ? (
                                     <>. Most active: <span className="font-medium">{busiest.name}</span></>
-                                ) : (
-                                    "."
-                                )}
+                                ) : "."}
                             </p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                {SERIES.map((s) => (
-                                    <span key={s.key} className="flex items-center gap-1.5">
-                                        <span
-                                            className="h-2 w-2 rounded-[3px]"
-                                            style={{ backgroundColor: s.color }}
-                                            aria-hidden="true"
-                                        />
-                                        {s.label} — {totals[s.key]}
+                                {SERIES.map((series) => (
+                                    <span key={series.key} className="flex items-center gap-1.5">
+                                        <span className="h-2 w-2 rounded-[3px]" style={{ backgroundColor: series.color }} aria-hidden="true" />
+                                        {series.label} — {totals[series.key]}
                                     </span>
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Counts cover the whole class, not just your own work — a quick read on where the most is happening.
+                                Counts are grouped by subject for a quick view of where activity is highest.
                             </p>
                         </div>
                     )}

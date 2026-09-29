@@ -20,25 +20,25 @@ type AssignmentRow = {
 
 export function AssignmentsTab({ classId, canManage }: { classId: number; canManage: boolean }) {
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: AssignmentRow[] }>(
-    `/assignments?classId=${classId}`,
+    `/homework?classId=${classId}`,
   );
   const assignments = (data?.data ?? [])
     .slice()
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const createHref = `/assignments/create?classId=${classId}`;
+  const createHref = `/homework/create?classId=${classId}`;
   const createButton = canManage ? (
     <Button asChild size="sm">
       <Link to={createHref}>
         <Plus className="mr-1.5 h-4 w-4" />
-        New assignment
+        New homework
       </Link>
     </Button>
   ) : undefined;
 
   return (
     <SectionCard
-      title="Assignments"
+      title="Homework"
       count={isLoading || isError ? undefined : assignments.length}
       action={createButton}
       flush
@@ -57,19 +57,19 @@ export function AssignmentsTab({ classId, canManage }: { classId: number; canMan
         </div>
       ) : isError ? (
         <div className="p-5">
-          <ErrorState description="Couldn't load this class's assignments." onRetry={refetch} />
+          <ErrorState description="Couldn't load this class's homework." onRetry={refetch} />
         </div>
       ) : assignments.length === 0 ? (
         <div className="p-5">
           <EmptyState
             icon={FileText}
-            title="No assignments yet"
+            title="No homework yet"
             description={
               canManage
-                ? "Set the first assignment for this class to start tracking submissions."
-                : "Your teacher hasn't posted any assignments for this class yet."
+                ? "Set the first homework task for this class to start tracking submissions."
+                : "Your teacher hasn't posted any homework for this class yet."
             }
-            action={canManage ? { label: "Create assignment", to: createHref } : undefined}
+            action={canManage ? { label: "Create homework", to: createHref } : undefined}
           />
         </div>
       ) : (
@@ -77,7 +77,7 @@ export function AssignmentsTab({ classId, canManage }: { classId: number; canMan
           {assignments.map((a) => (
             <li key={a.id}>
               <Link
-                to={`/assignments/${a.id}`}
+                to={`/homework/${a.id}`}
                 className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">

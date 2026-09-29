@@ -865,7 +865,7 @@ select { border-radius: .375rem !important; }
 .public-site > header { background-color: transparent !important; box-shadow: none; }
 .public-site > header #public-dropdown-menu { background-color: #ffffff; }
 .public-site > header a[aria-label$="home"] { display: flex; align-items: center; gap: 0.75rem; }
-.public-site > header a[aria-label$="home"]::after { content: "Kijani International School"; display: block; max-width: 180px; color: #ffffff; font-family: Georgia, serif; font-size: 1.05rem; font-weight: 700; line-height: 1.05; white-space: normal; }
+.public-site > header a[aria-label$="home"]::after { content: "Eckernforde Schools"; display: block; max-width: 180px; color: #ffffff; font-family: Georgia, serif; font-size: 1.05rem; font-weight: 700; line-height: 1.05; white-space: normal; }
 @media (max-width: 767px) { .public-site > header a[aria-label$="home"]::after { max-width: 145px; font-size: 0.9rem; } }
 
 @media (prefers-reduced-motion: reduce) {

@@ -31,6 +31,7 @@ import FileUploadWidget, { type FileUploadValue } from "@/components/file-upload
 import { BACKEND_BASE_URL } from "@/constants";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { UserRole, type User } from "@/types";
+import { portalSchoolName } from "@/lib/school-brand";
 
 type StudentDocument = {
   id: number;
@@ -56,8 +57,9 @@ type StudentData = {
     parentEmail: string | null;
     bio: string | null;
   } | null;
+  schoolBand?: "primary" | "secondary" | null;
   linkedParent: { id: string; name: string; email: string } | null;
-  enrolledClasses: { id: number; name: string }[];
+  enrolledClasses: { id: number; name: string; schoolLevel?: "nursery" | "primary" | "secondary" | null; subject?: { id: number; name: string } | null }[];
   grades: { classId: number; finalGrade: number | null; letterGrade: string | null }[];
   attendanceSummary: { total: number; present: number; rate: number | null };
 };
@@ -80,6 +82,12 @@ const StudentProfilePage = () => {
   const studentPath = id ? `/profile/student/${id}` : null;
   const { data: studentData, isLoading: loading, isError, refetch } = useApiQuery<{ data: StudentData }>(studentPath);
   const data = studentData?.data ?? null;
+  const schoolBand = data?.schoolBand ?? (data?.enrolledClasses.some((course) => course.schoolLevel === "secondary") || data?.enrolledClasses.some((course) => /^form\b/i.test(course.name))
+    ? "secondary"
+    : data?.enrolledClasses.some((course) => course.schoolLevel === "primary" || course.schoolLevel === "nursery") || data?.enrolledClasses.some((course) => /^(grade|standard|class)\b/i.test(course.name))
+      ? "primary"
+      : null);
+  const schoolName = portalSchoolName(schoolBand);
 
   const documentsPath = id ? `/files/student/${id}` : null;
   const {
@@ -172,7 +180,7 @@ const StudentProfilePage = () => {
           </Avatar>
         }
         title={data.name}
-        subtitle={data.profile?.registrationNumber ? `Admission number ${data.profile.registrationNumber}` : "Student record"}
+        subtitle={data.profile?.registrationNumber ? `${schoolName} · Admission number ${data.profile.registrationNumber}` : schoolName}
         metadata={
           <>
             <span><strong className="font-medium text-foreground">{data.enrolledClasses.length}</strong> enrolled {data.enrolledClasses.length === 1 ? "class" : "classes"}</span>
@@ -182,7 +190,11 @@ const StudentProfilePage = () => {
         }
         actions={
           <>
-            <Button variant="outline" size="sm" asChild><Link to="/grades/term-results"><BookOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />Report card</Link></Button>
+            <Button variant="outline" size="sm" asChild><Link to={isParent ? "/parent/reports" : "/grades/term-results"}><BookOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />Report card</Link></Button>
+            {isParent && <>
+              <Button variant="outline" size="sm" asChild><Link to="/parent/attendance"><ClipboardCheck className="mr-1.5 h-4 w-4" aria-hidden="true" />Attendance</Link></Button>
+              <Button variant="outline" size="sm" asChild><Link to="/parent/homework"><FileText className="mr-1.5 h-4 w-4" aria-hidden="true" />Homework</Link></Button>
+            </>}
           </>
         }
       />
@@ -191,7 +203,7 @@ const StudentProfilePage = () => {
         <div className="flex min-w-max gap-5 px-1">
           {[
             ["Overview", "#student-overview"],
-            ...(!isParent ? [["Academics", "#student-academics"]] : []),
+            ["Academics", "#student-academics"],
             ["Attendance", "#student-attendance"],
             ["Results", "#student-results"],
             ["Guardian", "#student-guardian"],
@@ -221,25 +233,26 @@ const StudentProfilePage = () => {
             </dl>
           </ProfileSection>
 
-          {!isParent && (
-            <ProfileSection id="student-academics" title="Current enrollment" icon={<BookOpen className="h-4 w-4" />}>
+          {
+            <ProfileSection id="student-academics" title="Current subjects" icon={<BookOpen className="h-4 w-4" />}>
               {data.enrolledClasses.length === 0 ? (
-                <EmptyState variant="inline" icon={BookOpen} title="No active enrollment" description="Enroll this student in a class to begin their academic record." />
+                <EmptyState variant="inline" icon={BookOpen} title="No active subjects" description="Enrol this student in a subject to begin their academic record." />
               ) : (
                 <div className="divide-y divide-border border-y border-border">
                   {data.enrolledClasses.map((course) => {
-                    const grade = data.grades.find((result) => result.classId === course.id);
                     return (
                       <div key={course.id} className="flex items-center justify-between gap-4 py-3">
-                        <Link to={`/classes/show/${course.id}`} className="min-w-0 truncate text-sm font-medium underline-offset-4 hover:text-primary hover:underline">{course.name}</Link>
-                        {grade?.letterGrade ? <Badge variant="outline">Grade {grade.letterGrade}</Badge> : <span className="text-xs text-muted-foreground">No published grade</span>}
+                        {isParent ? <span className="min-w-0 truncate text-sm font-medium">{course.subject?.name ?? course.name}</span> : <Link to={`/classes/show/${course.id}`} className="min-w-0 truncate text-sm font-medium underline-offset-4 hover:text-primary hover:underline">{course.subject?.name ?? course.name}</Link>}
+                        <div className="flex shrink-0 items-center gap-2">
+                          {course.schoolLevel && <Badge variant="secondary" className="capitalize">{course.schoolLevel}</Badge>}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
             </ProfileSection>
-          )}
+          }
 
           <ProfileSection id="student-results" title="Published academic results" icon={<ScrollText className="h-4 w-4" />}>
             <AcademicProgress studentId={id} />

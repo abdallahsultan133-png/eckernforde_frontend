@@ -96,7 +96,7 @@ export default function NotificationsPage() {
       <PageHeader
         breadcrumb
         title="Notifications"
-        description="Academic, attendance, assignment, and school updates that relate to your account."
+        description="Academic, attendance, homework, and school updates that relate to your account."
         actions={data?.unreadCount ? <Button variant="outline" size="sm" onClick={markAllRead}><CheckCheck className="mr-1.5 h-4 w-4" aria-hidden="true" />Mark all read</Button> : undefined}
       />
 

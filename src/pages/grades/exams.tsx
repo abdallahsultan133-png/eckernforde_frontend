@@ -182,7 +182,7 @@ const ExamsPage = () => {
           <>
             <Select value={classId} onValueChange={(v) => { setClassId(v); setExpandedExamId(null); }}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select class" /></SelectTrigger>
-              <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{examClassLabel(c)}</SelectItem>)}</SelectContent>
+              <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>)}</SelectContent>
             </Select>
             {isTeacherOrAdmin && (
               <Button onClick={() => setShowForm((v) => !v)}>

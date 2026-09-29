@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils.ts";
 import { UserRole, type User, type ClassDetails } from "@/types";
 import { letterForScore } from "@/lib/grading/grade-bands";
 import { BACKEND_BASE_URL } from "@/constants";
+import { portalSchoolName } from "@/lib/school-brand";
 
 type GradebookRow = {
   studentId: string;
@@ -61,11 +62,11 @@ type GradebookResponse = {
 };
 
 const loadGradebookPdf = async () => {
-  const [{ PDFDownloadLink }, { GradebookDocument }] = await Promise.all([
+  const [{ pdf }, { GradebookDocument }] = await Promise.all([
     import("@react-pdf/renderer"),
     import("@/components/pdf/gradebook-document.tsx"),
   ]);
-  return { PDFDownloadLink: PDFDownloadLink as unknown as PdfModule["PDFDownloadLink"], DocumentComponent: GradebookDocument as unknown as ComponentType<Record<string, unknown>> };
+  return { pdf: pdf as unknown as PdfModule["pdf"], DocumentComponent: GradebookDocument as unknown as ComponentType<Record<string, unknown>> };
 };
 
 const letterTone = (letter: string | null): StatusTone =>
@@ -84,6 +85,10 @@ const classLabel = (course: ClassDetails) =>
 
 const Gradebook = () => {
   const { data: identity } = useGetIdentity<User>();
+  const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
+  const schoolName = isSchoolStaff ? portalSchoolName(portal?.data.context?.schoolBand) : "School Portal";
+  const schoolLogo = portal?.data.context?.schoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : "/eckernforde-cambridge-badge.png";
   const queryClient = useQueryClient();
   const isTeacherOrAdmin = identity?.role === UserRole.TEACHER || identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
   const isStudent = identity?.role === UserRole.STUDENT;
@@ -119,7 +124,7 @@ const Gradebook = () => {
     () => (gradebookData?.assignments ?? []).map((assignment) => ({
       id: assignment.id,
       title: assignment.title,
-      question: assignment.description?.trim() || "No written question was provided for this assignment.",
+      question: assignment.description?.trim() || "No written question was provided for this homework task.",
       dueAt: assignment.dueAt,
       maxScore: assignment.maxScore,
     })),
@@ -136,7 +141,7 @@ const Gradebook = () => {
   }, [gradebookData]);
   const selectedClass = classes.find((c) => String(c.id) === classId);
   const selectedClassLabel = selectedClass ? classLabel(selectedClass) : "";
-  const pdfFileName = `assignment-grade-book-${selectedClassLabel.replace(/\s+/g, "-").toLowerCase() || classId}.pdf`;
+  const pdfFileName = `homework-grade-book-${selectedClassLabel.replace(/\s+/g, "-").toLowerCase() || classId}.pdf`;
 
   useEffect(() => {
     setOverrides(Object.fromEntries(rows.map((row) => [row.studentId, { remarks: row.remarks ?? "" }])));
@@ -172,21 +177,26 @@ const Gradebook = () => {
 
   // Class-level summary from the recorded final grades.
   const graded = rows.map(effectiveFinal).filter((g): g is number => g !== null && !Number.isNaN(g));
-  const classAvg = graded.length > 0 ? Math.round(graded.reduce((s, g) => s + g, 0) / graded.length) : null;
   const dist = { A: 0, B: 0, C: 0, D: 0, F: 0 };
   for (const row of rows) {
     const l = row.missingAssignmentSubmission ? "F" : (row.letterGrade ?? letterForScore(row.finalGrade));
     if (l) dist[l as keyof typeof dist] += 1;
   }
   const atRisk = dist.D + dist.F;
+  const homeworkValues = rows
+    .map((row) => row.assignmentAvg)
+    .filter((value): value is number => value !== null && !Number.isNaN(value));
+  const homeworkAverage = homeworkValues.length
+    ? Math.round(homeworkValues.reduce((total, value) => total + value, 0) / homeworkValues.length)
+    : null;
 
   const summaryItems: SummaryItem[] = isStudent
     ? [
-        { label: "Your coursework result", value: classAvg !== null ? `${classAvg}%` : "—", tone: classAvg === null ? "default" : classAvg >= 60 ? "success" : "critical" },
-        { label: "Letter", value: letterForScore(classAvg) ?? "—" },
+        { label: "Your homework average", value: homeworkAverage !== null ? `${homeworkAverage}%` : "—", tone: homeworkAverage === null ? "default" : homeworkAverage >= 60 ? "success" : "critical" },
+        { label: "Grade", value: letterForScore(homeworkAverage) ?? "—" },
       ]
     : [
-        { label: "Class average", value: classAvg !== null ? `${classAvg}%` : "—", tone: classAvg === null ? "default" : classAvg >= 70 ? "success" : "warning" },
+        { label: "Homework average", value: homeworkAverage !== null ? `${homeworkAverage}%` : "—", tone: homeworkAverage === null ? "default" : homeworkAverage >= 70 ? "success" : "warning" },
         { label: "Graded", value: graded.length, hint: `${rows.length} students` },
         { label: "A / B / C / D / F", value: `${dist.A}·${dist.B}·${dist.C}·${dist.D}·${dist.F}` },
         { label: "At risk (D or F)", value: atRisk, tone: atRisk > 0 ? "critical" : "success" },
@@ -197,8 +207,8 @@ const Gradebook = () => {
       <PageHeader
         className="print:hidden"
         breadcrumb
-        title="Assignment Grade Book"
-        description="Coursework and examination tracking for this class. This workspace does not calculate formal Midterm or Terminal Division."
+        title="Homework Grade Book"
+        description="Homework and examination tracking for this class. This workspace does not calculate formal Midterm or Terminal Division."
         actions={
           <>
             {isTeacherOrAdmin && (
@@ -211,7 +221,7 @@ const Gradebook = () => {
             <Select value={classId} onValueChange={setClassId}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select class" /></SelectTrigger>
               <SelectContent>
-                {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{classLabel(c)}</SelectItem>)}
+                {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={() => window.print()}>
@@ -236,41 +246,41 @@ const Gradebook = () => {
 
       <div className="hidden print:block">
         <div className="flex items-center gap-4">
-          <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Cambridge Secondary School" className="h-20 w-20 object-contain" />
-          <div><h1 className="text-xl font-bold">Eckernforde Cambridge Secondary School</h1><p className="text-sm font-semibold">Assignment Grade Book</p></div>
+          <img src={schoolLogo} alt={schoolName} className="h-20 w-20 object-contain" />
+          <div><h1 className="text-xl font-bold">{schoolName}</h1><p className="text-sm font-semibold">Homework Grade Book</p></div>
         </div>
         <p className="text-sm text-muted-foreground">
           {selectedClassLabel} · Generated {new Date().toLocaleDateString()}
         </p>
-        {assignmentQuestions.length > 0 && <div className="mt-4 border p-3"><p className="font-semibold">All assignments for this subject</p>{assignmentQuestions.map((item, index) => <p key={`${item.title}-${index}`} className="mt-1 text-sm"><strong>{index + 1}. {item.title}:</strong> {item.question}{item.dueAt ? ` (Due ${new Date(item.dueAt).toLocaleDateString()})` : ""}</p>)}</div>}
+        {assignmentQuestions.length > 0 && <div className="mt-4 border p-3"><p className="font-semibold">All homework for this subject</p>{assignmentQuestions.map((item, index) => <p key={`${item.title}-${index}`} className="mt-1 text-sm"><strong>{index + 1}. {item.title}:</strong> {item.question}{item.dueAt ? ` (Due ${new Date(item.dueAt).toLocaleDateString()})` : ""}</p>)}</div>}
       </div>
 
       {classId && <Card className="print:hidden">
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-          <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Cambridge Secondary School" className="h-24 w-24 shrink-0 self-center object-contain sm:self-start" />
+          <img src={schoolLogo} alt={schoolName} className="h-24 w-24 shrink-0 self-center object-contain sm:self-start" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold uppercase tracking-wide text-primary">Eckernforde Cambridge Secondary School</p>
-            <h2 className="mt-1 text-xl font-bold">Assignment Grade Book</h2>
+            <p className="text-sm font-semibold uppercase tracking-wide text-primary">{schoolName}</p>
+            <h2 className="mt-1 text-xl font-bold">Homework Grade Book</h2>
             <p className="mt-1 text-sm text-muted-foreground">{selectedClassLabel}</p>
-            {assignmentQuestions.length > 0 ? <div className="mt-4 border-l-2 border-primary pl-3"><p className="text-sm font-semibold">All assignments for this subject ({assignmentQuestions.length})</p>{assignmentQuestions.map((item, index) => <p key={`${item.title}-${index}`} className="mt-1 text-sm leading-6"><strong>{index + 1}. {item.title}:</strong> {item.question}{item.dueAt ? <span className="text-muted-foreground"> · Due {new Date(item.dueAt).toLocaleDateString()}</span> : null}</p>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No assignments have been added for this class yet.</p>}
+            {assignmentQuestions.length > 0 ? <div className="mt-4 border-l-2 border-primary pl-3"><p className="text-sm font-semibold">All homework for this subject ({assignmentQuestions.length})</p>{assignmentQuestions.map((item, index) => <p key={`${item.title}-${index}`} className="mt-1 text-sm leading-6"><strong>{index + 1}. {item.title}:</strong> {item.question}{item.dueAt ? <span className="text-muted-foreground"> · Due {new Date(item.dueAt).toLocaleDateString()}</span> : null}</p>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No homework has been added for this class yet.</p>}
           </div>
         </div>
       </Card>}
 
       {!loading && !isError && rows.length > 0 && assignmentQuestions.length > 0 && <section className="space-y-5">
-        <div><h2 className="text-xl font-bold">Assignment results</h2><p className="mt-1 text-sm text-muted-foreground">Each assignment is shown with its own question and student results.</p></div>
+        <div><h2 className="text-xl font-bold">Homework results</h2><p className="mt-1 text-sm text-muted-foreground">Each homework task is shown with its own question and student results.</p></div>
         {assignmentQuestions.map((assignment, assignmentIndex) => {
           const results = submissionsByAssignment.get(assignment.id);
           const expanded = expandedAssignmentId === assignment.id;
           return <Card key={assignment.id} className="overflow-x-auto">
             <button type="button" onClick={() => setExpandedAssignmentId(expanded ? null : assignment.id)} aria-expanded={expanded} className="flex w-full items-center gap-4 border-b bg-muted/30 p-4 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
               <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-primary">Assignment {assignmentIndex + 1}</p>
+              <p className="text-sm font-semibold text-primary">Homework {assignmentIndex + 1}</p>
               <h3 className="mt-1 text-lg font-bold">{assignment.title}</h3>
               <p className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">{assignment.question}</p>
               <p className="mt-2 text-xs font-medium text-muted-foreground">{assignment.dueAt ? `Due ${new Date(assignment.dueAt).toLocaleDateString()} · ` : ""}Out of {assignment.maxScore}</p>
               </div>
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground" aria-label={expanded ? "Hide assignment results" : "Show assignment results"}><ChevronDown className={cn("h-5 w-5 transition-transform", expanded && "rotate-180")} /></span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground" aria-label={expanded ? "Hide homework results" : "Show homework results"}><ChevronDown className={cn("h-5 w-5 transition-transform", expanded && "rotate-180")} /></span>
             </button>
             {expanded && <Table>
               <TableHeader><TableRow><TableHead>Student</TableHead><TableHead className="text-center">Result</TableHead><TableHead className="text-center">Status</TableHead></TableRow></TableHeader>
@@ -286,7 +296,7 @@ const Gradebook = () => {
                 </TableRow>;
               })}</TableBody>
             </Table>}
-            {expanded && isTeacherOrAdmin && <div className="flex justify-end border-t p-3"><Button asChild size="sm"><Link to={`/assignments/${assignment.id}`}>Open grading</Link></Button></div>}
+            {expanded && isTeacherOrAdmin && <div className="flex justify-end border-t p-3"><Button asChild size="sm"><Link to={`/homework/${assignment.id}`}>Open grading</Link></Button></div>}
           </Card>;
         })}
       </section>}
@@ -296,7 +306,7 @@ const Gradebook = () => {
       {loading ? (
         <Card className="space-y-3 p-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</Card>
       ) : isError ? (
-        <ErrorState description={gradebookError?.message ?? "Couldn't load the assignment grade book."} onRetry={refetch} />
+        <ErrorState description={gradebookError?.message ?? "Couldn't load the homework grade book."} onRetry={refetch} />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={BookOpenCheck}
@@ -315,10 +325,9 @@ const Gradebook = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
-                <TableHead className="text-center">Assignment average</TableHead>
+                <TableHead className="text-center">Homework average</TableHead>
                 <TableHead className="text-center">Exam average</TableHead>
-                <TableHead className="text-center">Coursework result</TableHead>
-                <TableHead className="text-center">Letter</TableHead>
+                <TableHead className="text-center">Grade</TableHead>
                 <TableHead>Remarks</TableHead>
               </TableRow>
             </TableHeader>
@@ -339,9 +348,6 @@ const Gradebook = () => {
                     </TableCell>
                     <TableCell className={`text-center font-medium ${gradeColor(row.examAvg)}`}>
                       {row.examAvg !== null ? `${row.examAvg}%` : "—"}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${gradeColor(displayGrade)}`}>
-                      {displayGrade !== null ? `${displayGrade}%` : "—"}
                     </TableCell>
                     <TableCell className="text-center">
                       {letter ? <StatusBadge tone={letterTone(letter)}>{letter}</StatusBadge> : "—"}

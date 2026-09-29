@@ -50,7 +50,7 @@ export function GradesTab({ classId, canManage }: { classId: number; canManage: 
     <Button asChild size="sm">
       <Link to={`/grades?classId=${classId}`}>
         <BarChart3 className="mr-1.5 h-4 w-4" />
-        Open assignment grade book
+        Open homework grade book
       </Link>
     </Button>
   ) : undefined;
@@ -87,10 +87,10 @@ export function GradesTab({ classId, canManage }: { classId: number; canManage: 
               title="No grades yet"
               description={
                 canManage
-                  ? "Grade assignments, then compute or override final grades in the assignment grade book."
+                  ? "Grade homework, then compute or override final grades in the homework grade book."
                   : "Final grades for this class haven't been posted yet."
               }
-              action={canManage ? { label: "Open assignment grade book", to: `/grades?classId=${classId}` } : undefined}
+              action={canManage ? { label: "Open homework grade book", to: `/grades?classId=${classId}` } : undefined}
             />
           </div>
         ) : (

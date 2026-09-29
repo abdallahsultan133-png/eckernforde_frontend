@@ -154,7 +154,7 @@ const Show = () => {
                     <TabsList className="w-max min-w-full justify-start sm:min-w-0">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="students">Students</TabsTrigger>
-                        <TabsTrigger value="assignments">Assignments</TabsTrigger>
+                        <TabsTrigger value="assignments">Homework</TabsTrigger>
                         <TabsTrigger value="attendance">Attendance</TabsTrigger>
                         <TabsTrigger value="grades">Grades</TabsTrigger>
                         <TabsTrigger value="announcements">Announcements</TabsTrigger>
@@ -197,7 +197,7 @@ function Overview({ cls, staff }: { cls: ClassDetails; staff: boolean }) {
                 </section>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <DetailBlock label="Instructor">
+                    <DetailBlock label="TEACHER">
                         {cls.teacher ? (
                             <div className="flex items-center gap-2.5">
                                 <Avatar className="h-9 w-9">
@@ -270,9 +270,9 @@ function Overview({ cls, staff }: { cls: ClassDetails; staff: boolean }) {
                             <p className="mt-1 text-sm text-muted-foreground">Move directly to the work that matters for this class.</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline" size="sm"><Link to={`/assignments?classId=${cls.id}`}>Assignments</Link></Button>
+                            <Button asChild variant="outline" size="sm"><Link to={`/homework?classId=${cls.id}`}>Homework</Link></Button>
                             <Button asChild variant="outline" size="sm"><Link to={`/attendance?classId=${cls.id}`}>Attendance</Link></Button>
-                            {staff && <Button asChild size="sm"><Link to={`/grades?classId=${cls.id}`}>Assignment Grade Book</Link></Button>}
+                            {staff && <Button asChild size="sm"><Link to={`/grades?classId=${cls.id}`}>Homework Grade Book</Link></Button>}
                         </div>
                     </div>
                 </section>

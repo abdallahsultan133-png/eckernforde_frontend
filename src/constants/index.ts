@@ -2,13 +2,13 @@
 // approved identity before launch. The `.example` email addresses are
 // intentionally non-deliverable and are not deployment credentials.
 export const SCHOOL_PROFILE = {
-    name: "Kijani International School",
-    shortName: "Kijani",
+    name: "Eckernforde Schools",
+    shortName: "Eckernforde Schools",
     tagline: "Learning with purpose",
     address: "Plot 18, Mlimani Road, Dar es Salaam, Tanzania",
     phone: "+255 700 123 456",
-    generalEmail: "hello@kijanischool.example",
-    admissionsEmail: "admissions@kijanischool.example",
+    generalEmail: "hello@eckernfordeschools.example",
+    admissionsEmail: "admissions@eckernfordeschools.example",
     hours: "Monday–Friday, 7:30–16:30",
 } as const;
 
@@ -49,9 +49,9 @@ export const PAGE_META: Record<string, string> = {
     subjects: "Manage the subjects taught across your school.",
     classes: "Browse and manage classes.",
     attendance: "Record and review attendance.",
-    assignments: "Create and track assignments.",
+    assignments: "Create and track homework.",
     announcements: "Post and read school announcements.",
-    grades: "Assignment grade book, exams, and report cards.",
+    grades: "Homework grade book, exams, and report cards.",
     calendar: "Classes, exams, and deadlines on one timeline.",
     insights: "Attendance, performance, and activity trends.",
     messages: "Direct messages with your school community.",

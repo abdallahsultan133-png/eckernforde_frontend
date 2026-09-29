@@ -3,7 +3,7 @@ import {PageContainer} from "@/components/layout/page-container.tsx";
 import {SectionHeader} from "@/components/layout/section-header.tsx";
 import {FilterBar} from "@/components/ui/filter-bar.tsx";
 import {
-    Check, DoorOpen, Loader2, GraduationCap, BookOpen, Users, Gauge,
+    Check, DoorOpen, Loader2, GraduationCap, BookOpen, Users,
     CheckCircle2, MoreHorizontal, Eye, Pencil, Trash2, School,
 } from "lucide-react";
 import type {LucideIcon} from "lucide-react";
@@ -284,9 +284,6 @@ const ClassesList = () => {
     const totalClasses = summaryQuery.data?.total ?? 0;
     const activeClasses = summaryRows.filter((c) => c.status === "active").length;
     const subjectsCovered = new Set(summaryRows.map((c) => c.subject?.name).filter(Boolean)).size;
-    const avgCapacity = summaryRows.length
-        ? Math.round(summaryRows.reduce((sum, c) => sum + (c.capacity || 0), 0) / summaryRows.length)
-        : 0;
 
     const subjectFilters = selectedSubject === 'all' ? [] : [
         { field: 'subject', operator: 'eq' as const, value: selectedSubject}
@@ -295,7 +292,7 @@ const ClassesList = () => {
         { field: 'teacher', operator: 'eq' as const, value: selectedTeacher}
     ];
     const searchFilters = debouncedSearchQuery ? [
-        { field: 'name', operator: 'contains' as const, value: debouncedSearchQuery }
+        { field: isStudent ? 'subject' : 'name', operator: 'contains' as const, value: debouncedSearchQuery }
     ] : [];
 
     const hasActiveFilters = !!searchQuery || selectedSubject !== 'all' || selectedTeacher !== 'all';
@@ -457,27 +454,26 @@ const ClassesList = () => {
         <PageContainer>
             <PageHeader
                 breadcrumb
-                title="Classes"
+                title={isStudent ? "Class & Subjects" : "Classes"}
                 description={isStudent ? "Open your learning spaces or join a class using a teacher-provided code." : "Manage class rosters, teaching responsibilities, subjects, and academic workspaces."}
             />
 
             {/* Overview */}
-            <section className="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden border border-border lg:grid-cols-4 lg:divide-y-0" aria-label="Class summary">
-                <SummaryMetric icon={GraduationCap} label={isStudent ? "Classes in catalog" : "Total classes"} value={totalClasses} loading={summaryLoading} />
+            <section className={cn("grid grid-cols-2 divide-x divide-y divide-border overflow-hidden border border-border", isStudent ? "lg:grid-cols-2" : "lg:grid-cols-3")} aria-label="Class summary">
+                {!isStudent && <SummaryMetric icon={GraduationCap} label="Total classes" value={totalClasses} loading={summaryLoading} />}
                 <SummaryMetric icon={CheckCircle2} label="Active classes" value={activeClasses} loading={summaryLoading} />
                 <SummaryMetric icon={BookOpen} label="Subjects covered" value={subjectsCovered} loading={summaryLoading} />
-                <SummaryMetric icon={Gauge} label="Avg. capacity" value={avgCapacity || "—"} loading={summaryLoading} />
             </section>
 
             <section aria-labelledby="class-directory-title" className="space-y-4">
                 <SectionHeader
-                    title={<span id="class-directory-title">{isStudent ? "Class catalogue" : "Class directory"}</span>}
-                    description={isStudent ? "Your enrolled classes and available learning spaces." : "Find a class, then open its operational workspace."}
+                    title={<span id="class-directory-title">{isStudent ? "Subject catalogue" : "Class directory"}</span>}
+                    description={isStudent ? "Search subjects and open the class learning space attached to each one." : "Find a class, then open its operational workspace."}
                 />
                 <FilterBar
                     search={<SearchInput
-                        placeholder="Search classes"
-                        aria-label="Search classes"
+                        placeholder={isStudent ? "Search subjects" : "Search classes"}
+                        aria-label={isStudent ? "Search subjects" : "Search classes"}
                         value={searchQuery}
                         onChange={setSearchQuery}
                         loading={tableQuery.isFetching}
@@ -487,7 +483,7 @@ const ClassesList = () => {
                     trailing={isStudent ? <JoinClassDialog /> : <CreateButton resource="classes" />}
                 >
 
-                    <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                    {!isStudent && <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                         <SelectTrigger className="h-10 w-full sm:w-[180px]" aria-label="Filter by subject">
                             <SelectValue placeholder="All subjects" />
                         </SelectTrigger>
@@ -497,7 +493,7 @@ const ClassesList = () => {
                                 <SelectItem key={subject.id} value={subject.name}>{subject.name}</SelectItem>
                             ))}
                         </SelectContent>
-                    </Select>
+                    </Select>}
 
                     <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
                         <SelectTrigger className="h-10 w-full sm:w-[180px]" aria-label="Filter by teacher">
@@ -517,7 +513,7 @@ const ClassesList = () => {
                     {tableQuery.isLoading
                         ? "Loading classes…"
                         : hasActiveFilters
-                            ? `${filteredTotal} ${filteredTotal === 1 ? "class matches" : "classes match"} your filters`
+                            ? `${filteredTotal} ${filteredTotal === 1 ? (isStudent ? "subject matches" : "class matches") : (isStudent ? "subjects match" : "classes match")} your filters`
                             : `${filteredTotal} ${filteredTotal === 1 ? "class" : "classes"}`}
                 </p>
             </section>

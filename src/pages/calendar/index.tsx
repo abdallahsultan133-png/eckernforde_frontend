@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useGetIdentity } from "@refinedev/core";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     ChevronLeft, ChevronRight, Plus, Minus, Loader2, Trash2,
-    BookOpenCheck, CalendarDays, Flag, Clock, Repeat, Sparkles, CalendarRange, LayoutGrid, List, Rows3, CircleCheck, SlidersHorizontal, X,
+    BookOpenCheck, CalendarDays, Flag, Clock, Repeat, Sparkles, CalendarRange, LayoutGrid, List, Rows3, CircleCheck,
+    Download, ExternalLink, School, UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -34,7 +36,7 @@ import { UserRole, type User } from "@/types";
 import { cn } from "@/lib/utils.ts";
 
 type CalendarEventType = "class" | "exam" | "holiday" | "event" | "deadline";
-type EventSource = "manual" | "exam" | "assignment";
+type EventSource = "manual" | "exam" | "homework";
 type RecurrenceFreq = "none" | "daily" | "weekly" | "monthly";
 
 type CalendarEvent = {
@@ -47,10 +49,13 @@ type CalendarEvent = {
     description: string | null;
     class: { id: number; name: string } | null;
     source: EventSource;
+    link?: string | null;
     recurrenceFreq?: RecurrenceFreq;
     isRecurrenceInstance?: boolean;
     recurrenceParentId?: number | null;
 };
+
+type LinkedChild = { id: string; name: string };
 
 const RECURRENCE_LABELS: Record<RecurrenceFreq, string> = {
     none: "Does not repeat",
@@ -119,6 +124,41 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 
 const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+const fullEventTime = (event: CalendarEvent) => {
+    if (isAllDayLike(event)) return "All day";
+    const start = new Date(event.startAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const end = event.endAt ? new Date(event.endAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
+    return end ? `${start} – ${end}` : start;
+};
+
+const icsDate = (iso: string, allDay: boolean) => {
+    const date = new Date(iso);
+    if (allDay) return isoDate(date).replaceAll("-", "");
+    return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+};
+
+const escapeIcs = (value: string) => value.replaceAll("\\", "\\\\").replaceAll("\n", "\\n").replaceAll(",", "\\,").replaceAll(";", "\\;");
+
+const downloadCalendar = (events: CalendarEvent[], label: string) => {
+    const body = events.map((event) => [
+        "BEGIN:VEVENT",
+        `UID:${event.source}-${event.id}-${event.startAt}@eckernforde-schools`,
+        `${event.allDay ? "DTSTART;VALUE=DATE" : "DTSTART"}:${icsDate(event.startAt, event.allDay)}`,
+        ...(event.endAt ? [`${event.allDay ? "DTEND;VALUE=DATE" : "DTEND"}:${icsDate(event.endAt, event.allDay)}`] : []),
+        `SUMMARY:${escapeIcs(event.title)}`,
+        ...(event.description ? [`DESCRIPTION:${escapeIcs(event.description)}`] : []),
+        ...(event.class?.name ? [`LOCATION:${escapeIcs(event.class.name)}`] : []),
+        "END:VEVENT",
+    ].join("\r\n")).join("\r\n");
+    const blob = new Blob([`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Eckernforde Schools//Portal Calendar//EN\r\n${body}\r\nEND:VCALENDAR\r\n`], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-calendar.ics`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+};
+
 /** "9a", "2:30p" — terse enough to fit an event chip. */
 const compactTime = (iso: string) => {
     const d = new Date(iso);
@@ -156,28 +196,28 @@ function PanelEmpty({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
     );
 }
 
-function EventRow({ event }: { event: CalendarEvent }) {
+function EventRow({ event, onSelect, dense = false }: { event: CalendarEvent; onSelect: (event: CalendarEvent) => void; dense?: boolean }) {
     const config = TYPE_CONFIG[event.type];
     const Icon = config.icon;
     return (
-        <div className="flex min-w-0 items-start gap-3 rounded-md border border-border/60 bg-card/70 p-3">
-            <div className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md", config.iconWrap)}>
+        <button type="button" onClick={() => onSelect(event)} className={cn("group/event flex w-full min-w-0 items-start gap-3 rounded-lg border border-border/60 bg-card/70 p-3 text-left transition hover:border-primary/25 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", dense && "gap-2 p-2.5")}>
+            <div className={cn("mt-0.5 flex shrink-0 items-center justify-center rounded-md", dense ? "h-7 w-7" : "h-8 w-8", config.iconWrap)}>
                 <Icon className="h-4 w-4" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{event.title}</p>
+                <div className="flex items-start gap-2"><p className="min-w-0 flex-1 truncate text-sm font-semibold">{event.title}</p><ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition group-hover/event:opacity-100" aria-hidden="true" /></div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Badge variant="outline" className={cn("text-[10px]", config.chip)}>{config.label}</Badge>
-                    <span>{isAllDayLike(event) ? "All day" : compactTime(event.startAt)}</span>
+                    <span>{fullEventTime(event)}</span>
                     {event.class && <span className="truncate">{event.class.name}</span>}
                 </div>
-                {event.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{event.description}</p>}
+                {!dense && event.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{event.description}</p>}
             </div>
-        </div>
+        </button>
     );
 }
 
-function AgendaView({ events, month, year }: { events: CalendarEvent[]; month: number; year: number }) {
+function AgendaView({ events, month, year, onSelect }: { events: CalendarEvent[]; month: number; year: number; onSelect: (event: CalendarEvent) => void }) {
     const groups = Array.from(new Set(events.map((event) => event.startAt.slice(0, 10)))).sort();
     if (groups.length === 0) return <PanelEmpty icon={CalendarDays} text="Nothing scheduled in this period." />;
     return (
@@ -191,7 +231,7 @@ function AgendaView({ events, month, year }: { events: CalendarEvent[]; month: n
                         <span className="text-xs text-muted-foreground">{month === new Date(`${date}T12:00:00`).getMonth() && year === new Date(`${date}T12:00:00`).getFullYear() ? "This month" : "Adjacent date"}</span>
                     </div>
                     <div className="grid gap-2 md:grid-cols-2">
-                        {events.filter((event) => event.startAt.slice(0, 10) === date).sort(byStart).map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} />)}
+                        {events.filter((event) => event.startAt.slice(0, 10) === date).sort(byStart).map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} onSelect={onSelect} />)}
                     </div>
                 </section>
             ))}
@@ -199,7 +239,7 @@ function AgendaView({ events, month, year }: { events: CalendarEvent[]; month: n
     );
 }
 
-function WeekView({ anchor, eventsOn, onSelect }: { anchor: Date; eventsOn: (date: Date) => CalendarEvent[]; onSelect: (date: Date) => void }) {
+function WeekView({ anchor, eventsOn, onSelectDay, onSelectEvent }: { anchor: Date; eventsOn: (date: Date) => CalendarEvent[]; onSelectDay: (date: Date) => void; onSelectEvent: (event: CalendarEvent) => void }) {
     const start = new Date(anchor);
     start.setDate(anchor.getDate() - anchor.getDay());
     const days = Array.from({ length: 7 }, (_, index) => {
@@ -212,24 +252,24 @@ function WeekView({ anchor, eventsOn, onSelect }: { anchor: Date; eventsOn: (dat
             {days.map((date) => {
                 const events = eventsOn(date);
                 return (
-                    <button key={isoDate(date)} type="button" onClick={() => onSelect(date)} className="min-h-44 p-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                    <section key={isoDate(date)} className="min-h-44 p-3 text-left">
                         <div className="mb-3 flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{DAYS[date.getDay()]}</span>
-                            <span className={cn("flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold", isoDate(date) === isoDate(new Date()) && "bg-primary text-primary-foreground")}>{date.getDate()}</span>
+                            <button type="button" onClick={() => onSelectDay(date)} className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground hover:text-foreground">{DAYS[date.getDay()]}</button>
+                            <button type="button" onClick={() => onSelectDay(date)} className={cn("flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-muted", isoDate(date) === isoDate(new Date()) && "bg-primary text-primary-foreground hover:bg-primary")}>{date.getDate()}</button>
                         </div>
                         <div className="space-y-2">
-                            {events.slice(0, 4).map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} />)}
+                            {events.slice(0, 4).map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} onSelect={onSelectEvent} dense />)}
                             {events.length > 4 && <p className="pl-1 text-xs font-medium text-muted-foreground">+{events.length - 4} more</p>}
                             {events.length === 0 && <p className="text-xs text-muted-foreground/60">No events</p>}
                         </div>
-                    </button>
+                    </section>
                 );
             })}
         </div>
     );
 }
 
-function DayView({ date, eventsOn }: { date: Date; eventsOn: (date: Date) => CalendarEvent[] }) {
+function DayView({ date, eventsOn, onSelect }: { date: Date; eventsOn: (date: Date) => CalendarEvent[]; onSelect: (event: CalendarEvent) => void }) {
     const events = eventsOn(date);
     return (
         <div className="p-4 sm:p-6">
@@ -237,7 +277,7 @@ function DayView({ date, eventsOn }: { date: Date; eventsOn: (date: Date) => Cal
                 <h3 className="font-display text-lg font-semibold">{date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h3>
                 <span className="text-xs text-muted-foreground">{events.length} event{events.length === 1 ? "" : "s"}</span>
             </div>
-            {events.length === 0 ? <PanelEmpty icon={CalendarDays} text="Nothing scheduled for this day." /> : <div className="grid gap-2 md:grid-cols-2">{events.map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} />)}</div>}
+            {events.length === 0 ? <PanelEmpty icon={CalendarDays} text="Nothing scheduled for this day." /> : <div className="grid gap-2 md:grid-cols-2">{events.map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} onSelect={onSelect} />)}</div>}
         </div>
     );
 }
@@ -245,16 +285,18 @@ function DayView({ date, eventsOn }: { date: Date; eventsOn: (date: Date) => Cal
 const CalendarPage = () => {
     const { data: identity } = useGetIdentity<User>();
     const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const isParent = identity?.role === UserRole.PARENT;
 
     const queryClient = useQueryClient();
     const [today] = useState(new Date());
     const [current, setCurrent] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
     const [direction, setDirection] = useState(0);
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-    const [view, setView] = useState<CalendarView>("month");
+    const [view, setView] = useState<CalendarView>(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "agenda" : "month");
     const [showForm, setShowForm] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
-    const [visibleTypes, setVisibleTypes] = useState<Set<CalendarEventType>>(new Set(EVENT_TYPES));
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+    const [childId, setChildId] = useState("");
 
     // Form state
     const [title, setTitle] = useState("");
@@ -281,12 +323,15 @@ const CalendarPage = () => {
     const gridEnd = new Date(year, month, 1 - firstWeekday + totalCells - 1);
     const isCurrentMonth = month === today.getMonth() && year === today.getFullYear();
 
-    const calendarPath = `/calendar?from=${isoDate(gridStart)}&to=${isoDate(gridEnd)}`;
+    const childrenQuery = useApiQuery<{ data: LinkedChild[] }>(isParent ? "/profile/my-children" : null);
+    const linkedChildren = childrenQuery.data?.data ?? [];
+    const selectedChildId = childId || linkedChildren[0]?.id || "";
+    const calendarPath = `/calendar?from=${isoDate(gridStart)}&to=${isoDate(gridEnd)}${isParent && selectedChildId ? `&childId=${encodeURIComponent(selectedChildId)}` : ""}`;
     const { data, isFetching, isLoading, isError, refetch } = useApiQuery<{ data: CalendarEvent[] }>(calendarPath, {
         placeholderData: keepPreviousData,
     });
     const allEvents = data?.data ?? [];
-    const visibleEvents = allEvents.filter((e) => visibleTypes.has(e.type));
+    const visibleEvents = allEvents;
 
     const goToMonth = (offset: number) => {
         setDirection(offset);
@@ -309,32 +354,24 @@ const CalendarPage = () => {
         setShowForm(true);
     };
 
-    const toggleType = (t: CalendarEventType) => {
-        setVisibleTypes((prev) => {
-            const next = new Set(prev);
-            if (next.has(t)) next.delete(t); else next.add(t);
-            return next;
-        });
-    };
-
     const eventsOn = (d: Date) => {
         const key = isoDate(d);
         return visibleEvents.filter((e) => e.startAt.slice(0, 10) === key).sort(byStart);
     };
 
     const selectedEvents = selectedDay ? eventsOn(selectedDay) : [];
-    const viewAnchor = selectedDay ?? today;
-
     const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
     const monthEvents = visibleEvents.filter((e) => e.startAt.slice(0, 7) === monthKey);
     const now = new Date();
-    const nextUp = [...visibleEvents]
+    const upcomingEvents = [...visibleEvents]
         .filter((e) => new Date(e.startAt).getTime() >= now.getTime())
-        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())[0];
+        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+        .slice(0, 6);
+    const nextUp = upcomingEvents[0];
     const examOrDeadlineCount = monthEvents.filter((e) => e.type === "exam" || e.type === "deadline").length;
     const focusDay = selectedDay ?? (isCurrentMonth ? today : new Date(year, month, 1));
+    const viewAnchor = focusDay;
     const focusEvents = eventsOn(focusDay);
-    const activeFilterCount = visibleTypes.size;
 
     // fetch() rejects with a TypeError when the request never reached the server
     // (backend down, wrong VITE_BACKEND_BASE_URL, CORS) — surface that as
@@ -404,10 +441,20 @@ const CalendarPage = () => {
                         <CalendarRange className="h-5 w-5" />
                     </div>
                     <div>
-                        <h1 className="font-display text-2xl font-bold tracking-tight">Calendar</h1>
-                        <p className="text-sm text-muted-foreground">The school schedule in one place.</p>
+                        <h1 className="font-display text-2xl font-bold tracking-tight">School calendar</h1>
+                        <p className="text-sm text-muted-foreground">Classes, homework deadlines, exams and school events in one place.</p>
                     </div>
                 </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                {isParent && linkedChildren.length > 0 && (
+                    <Select value={selectedChildId} onValueChange={(value) => { setChildId(value); setSelectedDay(null); setSelectedEvent(null); }}>
+                        <SelectTrigger className="h-9 w-[190px]" aria-label="Choose child calendar"><UserRound className="mr-2 h-4 w-4 text-muted-foreground" /><SelectValue /></SelectTrigger>
+                        <SelectContent>{linkedChildren.map((child) => <SelectItem key={child.id} value={child.id}>{child.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                )}
+                <Button variant="outline" size="sm" disabled={monthEvents.length === 0} onClick={() => downloadCalendar(monthEvents, `${MONTHS[month]}-${year}`)}>
+                    <Download className="mr-1.5 h-4 w-4" />Export month
+                </Button>
                 {isAdmin && (
                     <Dialog open={showForm} onOpenChange={setShowForm}>
                         <DialogTrigger asChild>
@@ -483,6 +530,7 @@ const CalendarPage = () => {
                         </DialogContent>
                     </Dialog>
                 )}
+                </div>
             </motion.div>
 
             <Card className="overflow-hidden border-border/70 shadow-sm">
@@ -493,34 +541,6 @@ const CalendarPage = () => {
                     <div className="px-4 py-3.5"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Next scheduled</p><p className="mt-1 truncate text-sm font-semibold">{nextUp?.title ?? "Nothing scheduled"}</p><p className="text-xs text-muted-foreground">{nextUp ? new Date(nextUp.startAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Add an event to begin"}</p></div>
                 </div>
             </Card>
-
-            {/* Type filter */}
-            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/60 bg-muted/[0.18] p-2.5">
-                <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><SlidersHorizontal className="h-3.5 w-3.5" />Show</span>
-                {EVENT_TYPES.map((t) => {
-                    const { label, icon: Icon, chip } = TYPE_CONFIG[t];
-                    const active = visibleTypes.has(t);
-                    return (
-                        <motion.button
-                            key={t}
-                            type="button"
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => toggleType(t)}
-                            aria-pressed={active}
-                            className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
-                                active
-                                    ? chip
-                                    : "border-border/60 bg-transparent text-muted-foreground/70 hover:border-border hover:text-foreground",
-                            )}
-                        >
-                            <Icon className={cn("h-3 w-3 transition-opacity", !active && "opacity-40")} />
-                            {label}
-                        </motion.button>
-                    );
-                })}
-                {activeFilterCount !== EVENT_TYPES.length && <button type="button" onClick={() => setVisibleTypes(new Set(EVENT_TYPES))} className="ml-1 inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-background hover:text-foreground"><X className="h-3.5 w-3.5" />Clear filters</button>}
-            </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Month grid */}
@@ -620,11 +640,11 @@ const CalendarPage = () => {
                                 ))}
                             </div>
                         ) : view === "agenda" ? (
-                            <AgendaView events={monthEvents} month={month} year={year} />
+                            <AgendaView events={monthEvents} month={month} year={year} onSelect={setSelectedEvent} />
                         ) : view === "week" ? (
-                            <WeekView anchor={viewAnchor} eventsOn={eventsOn} onSelect={(date) => { setSelectedDay(date); setView("day"); }} />
+                            <WeekView anchor={viewAnchor} eventsOn={eventsOn} onSelectDay={(date) => { setSelectedDay(date); setView("day"); }} onSelectEvent={setSelectedEvent} />
                         ) : view === "day" ? (
-                            <DayView date={viewAnchor} eventsOn={eventsOn} />
+                            <DayView date={viewAnchor} eventsOn={eventsOn} onSelect={setSelectedEvent} />
                         ) : (
                             <AnimatePresence mode="wait" custom={direction}>
                                 <motion.div
@@ -708,16 +728,22 @@ const CalendarPage = () => {
                                                     )}
                                                 </div>
 
-                                                <div className="flex flex-col gap-[3px]">
+                                                <div className={cn(
+                                                    "mt-0.5 flex min-h-12 flex-1 flex-col gap-[3px] rounded-md border border-border/65 bg-background/65 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.45)] transition-colors group-hover:border-primary/20 group-hover:bg-background/90",
+                                                    !inMonth && "bg-muted/25",
+                                                    isSelected && "border-primary/35 bg-background",
+                                                )}>
                                                     {dayEvents.slice(0, 3).map((ev) => {
                                                         const cfg = TYPE_CONFIG[ev.type];
                                                         const timed = !isAllDayLike(ev);
                                                         return (
-                                                            <div
+                                                            <button
                                                                 key={`${ev.id}-${ev.startAt}`}
+                                                                type="button"
+                                                                onClick={(event) => { event.stopPropagation(); setSelectedEvent(ev); }}
                                                                 title={ev.title}
                                                                 className={cn(
-                                                                    "flex items-center gap-1 overflow-hidden rounded-md py-[3px] pl-1.5 pr-1 text-[10.5px] font-medium leading-tight",
+                                                                    "flex w-full items-center gap-1 overflow-hidden rounded-md py-[3px] pl-1.5 pr-1 text-left text-[10.5px] font-medium leading-tight focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                                                                     cfg.cell,
                                                                     !inMonth && "opacity-55",
                                                                 )}
@@ -726,7 +752,7 @@ const CalendarPage = () => {
                                                                     <span className="shrink-0 text-[9.5px] tabular-nums opacity-60">{compactTime(ev.startAt)}</span>
                                                                 )}
                                                                 <span className="truncate">{ev.title}</span>
-                                                            </div>
+                                                            </button>
                                                         );
                                                     })}
                                                     {overflow > 0 && (
@@ -734,6 +760,7 @@ const CalendarPage = () => {
                                                             +{overflow} more
                                                         </span>
                                                     )}
+                                                    {dayEvents.length === 0 && <span className="px-1 pt-0.5 text-[10px] text-muted-foreground/40">No events</span>}
                                                 </div>
                                             </div>
                                         );
@@ -767,14 +794,16 @@ const CalendarPage = () => {
                         </div>
                     ) : (
                         <div className="border-b border-border/60 px-5 py-4">
-                            <p className="font-display text-base font-semibold">Agenda</p>
-                            <p className="text-xs text-muted-foreground">Pick a day to see its schedule.</p>
+                            <p className="font-display text-base font-semibold">Coming up</p>
+                            <p className="text-xs text-muted-foreground">Your next events and deadlines.</p>
                         </div>
                     )}
 
                     <CardContent className="p-4">
                         {!selectedDay ? (
-                            <PanelEmpty icon={CalendarRange} text="Click any day on the calendar." />
+                            upcomingEvents.length === 0
+                                ? <PanelEmpty icon={CalendarRange} text="Nothing else is scheduled in this view." />
+                                : <div className="space-y-2">{upcomingEvents.map((event) => <EventRow key={`${event.id}-${event.startAt}`} event={event} onSelect={setSelectedEvent} dense />)}</div>
                         ) : selectedEvents.length === 0 ? (
                             <PanelEmpty icon={CalendarDays} text="Nothing scheduled for this day." />
                         ) : (
@@ -872,6 +901,31 @@ const CalendarPage = () => {
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => { if (!open) setSelectedEvent(null); }}>
+                <DialogContent className="max-w-lg">
+                    {selectedEvent && (() => {
+                        const config = TYPE_CONFIG[selectedEvent.type];
+                        const Icon = config.icon;
+                        return <>
+                            <DialogHeader>
+                                <div className="mb-2 flex items-center gap-3">
+                                    <span className={cn("flex h-10 w-10 items-center justify-center rounded-lg", config.iconWrap)}><Icon className="h-5 w-5" aria-hidden="true" /></span>
+                                    <div className="min-w-0"><Badge variant="outline" className={cn("mb-1 text-[10px]", config.chip)}>{config.label}</Badge><DialogTitle className="text-left">{selectedEvent.title}</DialogTitle></div>
+                                </div>
+                                <DialogDescription className="text-left">{new Date(selectedEvent.startAt).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</DialogDescription>
+                            </DialogHeader>
+                            <dl className="grid gap-3 rounded-lg border bg-muted/20 p-4 text-sm">
+                                <div className="flex items-start justify-between gap-4"><dt className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />Time</dt><dd className="text-right font-medium">{fullEventTime(selectedEvent)}</dd></div>
+                                <div className="flex items-start justify-between gap-4"><dt className="flex items-center gap-2 text-muted-foreground"><School className="h-4 w-4" />Calendar</dt><dd className="text-right font-medium">{selectedEvent.class?.name ?? "School-wide"}</dd></div>
+                                {selectedEvent.recurrenceFreq && selectedEvent.recurrenceFreq !== "none" && <div className="flex items-start justify-between gap-4"><dt className="flex items-center gap-2 text-muted-foreground"><Repeat className="h-4 w-4" />Repeats</dt><dd className="text-right font-medium">{RECURRENCE_LABELS[selectedEvent.recurrenceFreq].replace("Repeats ", "")}</dd></div>}
+                            </dl>
+                            {selectedEvent.description && <p className="text-sm leading-6 text-muted-foreground">{selectedEvent.description}</p>}
+                            {selectedEvent.link && <DialogFooter><Button asChild className="w-full sm:w-auto"><Link to={selectedEvent.link}>Open related record<ExternalLink className="ml-2 h-4 w-4" /></Link></Button></DialogFooter>}
+                        </>;
+                    })()}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

@@ -3,7 +3,7 @@ import { useGetIdentity } from "@refinedev/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, BookOpenCheck, Camera, ChevronDown, Loader2, Settings2, Trash2 } from "lucide-react";
+import { BookOpen, BookOpenCheck, Camera, ChevronDown, Loader2, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -162,17 +162,11 @@ export function AvatarUploader() {
           )}
           </div>
           <div className="grid gap-1 border-t pt-2">
-            <Link to="/profile" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Settings2 className="h-3.5 w-3.5" /> Profile &amp; Settings
-            </Link>
-            <Link to="/" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <ArrowLeft className="h-3.5 w-3.5" /> School website
-            </Link>
             {canChangeClass && <Link to="/portal/setup?change=1" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <BookOpen className="h-3.5 w-3.5" /> Change form or class
             </Link>}
             {canViewHistory && <Link to="/portal/history" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <BookOpenCheck className="h-3.5 w-3.5" /> Change form or class
+              <BookOpenCheck className="h-3.5 w-3.5" /> Academic archive
             </Link>}
           </div>
         </div>}

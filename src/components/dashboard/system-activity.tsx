@@ -6,7 +6,7 @@ import { timeAgo } from "@/lib/time";
 type AuditRow = { id: number; action: string; resource: string; resourceId: string | null; details: string | null; createdAt: string; user: { id: string; name: string; email: string } | null };
 
 const VERB: Record<string, string> = { create: "created", update: "updated", delete: "deleted", grade: "graded", mark: "recorded", save: "saved", enroll: "enrolled a student", unenroll: "removed a student", self_join: "joined a class", link_parent: "linked a parent", unlink_parent: "unlinked a parent", role_update: "changed a role", photo_update: "updated a photo", photo_remove: "removed a photo", reset_password: "reset a password" };
-const NOUN: Record<string, string> = { classes: "a class", subjects: "a subject", assignments: "an assignment", submissions: "a submission", exams: "an exam", exam_results: "exam results", class_grades: "final grades", calendar_events: "a calendar event", users: "a user", enrollments: "an enrolment", departments: "a department", student_profiles: "a student profile", announcements: "an announcement" };
+const NOUN: Record<string, string> = { classes: "a class", subjects: "a subject", assignments: "homework", submissions: "a submission", exams: "an exam", exam_results: "exam results", class_grades: "final grades", calendar_events: "a calendar event", users: "a user", enrollments: "an enrolment", departments: "a department", student_profiles: "a student profile", announcements: "an announcement" };
 
 function humanizeAction(action: string, resource: string): string {
   const verbKey = action.includes(".") ? action.split(".")[1] : action;

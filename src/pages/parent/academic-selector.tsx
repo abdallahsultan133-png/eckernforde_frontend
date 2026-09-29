@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { CalendarDays, ClipboardCheck, FileText, GraduationCap } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, FileText, GraduationCap } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { SectionHeader } from "@/components/layout/section-header";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiQuery } from "@/hooks/use-api-query";
 
-export type ParentAcademicMode = "assignments" | "attendance";
+export type ParentAcademicMode = "homework" | "attendance" | "reports";
 type Child = { id: string; name: string; profile: { registrationNumber: string | null } | null };
 type AcademicYear = { id: number; name: string; startsOn: string; endsOn: string; active?: boolean };
 
@@ -34,11 +34,14 @@ export function ParentAcademicSelector({ mode }: { mode: ParentAcademicMode }) {
     navigate(`/parent/${mode}/view?${query.toString()}`);
   };
 
-  const title = mode === "attendance" ? "Review attendance" : "Review assignments";
+  const title = mode === "attendance" ? "Review attendance" : mode === "reports" ? "Generate report" : "Review homework";
   const description = mode === "attendance"
     ? "Choose a child and academic year before opening their attendance record."
-    : "Choose a child and academic year before opening their coursework.";
-  const Icon = mode === "attendance" ? ClipboardCheck : FileText;
+    : mode === "reports"
+      ? "Choose a child and academic year before opening their published academic report."
+      : "Choose a child and academic year before opening their homework.";
+  const Icon = mode === "attendance" ? ClipboardCheck : mode === "reports" ? BarChart3 : FileText;
+  const openLabel = mode === "reports" ? "Open report" : `Open ${mode}`;
 
   return <PageContainer className="max-w-3xl">
     <PageHeader breadcrumb title={title} description={description} />
@@ -52,7 +55,7 @@ export function ParentAcademicSelector({ mode }: { mode: ParentAcademicMode }) {
           <label className="space-y-2 text-sm font-medium">Child<Select value={selectedChildId} onValueChange={setChildId}><SelectTrigger aria-label="Select child"><SelectValue placeholder="Choose a child" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.name}{child.profile?.registrationNumber ? ` · ${child.profile.registrationNumber}` : ""}</SelectItem>)}</SelectContent></Select></label>
           <label className="space-y-2 text-sm font-medium">Academic year<Select value={selectedYearId} onValueChange={setAcademicYearId}><SelectTrigger aria-label="Select academic year"><SelectValue placeholder="Choose an academic year" /></SelectTrigger><SelectContent>{years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent></Select></label>
         </div>
-        <div className="mt-6 flex items-center justify-between border-t pt-5"><p className="text-sm text-muted-foreground">Only records available to your parent account will be shown.</p><Button onClick={openRecords} disabled={!selectedChildId || !selectedYearId}><Icon className="mr-2 h-4 w-4" />Open {mode}</Button></div>
+        <div className="mt-6 flex items-center justify-between border-t pt-5"><p className="text-sm text-muted-foreground">Only records available to your parent account will be shown.</p><Button onClick={openRecords} disabled={!selectedChildId || !selectedYearId}><Icon className="mr-2 h-4 w-4" />{openLabel}</Button></div>
       </section>}
   </PageContainer>;
 }

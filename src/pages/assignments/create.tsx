@@ -41,7 +41,7 @@ const AssignmentsCreate = () => {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND_BASE_URL}/assignments`, {
+      const res = await fetch(`${BACKEND_BASE_URL}/homework`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -57,13 +57,13 @@ const AssignmentsCreate = () => {
         }),
       });
 
-      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed to create assignment");
+      if (!res.ok) throw new Error((await res.json())?.message ?? "Failed to create homework");
       const { data } = await res.json();
 
-      toast.success("Assignment created.");
-      navigate(`/assignments/${data.id}`);
+      toast.success("Homework created.");
+      navigate(`/homework/${data.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create assignment");
+      toast.error(err instanceof Error ? err.message : "Failed to create homework");
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +73,7 @@ const AssignmentsCreate = () => {
     <PageContainer className="assignments-create">
       <PageHeader
         breadcrumb
-        title="Create assignment"
+        title="Create homework"
         description="Set the learning task, choose its class, and define the submission deadline and score."
       />
 
@@ -92,7 +92,7 @@ const AssignmentsCreate = () => {
         </section>
 
         <section aria-labelledby="assignment-context-title" className="border-t border-border pt-4">
-          <SectionHeader title={<span id="assignment-context-title">Academic context</span>} description="The selected class determines the subject and students who receive this assignment." />
+          <SectionHeader title={<span id="assignment-context-title">Academic context</span>} description="The selected class determines the subject and students who receive this homework." />
           <div className="mt-5 max-w-xl">
             <Field label="Class" required htmlFor="assignment-class">
               <Select value={classId} onValueChange={setClassId}>
@@ -101,7 +101,7 @@ const AssignmentsCreate = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.subject?.name ? ` · ${c.subject.name}` : ""}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -136,7 +136,7 @@ const AssignmentsCreate = () => {
             <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={submitting}>Cancel</Button>
             <Button type="submit" disabled={submitting}>
               {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {submitting ? "Creating…" : "Create assignment"}
+              {submitting ? "Creating…" : "Create homework"}
             </Button>
         </div>
       </form>

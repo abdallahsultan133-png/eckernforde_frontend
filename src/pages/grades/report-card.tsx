@@ -15,14 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
-import type { User } from "@/types";
+import { UserRole, type User } from "@/types";
 import { letterForScore } from "@/lib/grading/grade-bands";
+import { portalSchoolName, schoolBandFromResults } from "@/lib/school-brand";
 
 // /grades/report-card shows the caller's own; /grades/report-card/:id (used by
 // staff/parents from a student's profile) shows that student's instead — same
 // backend endpoint enforces students can only ever resolve their own id.
 type StudentInfoResponse = {
-  data: { name: string; profile: { registrationNumber: string | null } | null };
+  data: { name: string; profile: { registrationNumber: string | null } | null; schoolBand?: "primary" | "secondary" | null; enrolledClasses?: Array<{ schoolLevel?: "nursery" | "primary" | "secondary" | null }> };
 };
 
 type GradeRow = {
@@ -74,11 +75,11 @@ const gradeBadgeColor = (letter: string | null) => {
 const gradeColor = (letter: string | null) => letter === "A" || letter === "B" ? "#047857" : letter === "C" ? "#b45309" : "#b91c1c";
 
 const loadReportCardPdf = async () => {
-  const [{ PDFDownloadLink }, { FormalReportCardDocument }] = await Promise.all([
+  const [{ pdf }, { FormalReportCardDocument }] = await Promise.all([
     import("@react-pdf/renderer"),
     import("@/components/pdf/report-card-document.tsx"),
   ]);
-  return { PDFDownloadLink: PDFDownloadLink as unknown as PdfModule["PDFDownloadLink"], DocumentComponent: FormalReportCardDocument as unknown as ComponentType<Record<string, unknown>> };
+  return { pdf: pdf as unknown as PdfModule["pdf"], DocumentComponent: FormalReportCardDocument as unknown as ComponentType<Record<string, unknown>> };
 };
 
 const ReportCard = () => {
@@ -86,6 +87,8 @@ const ReportCard = () => {
   const { narrateDownload } = useDownload();
   const { data: identity, isLoading: identityLoading } = useGetIdentity<User>();
   const targetStudentId = routeStudentId ?? identity?.id;
+  const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
 
   const { data, isLoading: loading, isError, refetch } = useApiQuery<{ data: GradeRow[] }>(targetStudentId ? `/grades/student/${targetStudentId}` : null);
   const grades = data?.data ?? [];
@@ -103,6 +106,8 @@ const ReportCard = () => {
   const annual = terms.find((term) => term.type === "terminal");
   const { data: midtermData, isLoading: midtermLoading } = useApiQuery<FormalResultsResponse>(targetStudentId && midterm ? `/grades/term-results/${targetStudentId}?academicTermId=${midterm.id}` : null);
   const { data: annualData, isLoading: annualLoading } = useApiQuery<FormalResultsResponse>(targetStudentId && annual ? `/grades/term-results/${targetStudentId}?academicTermId=${annual.id}` : null);
+  const reportSchoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : studentInfoData?.data.schoolBand ?? schoolBandFromResults([...(midtermData?.data ?? []), ...(annualData?.data ?? []), ...(studentInfoData?.data.enrolledClasses ?? [])], Boolean(midtermData?.division?.division || annualData?.division?.division));
+  const portalReportSchoolName = portalSchoolName(reportSchoolBand);
   const { data: attendanceData } = useApiQuery<{ data: AttendanceRow[] }>(targetStudentId ? `/attendance/student/${targetStudentId}?limit=200` : null);
   const template = templateData?.data;
 
@@ -133,7 +138,7 @@ const ReportCard = () => {
             <DeferredPdfDownload
               fileName={pdfFileName}
               load={loadReportCardPdf}
-              documentProps={{ studentName, registrationNumber, template, termResults: formalPdfTerms, academicYearName: terms[0]?.academicYear.name, attendance: attendanceSummary }}
+              documentProps={{ studentName, schoolName: portalReportSchoolName, registrationNumber, template, termResults: formalPdfTerms, academicYearName: terms[0]?.academicYear.name, attendance: attendanceSummary }}
               onDownload={() => narrateDownload(pdfFileName)}
             />
           )
@@ -177,7 +182,7 @@ const ReportCard = () => {
           <GraduationCap className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
           <div>
             <p className="text-sm font-medium">Official secondary divisions are shown in Term Results.</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">Division is calculated from the best seven terminal subjects. Assignments do not contribute to the final division, and ACADEMIX does not use GPA for secondary results.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Division is calculated from the best seven terminal subjects. Homework does not contribute to the final division, and the school does not use GPA for secondary results.</p>
           </div>
         </CardContent>
       </Card>
@@ -212,7 +217,7 @@ const ReportCard = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Class</TableHead>
-                  <TableHead className="text-center">Assignment Avg</TableHead>
+                  <TableHead className="text-center">Homework Avg</TableHead>
                   <TableHead className="text-center">Exam Avg</TableHead>
                   <TableHead className="text-center">Final</TableHead>
                   <TableHead className="text-center">Grade</TableHead>
@@ -263,8 +268,12 @@ function OfficialReportCard({
   attendance: AttendanceRow[];
 }) {
   const accent = template?.accentColor ?? "#0f4c5c";
-  const reportSchoolName = template?.schoolName && template.schoolName !== "Academix School" ? template.schoolName : "Eckernforde Cambridge Secondary School";
-  const reportSchoolLogo = "/eckernforde-cambridge-badge.png";
+  const { data: identity } = useGetIdentity<User>();
+  const isSchoolStaff = identity?.role === "student" || identity?.role === "teacher";
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
+  const reportSchoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : schoolBandFromResults([...(midterm?.data ?? []), ...(annual?.data ?? [])], Boolean(midterm?.division?.division || annual?.division?.division));
+  const reportSchoolName = portalSchoolName(reportSchoolBand);
+  const reportSchoolLogo = reportSchoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : "/eckernforde-cambridge-badge.png";
   const present = attendance.filter((row) => row.status === "present").length;
   const absent = attendance.filter((row) => row.status === "absent").length;
   const late = attendance.filter((row) => row.status === "late").length;

@@ -1,6 +1,4 @@
 import * as React from "react";
-import { useRefineKbar } from "@refinedev/kbar";
-import { useGetIdentity } from "@refinedev/core";
 import {
     KBarPortal,
     KBarPositioner,
@@ -14,8 +12,6 @@ import {
 import { ArrowRight, ChevronRight, CornerDownLeft, Search } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { APP_NAME } from "@/constants";
-import { isStaff } from "@/lib/roles.ts";
-import type { User } from "@/types";
 import { CommandSearchActions } from "./command-search-actions.tsx";
 
 /**
@@ -25,11 +21,7 @@ import { CommandSearchActions } from "./command-search-actions.tsx";
  * UI with one that matches this app's shadcn design tokens and dark mode.
  */
 export function CommandPalette() {
-    useRefineKbar();
-    const { data: identity } = useGetIdentity<User>();
-    const placeholder = isStaff(identity?.role)
-        ? "Search classes, students, and pages…"
-        : "Search classes and pages…";
+    const placeholder = "Search the portal…";
 
     return (
         <>
@@ -86,9 +78,8 @@ function RenderResults() {
     }
 
     return (
-        <KBarResults
+            <KBarResults
             items={results}
-            maxHeight={420}
             onRender={({ item, active }) =>
                 typeof item === "string" ? (
                     <div className="px-4 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">

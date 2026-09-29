@@ -78,18 +78,18 @@ export function GradebookDocument({ className, rows, questions = [], submissions
     }
 
     return (
-        <Document title={`Assignment Grade Book - ${className}`}>
+        <Document title={`Homework Grade Book - ${className}`}>
             <Page size="A4" orientation="landscape" style={styles.page}>
                 <View style={styles.header}>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                         <Image src={cambridgeLogo} style={styles.logo} />
                         <View>
-                            <Text style={styles.brand}>Eckernforde Cambridge Secondary School</Text>
-                            <Text style={styles.brandSub}>Assignment Grade Book</Text>
+                            <Text style={styles.brand}>School Portal</Text>
+                            <Text style={styles.brandSub}>Homework Grade Book</Text>
                         </View>
                     </View>
                     <View>
-                        <Text style={styles.docTitle}>ASSIGNMENT GRADE BOOK</Text>
+                        <Text style={styles.docTitle}>HOMEWORK GRADE BOOK</Text>
                         <Text style={styles.docDate}>Generated {generatedAt}</Text>
                     </View>
                 </View>
@@ -108,7 +108,7 @@ export function GradebookDocument({ className, rows, questions = [], submissions
                 {questions.map((item, index) => {
                     const results = submissionsByAssignment.get(item.id);
                     return <View key={item.id} wrap={false} style={styles.questions}>
-                        <Text style={styles.questionsTitle}>Assignment {index + 1}: {item.title}</Text>
+                        <Text style={styles.questionsTitle}>Homework {index + 1}: {item.title}</Text>
                         <Text style={styles.question}>{item.question}</Text>
                         <View style={[styles.table, { marginTop: 8 }]}>
                             <View style={styles.tableHeaderRow}>
@@ -135,8 +135,8 @@ export function GradebookDocument({ className, rows, questions = [], submissions
                 <View style={styles.table}>
                     <View style={styles.tableHeaderRow}>
                         <Text style={[styles.th, styles.colStudent]}>Student</Text>
-                        <Text style={[styles.th, styles.colNum]}>Assignment</Text>
-                        <Text style={[styles.th, styles.colNum]}>Letter</Text>
+                        <Text style={[styles.th, styles.colNum]}>Homework</Text>
+                        <Text style={[styles.th, styles.colNum]}>Grade</Text>
                         <Text style={[styles.th, styles.colRemarks]}>Remarks</Text>
                     </View>
                     {rows.length === 0 ? (
@@ -160,7 +160,7 @@ export function GradebookDocument({ className, rows, questions = [], submissions
                 </View>
 
                 <Text style={styles.footer}>
-                    This is a computer-generated assignment grade book from the school portal.
+                    This is a computer-generated homework grade book from the school portal.
                 </Text>
             </Page>
         </Document>
