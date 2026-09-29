@@ -84,9 +84,9 @@ const copy: Record<Role, { title: string; subtitle: string; actions: Action[] }>
     subtitle: "Start with attendance and student work, then plan the rest of your day.",
     actions: [
       { label: "Take attendance", to: "/attendance", icon: ClipboardCheck },
-      { label: "Create assignment", to: "/assignments/create", icon: FilePlus2 },
+      { label: "Create homework", to: "/homework/create", icon: FilePlus2 },
       { label: "Enter results", to: "/grades/term-results/record", icon: BookOpenCheck },
-      { label: "Review submissions", to: "/assignments?filter=needs-grading", icon: CheckCircle2 },
+      { label: "Review submissions", to: "/homework?filter=needs-grading", icon: CheckCircle2 },
       { label: "Post announcement", to: "/announcements/create", icon: Megaphone },
     ],
   },
@@ -94,10 +94,10 @@ const copy: Record<Role, { title: string; subtitle: string; actions: Action[] }>
     title: "My school day",
     subtitle: "See what is scheduled, what is due, and how your learning is progressing.",
     actions: [
-      { label: "View assignments", to: "/assignments", icon: ClipboardCheck },
+      { label: "View homework", to: "/homework", icon: ClipboardCheck },
       { label: "View timetable", to: "/calendar", icon: CalendarDays },
       { label: "View results", to: "/grades/term-results", icon: BookOpenCheck },
-      { label: "Report card", to: "/grades/report-card", icon: GraduationCap },
+      { label: "View reports", to: "/grades/term-results", icon: GraduationCap },
     ],
   },
 };
@@ -120,10 +120,9 @@ function MetricGroup({ role }: { role: Role }) {
   if (isError) return <ErrorState description="Unable to load operational summary." onRetry={refetch} />;
   const metrics = role === "student"
     ? [
-        ["My classes", data?.classes],
         ["Subjects", data?.subjects],
         ["Attendance · 30 days", data?.attendanceRate == null ? "Not recorded" : `${data.attendanceRate}%`],
-        ["Open assignments", data?.pendingAssignments],
+        ["Open homework", data?.pendingAssignments],
       ]
     : role === "teacher"
       ? [
@@ -186,15 +185,15 @@ function AttentionRequired({ role }: { role: Role }) {
   const items = role === "teacher"
     ? [
         ...(attendance?.unrecordedClasses ?? []).map((item) => ({ label: `Attendance not recorded for ${item.name}`, meta: "Record attendance for this class", to: "/attendance", tone: "warning" as const })),
-        ...(stats?.pendingGrading ? [{ label: `${stats.pendingGrading} submission${stats.pendingGrading === 1 ? "" : "s"} awaiting grading`, meta: "Review student work", to: "/assignments?filter=needs-grading", tone: "info" as const }] : []),
+        ...(stats?.pendingGrading ? [{ label: `${stats.pendingGrading} submission${stats.pendingGrading === 1 ? "" : "s"} awaiting grading`, meta: "Review student work", to: "/homework?filter=needs-grading", tone: "info" as const }] : []),
       ]
     : role === "student"
-      ? (stats?.pendingAssignments ? [{ label: `${stats.pendingAssignments} assignment${stats.pendingAssignments === 1 ? "" : "s"} still open`, meta: "Review due dates and submit your work", to: "/assignments", tone: "warning" as const }] : [])
+      ? (stats?.pendingAssignments ? [{ label: `${stats.pendingAssignments} homework item${stats.pendingAssignments === 1 ? "" : "s"} still open`, meta: "Review due dates and submit your work", to: "/homework", tone: "warning" as const }] : [])
       : [
           ...((attendance?.absent ?? 0) > 0 ? [{ label: `${attendance?.absent} absence${attendance?.absent === 1 ? "" : "s"} recorded today`, meta: "Review attendance records", to: "/attendance", tone: "critical" as const }] : []),
           ...((attendance?.late ?? 0) > 0 ? [{ label: `${attendance?.late} late arrival${attendance?.late === 1 ? "" : "s"} recorded today`, meta: "Review attendance records", to: "/attendance", tone: "warning" as const }] : []),
         ];
-  return items.length ? <ul className="attention-list">{items.map((item) => <li key={item.label}><AlertTriangle aria-hidden="true" /><span><strong>{item.label}</strong><small>{item.meta}</small></span><StatusBadge tone={item.tone}>Review</StatusBadge><Link to={item.to} aria-label={`Review: ${item.label}`} /></li>)}</ul> : <div className="operations-empty"><CheckCircle2 aria-hidden="true" /><p><strong>Nothing requires attention right now.</strong><span>{role === "teacher" ? "Your attendance and grading queue are clear." : role === "student" ? "You have no open assignments in your dashboard summary." : "No attendance exceptions are recorded for today."}</span></p></div>;
+  return items.length ? <ul className="attention-list">{items.map((item) => <li key={item.label}><AlertTriangle aria-hidden="true" /><span><strong>{item.label}</strong><small>{item.meta}</small></span><StatusBadge tone={item.tone}>Review</StatusBadge><Link to={item.to} aria-label={`Review: ${item.label}`} /></li>)}</ul> : <div className="operations-empty"><CheckCircle2 aria-hidden="true" /><p><strong>Nothing requires attention right now.</strong><span>{role === "teacher" ? "Your attendance and grading queue are clear." : role === "student" ? "You have no open homework in your dashboard summary." : "No attendance exceptions are recorded for today."}</span></p></div>;
 }
 
 function QuickActions({ actions }: { actions: Action[] }) {
@@ -204,7 +203,7 @@ function QuickActions({ actions }: { actions: Action[] }) {
 /* function StudentAcademicLinks() {
   const links: Action[] = [
     { label: "Midterm & terminal results", to: "/grades/term-results", icon: BookOpenCheck },
-    { label: "Report card", to: "/grades/report-card", icon: GraduationCap },
+    { label: "View reports", to: "/grades/term-results", icon: GraduationCap },
     { label: "Academic history", to: "/portal/academic-history", icon: CalendarDays },
   ];
   return <div className="student-academic-links">{links.map(({ label, to, icon: Icon }) => <Link key={to} to={to}><span className="student-academic-links__icon"><Icon className="h-4 w-4" /></span><span>{label}</span><span aria-hidden="true">→</span></Link>)}</div>;
@@ -235,7 +234,7 @@ function TeacherWorkboard() {
       </Section>
     </div>
 
-    <Section title="My classes" action={{ label: "All classes", to: "/classes" }}><ClassListPanel max={6} /></Section>
+    <Section title="My classes" action={{ label: "All classes", to: "/classes" }}><ClassListPanel title="My classes" max={6} /></Section>
 
     <div className="teacher-analytics-grid">
       <Section title="Final grade distribution" action={{ label: "Open results", to: "/grades" }}><PerformanceChart showClassRanking /></Section>
@@ -256,14 +255,14 @@ export function OperationsDashboard({ role }: { role: Role }) {
       <QuickActions actions={current.actions} />
     </header>
     <Section title={role === "student" ? "My learning snapshot" : role === "super_admin" ? "Platform overview" : "Today’s operations"}><MetricGroup role={role} /></Section>
-    {isStudent && <Section title="Classes and subjects studied"><ClassListPanel max={8} /></Section>}
+    {isStudent && <Section title="Class & Subjects"><ClassListPanel title="Class & Subjects" max={8} studentView hideViewAll /></Section>}
     {role === "super_admin" && <Section title="System health" action={{ label: "System settings", to: "/users" }}><SystemHealthPanel /></Section>}
     <div className="operations-priority-grid">
       <Section title={role === "student" ? "Next actions" : role === "super_admin" ? "Risk signals" : "Attention required"}><AttentionRequired role={role} /></Section>
       <Section title="Attendance today" action={{ label: "Attendance", to: "/attendance" }}><AttendanceTodayPanel role={role} /></Section>
     </div>
     <div className="operations-main-grid">
-      <Section title={isStudent ? "Today's schedule" : "Upcoming schedule"} action={{ label: "Calendar", to: "/calendar" }}>{isStudent ? <TodaySchedule /> : <UpcomingEvents />}</Section>
+      <Section title={isStudent ? "Today's schedule" : "Upcoming schedule"} action={{ label: "Calendar", to: "/calendar" }} className={isStudent ? "student-schedule-section" : ""}>{isStudent ? <TodaySchedule /> : <UpcomingEvents />}</Section>
       {!isStudent && <Section title="School calendar" action={{ label: "Open calendar", to: "/calendar" }}><TodaySchedule /></Section>}
     </div>
     <div className="operations-analytics-grid">

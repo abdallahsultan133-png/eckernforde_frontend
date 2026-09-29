@@ -89,7 +89,7 @@ export function DeadlineCountdown({ dueAt, variant = "inline", className }: Prop
   }[state.tone];
   const cells = [{ value: values.days, label: values.days === 1 ? "Day" : "Days", padded: false }, { value: values.hours, label: "Hours", padded: true }, { value: values.minutes, label: "Minutes", padded: true }, { value: values.seconds, label: "Seconds", padded: true }];
 
-  return <section className={cn("overflow-hidden rounded-xl border border-border/70 bg-muted/[0.18]", className)} aria-label="Assignment deadline">
+  return <section className={cn("overflow-hidden rounded-xl border border-border/70 bg-muted/[0.18]", className)} aria-label="Homework deadline">
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 px-4 py-3.5 sm:px-5">
       <div className="flex items-start gap-2.5"><span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border", stateClasses)}><AlarmClock className="h-4 w-4" aria-hidden="true" /></span><div><p className="text-sm font-semibold">Time remaining</p><p className="mt-0.5 text-xs text-muted-foreground">Due {absolute}</p></div></div>
       <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", stateClasses)}>{state.label}</span>

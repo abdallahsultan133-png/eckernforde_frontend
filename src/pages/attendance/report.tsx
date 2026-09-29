@@ -18,6 +18,7 @@ import { SummaryBar, type SummaryItem } from "@/components/ui/summary-bar.tsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.tsx";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { UserRole, type ClassDetails, type User } from "@/types";
+import { portalSchoolName } from "@/lib/school-brand";
 
 type ReportRow = {
   studentId: string;
@@ -32,11 +33,11 @@ type ReportRow = {
 };
 
 const loadAttendancePdf = async () => {
-  const [{ PDFDownloadLink }, { AttendanceReportDocument }] = await Promise.all([
+  const [{ pdf }, { AttendanceReportDocument }] = await Promise.all([
     import("@react-pdf/renderer"),
     import("@/components/pdf/attendance-report-document.tsx"),
   ]);
-  return { PDFDownloadLink: PDFDownloadLink as unknown as PdfModule["PDFDownloadLink"], DocumentComponent: AttendanceReportDocument as unknown as ComponentType<Record<string, unknown>> };
+  return { pdf: pdf as unknown as PdfModule["pdf"], DocumentComponent: AttendanceReportDocument as unknown as ComponentType<Record<string, unknown>> };
 };
 
 const rateColor = (rate: number | null) => {
@@ -52,6 +53,7 @@ const attendanceClassLabel = (classItem: ClassDetails) =>
 const AttendanceReport = () => {
   const { data: identity } = useGetIdentity<User>();
   const isStudent = identity?.role === UserRole.STUDENT;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isStudent ? "/portal-context" : null);
   const { narrateDownload } = useDownload();
 
   const [classId, setClassId] = useState<string>("");
@@ -80,6 +82,8 @@ const AttendanceReport = () => {
 
   const selectedClass = classes.find((c) => String(c.id) === classId);
   const selectedClassName = selectedClass ? attendanceClassLabel(selectedClass) : "";
+  const schoolBand = isStudent ? portal?.data.context?.schoolBand ?? (selectedClass?.schoolLevel === "secondary" ? "secondary" : selectedClass?.schoolLevel === "primary" || selectedClass?.schoolLevel === "nursery" ? "primary" : null) : null;
+  const schoolName = isStudent ? portalSchoolName(schoolBand) : "School Portal";
   const pdfFileName = `attendance-report-${selectedClassName.replace(/\s+/g, "-").toLowerCase() || classId}.pdf`;
 
   const withData = rows.filter((r) => r.totalMarked > 0);
@@ -122,7 +126,7 @@ const AttendanceReport = () => {
               </SelectTrigger>
               <SelectContent>
                 {classes.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>{attendanceClassLabel(c)}</SelectItem>
+                  <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -133,7 +137,15 @@ const AttendanceReport = () => {
               <DeferredPdfDownload
                 fileName={pdfFileName}
                 load={loadAttendancePdf}
-                documentProps={{ className: selectedClassName, rows }}
+                documentProps={{
+                  className: selectedClass?.name ?? selectedClassName,
+                  subjectName: selectedClass?.subject?.name,
+                  rows,
+                  studentName: isStudent ? rows[0]?.name : undefined,
+                  studentReport: isStudent,
+                  schoolName,
+                  schoolBand,
+                }}
                 onDownload={() => narrateDownload(pdfFileName)}
               />
             )}

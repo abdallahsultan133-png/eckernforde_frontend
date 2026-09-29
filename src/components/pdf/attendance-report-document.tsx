@@ -1,4 +1,5 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import secondaryBadge from "@/assets/eckernforde-cambridge-badge.png";
 
 type ReportRow = {
     studentId: string;
@@ -15,6 +16,11 @@ type ReportRow = {
 type AttendanceReportDocumentProps = {
     className: string;
     rows: ReportRow[];
+    subjectName?: string;
+    studentName?: string;
+    studentReport?: boolean;
+    schoolName?: string;
+    schoolBand?: "primary" | "secondary" | null;
 };
 
 const rateColor = (rate: number | null) => {
@@ -34,12 +40,17 @@ const styles = StyleSheet.create({
         paddingBottom: 12,
         marginBottom: 20,
     },
-    brand: { fontSize: 18, fontWeight: 700 },
-    brandSub: { fontSize: 9, color: "#64748b", marginTop: 2 },
+    brand: { fontSize: 18, fontWeight: 700, textDecoration: "underline" },
+    studentHeader: { flexDirection: "column", alignItems: "center", textAlign: "center" },
+    studentBrand: { alignItems: "center", textAlign: "center" },
     docTitle: { fontSize: 12, fontWeight: 700, textAlign: "right" },
+    studentReportTitle: { fontSize: 12, fontWeight: 700, textAlign: "center", textDecoration: "underline" },
     docDate: { fontSize: 9, color: "#64748b", textAlign: "right", marginTop: 2 },
     classBlock: { marginBottom: 20, padding: 12, backgroundColor: "#f8fafc", borderRadius: 4 },
     className: { fontSize: 14, fontWeight: 700 },
+    studentBlock: { marginBottom: 18, padding: 14, border: "1 solid #cbd5e1", backgroundColor: "#f8fafc" },
+    studentName: { fontSize: 16, fontWeight: 700, marginBottom: 5 },
+    studentMeta: { fontSize: 10, color: "#475569", marginTop: 2 },
     table: { borderTop: "1 solid #e2e8f0", borderLeft: "1 solid #e2e8f0" },
     tableRow: { flexDirection: "row" },
     tableHeaderRow: { flexDirection: "row", backgroundColor: "#0f172a" },
@@ -58,30 +69,82 @@ const styles = StyleSheet.create({
         borderTop: "1 solid #e2e8f0",
         paddingTop: 8,
     },
+    summary: { flexDirection: "row", marginBottom: 16, border: "1 solid #cbd5e1", backgroundColor: "#f8fafc" },
+    summaryItem: { width: "25%", padding: 9, borderRight: "1 solid #cbd5e1", borderTop: "3 solid #64748b" },
+    summaryLabel: { fontSize: 8, color: "#475569", fontWeight: 700 },
+    summaryValue: { marginTop: 3, fontSize: 14, fontWeight: 700 },
+    attendanceRate: { marginTop: 16, padding: 12, border: "1 solid #cbd5e1", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    attendanceRateLabel: { fontSize: 10, color: "#475569", fontWeight: 700 },
+    attendanceRateValue: { fontSize: 20, fontWeight: 700 },
 });
 
-export function AttendanceReportDocument({ className, rows }: AttendanceReportDocumentProps) {
+export function AttendanceReportDocument({ className, rows, subjectName, studentName, studentReport = false, schoolName = "School Portal", schoolBand }: AttendanceReportDocumentProps) {
     const generatedAt = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    const totals = rows.reduce((summary, row) => ({
+        present: summary.present + row.presentCount,
+        absent: summary.absent + row.absentCount,
+        late: summary.late + row.lateCount,
+        excused: summary.excused + row.excusedCount,
+    }), { present: 0, absent: 0, late: 0, excused: 0 });
+    const badge = schoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : secondaryBadge;
+    const displaySchoolName = schoolName.trim().toUpperCase();
+    const student = studentReport ? rows[0] : undefined;
+    const studentRate = student?.attendanceRate ?? null;
+    const attendanceSubject = subjectName || className;
 
     return (
-        <Document title={`Attendance Report - ${className}`}>
+        <Document title={`${studentReport ? "Student Attendance Report" : "Attendance Report"} - ${className}`}>
             <Page size="A4" style={styles.page}>
-                <View style={styles.header}>
-                    <View>
-                        <Text style={styles.brand}>Your School</Text>
-                        <Text style={styles.brandSub}>Attendance Report</Text>
+                <View style={[styles.header, studentReport ? styles.studentHeader : {}]}>
+                    <View style={studentReport ? styles.studentBrand : { flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Image src={badge} style={{ width: studentReport ? 76 : 42, height: studentReport ? 76 : 42, objectFit: "contain", marginBottom: studentReport ? 6 : 0 }} />
+                        <View style={studentReport ? { alignItems: "center" } : {}}>
+                          <Text style={[styles.brand, studentReport ? { textAlign: "center" } : {}]}>{displaySchoolName}</Text>
+                        </View>
                     </View>
-                    <View>
+                    {studentReport ? (
+                        <View style={{ alignItems: "center", marginTop: 8 }}>
+                            <Text style={styles.studentReportTitle}>STUDENT ATTENDANCE REPORT</Text>
+                            <Text style={[styles.docDate, { textAlign: "center" }]}>Generated {generatedAt}</Text>
+                        </View>
+                    ) : <View>
                         <Text style={styles.docTitle}>ATTENDANCE REPORT</Text>
                         <Text style={styles.docDate}>Generated {generatedAt}</Text>
+                    </View>}
+                </View>
+
+                {studentReport ? (
+                    <>
+                        <View style={styles.studentBlock}>
+                            <Text style={styles.studentName}>{studentName || student?.name || "Student"}</Text>
+                            <Text style={styles.studentMeta}>Subject: {attendanceSubject}</Text>
+                            <Text style={styles.studentMeta}>Class: {className}</Text>
+                        </View>
+                        <View style={styles.summary}>
+                            <View style={[styles.summaryItem, { borderTopColor: "#15803d" }]}><Text style={styles.summaryLabel}>PRESENT</Text><Text style={[styles.summaryValue, { color: "#15803d" }]}>{student?.presentCount ?? 0}</Text></View>
+                            <View style={[styles.summaryItem, { borderTopColor: "#dc2626" }]}><Text style={styles.summaryLabel}>ABSENT</Text><Text style={[styles.summaryValue, { color: "#dc2626" }]}>{student?.absentCount ?? 0}</Text></View>
+                            <View style={[styles.summaryItem, { borderTopColor: "#ca8a04" }]}><Text style={styles.summaryLabel}>LATE</Text><Text style={[styles.summaryValue, { color: "#ca8a04" }]}>{student?.lateCount ?? 0}</Text></View>
+                            <View style={[styles.summaryItem, { borderRight: 0, borderTopColor: "#2563eb" }]}><Text style={styles.summaryLabel}>EXCUSED</Text><Text style={[styles.summaryValue, { color: "#2563eb" }]}>{student?.excusedCount ?? 0}</Text></View>
+                        </View>
+                        <View style={styles.attendanceRate}>
+                            <Text style={styles.attendanceRateLabel}>Attendance rate for this subject</Text>
+                            <Text style={[styles.attendanceRateValue, { color: rateColor(studentRate) }]}>{studentRate === null ? "—" : `${studentRate}%`}</Text>
+                        </View>
+                    </>
+                ) : <>
+                    <View style={styles.classBlock}>
+                        <Text style={styles.className}>{className}</Text>
                     </View>
-                </View>
 
-                <View style={styles.classBlock}>
-                    <Text style={styles.className}>{className}</Text>
-                </View>
+                    <View style={styles.summary}>
+                        <View style={[styles.summaryItem, { borderTopColor: "#15803d" }]}><Text style={styles.summaryLabel}>PRESENT</Text><Text style={[styles.summaryValue, { color: "#15803d" }]}>{totals.present}</Text></View>
+                        <View style={[styles.summaryItem, { borderTopColor: "#dc2626" }]}><Text style={styles.summaryLabel}>ABSENT</Text><Text style={[styles.summaryValue, { color: "#dc2626" }]}>{totals.absent}</Text></View>
+                        <View style={[styles.summaryItem, { borderTopColor: "#ca8a04" }]}><Text style={styles.summaryLabel}>LATE</Text><Text style={[styles.summaryValue, { color: "#ca8a04" }]}>{totals.late}</Text></View>
+                        <View style={[styles.summaryItem, { borderRight: 0, borderTopColor: "#2563eb" }]}><Text style={styles.summaryLabel}>EXCUSED</Text><Text style={[styles.summaryValue, { color: "#2563eb" }]}>{totals.excused}</Text></View>
+                    </View>
+                </>}
 
-                <View style={styles.table}>
+                {!studentReport && <View style={styles.table}>
                     <View style={styles.tableHeaderRow}>
                         <Text style={[styles.th, styles.colStudent]}>Student</Text>
                         <Text style={[styles.th, styles.colNum]}>Present</Text>
@@ -110,10 +173,10 @@ export function AttendanceReportDocument({ className, rows }: AttendanceReportDo
                             </View>
                         ))
                     )}
-                </View>
+                </View>}
 
                 <Text style={styles.footer}>
-                    This is a computer-generated attendance report from the school portal.
+                    This is a computer-generated attendance report.
                 </Text>
             </Page>
         </Document>

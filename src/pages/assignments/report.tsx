@@ -38,14 +38,14 @@ const markTone = (mark: Mark) => {
 
 export default function AssignmentReport() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading, isError, refetch } = useApiQuery<{ data: AssignmentReportData }>(id ? `/assignments/${id}/report` : null);
+  const { data, isLoading, isError, refetch } = useApiQuery<{ data: AssignmentReportData }>(id ? `/homework/${id}/report` : null);
   const report = data?.data;
 
   if (isLoading) {
     return <PageContainer className="space-y-6" aria-busy="true"><Breadcrumb /><Skeleton className="h-10 w-72" /><Skeleton className="h-20 w-full" /><Skeleton className="h-96 w-full" /></PageContainer>;
   }
   if (isError || !report) {
-    return <PageContainer className="space-y-6"><Breadcrumb /><ErrorState title="Unable to load marks report" description="You may not have access to this class, or the assignment report is unavailable." onRetry={refetch} /></PageContainer>;
+    return <PageContainer className="space-y-6"><Breadcrumb /><ErrorState title="Unable to load marks report" description="You may not have access to this class, or the homework report is unavailable." onRetry={refetch} /></PageContainer>;
   }
 
   return <PageContainer className="space-y-6">
@@ -53,29 +53,29 @@ export default function AssignmentReport() {
       breadcrumb
       title="Student marks report"
       description={`${report.subject.name} · ${report.class.name}`}
-      actions={<Button variant="outline" size="sm" asChild><Link to={`/assignments/${report.selectedAssignment.id}`}><ArrowLeft className="mr-1.5 h-4 w-4" />Back to assignment</Link></Button>}
+      actions={<Button variant="outline" size="sm" asChild><Link to={`/homework/${report.selectedAssignment.id}`}><ArrowLeft className="mr-1.5 h-4 w-4" />Back to homework</Link></Button>}
     />
 
     <section className="rounded-lg border bg-background p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Selected assignment</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Selected homework</p>
           <h2 className="mt-1 text-lg font-semibold">{report.selectedAssignment.title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">All assignments for {report.subject.name} in {report.class.name}, with recorded student marks.</p>
+          <p className="mt-1 text-sm text-muted-foreground">All homework for {report.subject.name} in {report.class.name}, with recorded student marks.</p>
         </div>
         <BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
       </div>
       <dl className="mt-5 grid gap-3 border-t pt-4 sm:grid-cols-4">
         <div><dt className="text-xs text-muted-foreground">Students</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.studentCount}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">Assignments</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.assignmentCount}</dd></div>
+        <div><dt className="text-xs text-muted-foreground">Homework</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.assignmentCount}</dd></div>
         <div><dt className="text-xs text-muted-foreground">Graded marks</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.gradedMarks}</dd></div>
         <div><dt className="text-xs text-muted-foreground">Class average</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.classAveragePercent === null ? "Not recorded" : `${report.summary.classAveragePercent}%`}</dd></div>
       </dl>
     </section>
 
     <section className="rounded-lg border bg-background">
-      <div className="p-5 sm:p-6"><SectionHeader title="Assignments and student marks" description="Scores are shown against each assignment's maximum. A dash means no submission has been recorded." /></div>
-      {report.assignments.length === 0 || report.students.length === 0 ? <div className="border-t p-6"><EmptyState icon={ClipboardList} title="No marks to report yet" description="Students and assignment marks will appear here once the class has enrolled students and coursework." /></div> : <div className="overflow-x-auto border-t">
+      <div className="p-5 sm:p-6"><SectionHeader title="Homework and student marks" description="Scores are shown against each homework task's maximum. A dash means no submission has been recorded." /></div>
+      {report.assignments.length === 0 || report.students.length === 0 ? <div className="border-t p-6"><EmptyState icon={ClipboardList} title="No marks to report yet" description="Students and homework marks will appear here once the class has enrolled students and posted work." /></div> : <div className="overflow-x-auto border-t">
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -95,6 +95,6 @@ export default function AssignmentReport() {
       </div>}
     </section>
 
-    <p className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="h-3.5 w-3.5" aria-hidden="true" />Only students enrolled in this class are included. Assignment marks do not alter formal term-result divisions.</p>
+    <p className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="h-3.5 w-3.5" aria-hidden="true" />Only students enrolled in this class are included. Homework marks do not alter formal term-result divisions.</p>
   </PageContainer>;
 }

@@ -508,7 +508,7 @@ const UsersList = () => {
                 This permanently removes{" "}
                 <span className="font-medium text-foreground">{deleteTarget?.name}</span> and their
                 sign-in, enrollments, submissions, grades, attendance and messages. It can&apos;t be
-                undone. If this person teaches classes or authored assignments, announcements or exams,
+                undone. If this person teaches classes or authored homework, announcements or exams,
                 the delete will be blocked until those are reassigned or removed.
               </div>
             </AlertDialogDescription>

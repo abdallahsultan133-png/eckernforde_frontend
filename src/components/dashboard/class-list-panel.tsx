@@ -15,6 +15,12 @@ interface ClassListPanelProps {
   variant?: "mine" | "recent";
   /** Show the teacher name in the meta line (useful for students/admins). */
   showTeacher?: boolean;
+  /** Optional heading override for role-specific dashboard copy. */
+  title?: string;
+  /** Student rows open the Class & Subjects catalogue instead of a class workspace. */
+  studentView?: boolean;
+  /** Hide the dashboard footer link when the rows already provide the intended navigation. */
+  hideViewAll?: boolean;
   max?: number;
 }
 
@@ -26,6 +32,9 @@ interface ClassListPanelProps {
 export function ClassListPanel({
   variant = "mine",
   showTeacher = false,
+  title,
+  studentView = false,
+  hideViewAll = false,
   max = 6,
 }: ClassListPanelProps) {
   const scope = variant === "mine" ? "&mine=1" : "";
@@ -33,10 +42,18 @@ export function ClassListPanel({
     `/classes?limit=${Math.max(max, 12)}${scope}`,
   );
   const classes = data?.data ?? [];
+  const displayClasses = variant === "mine"
+    ? Array.from(classes.reduce((groups, item) => {
+        const current = groups.get(item.name) ?? { ...item, subjects: [] as string[] };
+        if (item.subject?.name && !current.subjects.includes(item.subject.name)) current.subjects.push(item.subject.name);
+        groups.set(item.name, current);
+        return groups;
+      }, new Map<string, ClassRow & { subjects: string[] }>()).values())
+    : classes;
 
   return (
     <ActionQueue
-      title={variant === "recent" ? "Recent classes" : "My classes"}
+      title={title ?? (variant === "recent" ? "Recent classes" : "My classes")}
       icon={GraduationCap}
       isLoading={isLoading}
       isError={isError}
@@ -49,17 +66,18 @@ export function ClassListPanel({
           ? "Classes created in your school will show up here."
           : "You're not in any classes yet."
       }
-      viewAll={{ label: "All classes", href: "/classes" }}
-      items={classes.map((c) => ({
+      viewAll={hideViewAll ? undefined : { label: "All classes", href: "/classes" }}
+      items={displayClasses.map((c) => ({
         id: c.id,
         title: c.name,
         meta: [
-          c.subject ? `${c.subject.code} · ${c.subject.name}` : null,
+          (c as ClassRow & { subjects?: string[] }).subjects?.length ? `Subjects: ${(c as ClassRow & { subjects: string[] }).subjects.join(", ")}` : null,
+          !(c as ClassRow & { subjects?: string[] }).subjects && c.subject ? `${c.subject.code} · ${c.subject.name}` : null,
           showTeacher && c.teacher ? c.teacher.name : null,
         ]
           .filter(Boolean)
           .join("  ·  "),
-        href: `/classes/show/${c.id}`,
+        href: studentView ? "/classes" : `/classes/show/${c.id}`,
         badge:
           c.status !== "active"
             ? { label: c.status, tone: "neutral" as const }

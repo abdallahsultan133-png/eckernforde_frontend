@@ -68,7 +68,7 @@ export function RecentActivity({ types, limit = 5, showReadMore = true }: Recent
         ) : isError ? (
           <ErrorState description="Unable to load recent activity." onRetry={refetch} />
         ) : activities.length === 0 ? (
-          <EmptyState icon={Activity} title="No recent activity yet" description="Announcements, assignments, and submissions will show up here." />
+          <EmptyState icon={Activity} title="No recent activity yet" description="Announcements, homework, and submissions will show up here." />
         ) : (
           <>
             {activities.map((activity, index) => {

@@ -7,7 +7,6 @@ import {
   useLink,
   useRefineOptions,
 } from "@refinedev/core";
-import { useKBar } from "kbar";
 import { useLocation } from "react-router";
 import {
   Activity,
@@ -26,7 +25,6 @@ import {
   MessagesSquare,
   PanelLeft,
   ScrollText,
-  Search,
   Sparkles,
   UserCheck,
   UserRound,
@@ -51,6 +49,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { portalSchoolName, portalSchoolTagline } from "@/lib/school-brand";
 import { cn } from "@/lib/utils.ts";
 import { APP_TAGLINE } from "@/constants";
 import { ROLE_LABEL, STAFF_ROLES, ADMIN_ROLES } from "@/lib/roles";
@@ -93,21 +92,20 @@ const NAV: NavGroup[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", to: "/portal", icon: LayoutDashboard, exact: true },
+      {
+        label: "Class & Subjects",
+        to: "/classes",
+        icon: GraduationCap,
+        roles: [UserRole.STUDENT, UserRole.TEACHER],
+        labelByRole: { [UserRole.TEACHER]: "My Classes" },
+      },
       { label: "Activity", to: "/activity", icon: Activity, roles: [UserRole.STUDENT, ...STAFF_ROLES] },
     ],
   },
   {
     label: "Teaching",
     items: [
-      {
-        label: "Classes",
-        to: "/classes",
-        icon: GraduationCap,
-        roles: [UserRole.TEACHER, ...ADMIN_ROLES],
-        labelByRole: {
-          [UserRole.TEACHER]: "My Classes",
-        },
-      },
+      { label: "Classes", to: "/classes", icon: GraduationCap, roles: ADMIN_ROLES },
       { label: "Subjects", to: "/subjects", icon: BookOpen, roles: STAFF_ROLES },
       {
         label: "Departments",
@@ -129,8 +127,9 @@ const NAV: NavGroup[] = [
   {
     label: "Learning",
     items: [
-      { label: "Assignments", to: "/assignments", icon: FileText, toByRole: { [UserRole.PARENT]: "/parent/assignments" } },
+      { label: "Homework", to: "/homework", icon: FileText, toByRole: { [UserRole.PARENT]: "/parent/homework" } },
       { label: "Attendance", to: "/attendance", icon: UserCheck, toByRole: { [UserRole.PARENT]: "/parent/attendance" } },
+      { label: "Reports", to: "/parent/reports", icon: BarChart3, roles: [UserRole.PARENT] },
       {
         label: "Grades",
         to: "/grades",
@@ -203,7 +202,6 @@ export function Sidebar() {
     <ShadcnSidebar collapsible="icon" className={cn("portal-sidebar border-none", "print:hidden")}>
       <ShadcnSidebarRail />
       <BrandHeader />
-      <SidebarSearch />
 
       <ShadcnSidebarContent
         className={cn(
@@ -401,36 +399,50 @@ function BrandHeader() {
   const expanded = open || isMobile;
   // Keep the primary brand compact enough to remain legible in the expanded
   // sidebar. The school-band detail remains available in the tagline below.
-  const schoolName = "Eckernforde Academy";
+  const schoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : null;
+  // Do not briefly flash the generic Eckernforde Schools label while the
+  // student's portal context is loading; resolve the exact school name as
+  // soon as the context identifies the primary/secondary campus.
+  const schoolName = isSchoolStaff
+    ? schoolBand ? portalSchoolName(schoolBand) : "School Portal"
+    : "School Portal";
   const schoolTagline = usesAcademyBrand
     ? "School Portal"
-    : portal?.data.context?.schoolBand === "secondary"
-    ? "Cambridge Secondary School"
-    : portal?.data.context?.schoolBand === "primary"
-      ? "English Medium Primary School"
-      : APP_TAGLINE;
-  const schoolLogo = isSchoolStaff && portal?.data.context?.schoolBand === "secondary"
+    : schoolBand ? portalSchoolTagline(schoolBand) : APP_TAGLINE;
+  const schoolDisplayName = schoolBand === "secondary"
+    ? "Eckernforde Cambridge"
+    : schoolBand === "primary"
+      ? "Eckernforde English Medium"
+      : schoolName;
+  const schoolDisplayTagline = schoolBand === "secondary"
+    ? "Secondary School"
+    : schoolBand === "primary"
+      ? "Primary School"
+      : schoolTagline;
+  const schoolLogo = isSchoolStaff && schoolBand === "secondary"
     ? "/eckernforde-cambridge-badge.png"
-    : isSchoolStaff && portal?.data.context?.schoolBand === "primary"
+    : isSchoolStaff && schoolBand === "primary"
       ? "/eckernforde-english-medium-primary-badge.png"
       : null;
 
   const mark = (
-    <span className={cn("flex h-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-sidebar-primary-foreground [&>svg]:h-[18px] [&>svg]:w-[18px]", usesAcademyBrand ? "w-auto gap-0.5 bg-transparent px-0 shadow-none" : "w-9", schoolLogo ? "bg-transparent shadow-none" : !usesAcademyBrand ? "bg-sidebar-primary shadow-sm" : "")}>
-      {usesAcademyBrand && expanded ? <><img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Cambridge Secondary School" className="h-8 w-8 object-contain" /><img src="/eckernforde-english-medium-primary-badge.png" alt="Eckernforde English Medium Primary School" className="h-8 w-8 object-contain" /></> : usesAcademyBrand ? <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Academy" className="h-9 w-9 object-contain" /> : schoolLogo ? <img src={schoolLogo} alt={schoolName} className="h-full w-full object-contain" /> : title.icon}
+    <span className={cn("flex h-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-sidebar-primary-foreground [&>svg]:h-[18px] [&>svg]:w-[18px]", usesAcademyBrand ? "w-auto gap-0.5 bg-transparent px-0 shadow-none" : schoolLogo ? "w-10 bg-transparent shadow-none" : "w-10 bg-sidebar-primary shadow-sm")}>
+      {usesAcademyBrand && expanded ? <><img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Schools" className="h-8 w-8 object-contain" /><img src="/eckernforde-english-medium-primary-badge.png" alt="Eckernforde Schools" className="h-8 w-8 object-contain" /></> : usesAcademyBrand ? <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Schools" className="h-9 w-9 object-contain" /> : schoolLogo ? <img src={schoolLogo} alt={schoolName} className="h-full w-full object-contain" /> : title.icon}
     </span>
   );
 
   return (
-    <ShadcnSidebarHeader className="h-14 flex-row items-center gap-1.5 border-b border-sidebar-border bg-sidebar px-2.5">
+    <ShadcnSidebarHeader className="min-h-16 h-auto flex-row items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-3">
       {expanded ? (
         <>
-          {mark}
-          <div className="min-w-0 flex-1 leading-none">
-            <p className="whitespace-nowrap text-[13px] font-semibold tracking-tight text-sidebar-foreground">
-              {schoolName}
-            </p>
-            <p className="truncate text-[11px] text-muted-foreground">{schoolTagline}</p>
+          <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2">
+            {mark}
+            <div className="min-w-0 flex-1 leading-none">
+              <p className="max-w-[15rem] whitespace-normal break-words text-[12px] font-bold leading-tight tracking-tight text-sidebar-foreground">
+                {schoolDisplayName}
+              </p>
+              <p className="mt-1 whitespace-normal text-[11px] font-semibold leading-tight text-muted-foreground">{schoolDisplayTagline}</p>
+            </div>
           </div>
 
           {isMobile ? (
@@ -471,52 +483,6 @@ function BrandHeader() {
         </Tooltip>
       )}
     </ShadcnSidebarHeader>
-  );
-}
-
-// ── Search ───────────────────────────────────────────────────────────────────
-function SidebarSearch() {
-  const { query } = useKBar();
-  const { open, isMobile } = useShadcnSidebar();
-  const collapsed = !open && !isMobile;
-
-  if (collapsed) {
-    return (
-      <div className="border-b border-sidebar-border bg-sidebar px-2.5 py-2">
-        <Tooltip delayDuration={250}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => query.toggle()}
-              aria-label="Search (Ctrl+K)"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Search (Ctrl+K)</TooltipContent>
-        </Tooltip>
-      </div>
-    );
-  }
-
-  return (
-    <div className="border-b border-sidebar-border bg-sidebar px-3 py-2.5">
-      <button
-        type="button"
-        onClick={() => query.toggle()}
-        aria-label="Search"
-        className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-sidebar-accent/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-      >
-        <Search className="h-3.5 w-3.5 shrink-0" />
-        <span className="flex-1 text-left">Search…</span>
-        {/* Keyboard hint is desktop-only — touch devices have no Ctrl key.
-            md (768px) matches the app's mobile breakpoint (useIsMobile). */}
-        <kbd className="hidden rounded border border-sidebar-border bg-sidebar px-1.5 py-px font-mono text-[10px] font-medium text-muted-foreground md:inline-block">
-          Ctrl K
-        </kbd>
-      </button>
-    </div>
   );
 }
 

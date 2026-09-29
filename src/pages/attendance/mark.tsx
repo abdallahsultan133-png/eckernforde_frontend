@@ -152,7 +152,7 @@ const MarkAttendance = () => {
               </SelectTrigger>
               <SelectContent>
                 {classes.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>{attendanceClassLabel(c)}</SelectItem>
+                  <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

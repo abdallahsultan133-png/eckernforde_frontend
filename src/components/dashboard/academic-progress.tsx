@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
 import { useGetIdentity } from "@refinedev/core";
-import { Link } from "react-router";
-import { ArrowUpRight, Award, BookOpenCheck, GraduationCap, Target } from "lucide-react";
+import { Award, BookOpenCheck, GraduationCap, Target } from "lucide-react";
 import type { User } from "@/types";
 import { useApiQuery } from "@/hooks/use-api-query";
 import { letterForScore } from "@/lib/grading/grade-bands";
@@ -25,9 +24,9 @@ function performanceTone(score: number) {
   return "focus";
 }
 
-export function AcademicProgress({ studentId }: { studentId?: string }) {
+export function AcademicProgress({ studentId, academicYearId }: { studentId?: string; academicYearId?: number }) {
   const { data: identity } = useGetIdentity<User>();
-  const { data: terms, isLoading: loadingTerms, isError: termsError, refetch: retryTerms } = useApiQuery<{ data: Term[] }>("/grades/academic-terms");
+  const { data: terms, isLoading: loadingTerms, isError: termsError, refetch: retryTerms } = useApiQuery<{ data: Term[] }>(`/grades/academic-terms${academicYearId ? `?academicYearId=${academicYearId}` : ""}`);
   const [selection, setSelection] = useState("");
   const term = terms?.data.find((item) => String(item.id) === selection) ?? terms?.data[0];
   const id = studentId ?? identity?.id;
@@ -59,9 +58,8 @@ export function AcademicProgress({ studentId }: { studentId?: string }) {
       </div>
       <div className="academic-progress__subjects" aria-label="Subject performance">
         <div className="academic-progress__subjects-heading"><span>Subject performance</span><span>Score</span></div>
-        {results.slice(0, 6).map((result) => { const tone = performanceTone(result.score); return <div className="academic-progress__subject" key={result.id}><div className="academic-progress__subject-name"><strong>{result.subject.name}</strong><span>{result.class.name} · {performanceLabel(result.score)}</span></div><div className="academic-progress__meter" aria-hidden="true"><i className={`academic-progress__meter-fill academic-progress__meter-fill--${tone}`} style={{ width: `${Math.max(0, Math.min(100, result.score))}%` }} /></div><div className="academic-progress__score"><strong>{result.score}%</strong>{result.schoolLevel === "secondary" && <span>{letterForScore(result.score)}</span>}</div></div>; })}
+        {results.map((result) => { const tone = performanceTone(result.score); const letter = letterForScore(result.score); const gradeTone = letter ? `academic-progress__grade--${letter.toLowerCase()}` : ""; return <div className="academic-progress__subject" key={result.id}><div className="academic-progress__subject-name"><strong>{result.subject.name}</strong><span>{result.class.name} · {performanceLabel(result.score)}</span></div><div className="academic-progress__meter" aria-hidden="true"><i className={`academic-progress__meter-fill academic-progress__meter-fill--${tone} ${gradeTone}`} style={{ width: `${Math.max(0, Math.min(100, result.score))}%` }} /></div><div className={`academic-progress__score ${gradeTone}`}><strong>{result.score}%</strong><span aria-label={`Grade ${letter ?? "not available"}`}>{letter ?? "—"}</span></div></div>; })}
       </div>
     </>}
-    <Link to="/grades/term-results" className="academic-progress__link">View detailed term report <ArrowUpRight aria-hidden="true" /></Link>
   </div>;
 }

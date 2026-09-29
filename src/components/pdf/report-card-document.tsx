@@ -205,7 +205,7 @@ export function ReportCardDocument({
             <Page size="A4" style={styles.page}>
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.brand}>{template?.schoolName ?? "Your School"}</Text>
+                        <Text style={styles.brand}>Eckernforde Schools</Text>
                         {template?.schoolAddress ? <Text style={styles.brandSub}>{template.schoolAddress}</Text> : null}
                     </View>
                     <View>
@@ -235,7 +235,7 @@ export function ReportCardDocument({
                 <View style={styles.table}>
                     <View style={styles.tableHeaderRow}>
                         <Text style={[styles.th, styles.colClass]}>Class</Text>
-                        <Text style={[styles.th, styles.colNum]}>Assignment</Text>
+                        <Text style={[styles.th, styles.colNum]}>Homework</Text>
                         <Text style={[styles.th, styles.colNum]}>Exam</Text>
                         <Text style={[styles.th, styles.colNum]}>Final</Text>
                         <Text style={[styles.th, styles.colNum]}>Grade</Text>
@@ -273,6 +273,7 @@ export function ReportCardDocument({
 
 type FormalReportCardDocumentProps = {
     studentName: string;
+    schoolName?: string;
     registrationNumber?: string | null;
     template?: {
         schoolName: string;
@@ -295,6 +296,7 @@ type FormalReportCardDocumentProps = {
  * never rendered as an empty section. */
 export function FormalReportCardDocument({
     studentName,
+    schoolName: suppliedSchoolName,
     registrationNumber,
     template,
     termResults,
@@ -302,8 +304,7 @@ export function FormalReportCardDocument({
     attendance,
 }: FormalReportCardDocumentProps) {
     const accent = template?.accentColor ?? "#0f172a";
-    const rawSchoolName = template?.schoolName && template.schoolName !== "Academix School" ? template.schoolName : "Eckernforde Cambridge Secondary School";
-    const schoolName = rawSchoolName.toUpperCase();
+    const schoolName = (suppliedSchoolName || "School Portal").toUpperCase();
     // The official report-card PDF always uses the school's supplied badge,
     // even when an older saved template contains an empty or broken logo URL.
     const schoolLogo = schoolBadge;

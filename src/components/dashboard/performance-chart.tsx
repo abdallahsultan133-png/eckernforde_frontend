@@ -90,7 +90,7 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                             ? "Once your teachers post final grades, you'll see how many of your classes fall into each grade band."
                             : "Grade distribution will appear here once grades are recorded."
                     }
-                    action={{ label: personal ? "See my grades" : "Open assignment grade book", to: "/grades" }}
+                    action={{ label: personal ? "See my grades" : "Open homework grade book", to: "/grades" }}
                 />
             ) : (
                 <>

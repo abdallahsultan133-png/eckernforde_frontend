@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApiQuery } from "@/hooks/use-api-query";
 
-type Event = { id: number; title: string; startAt: string; classId: number | null; isPublic: boolean; source: "manual" | "exam" | "assignment" };
+type Event = { id: number; title: string; startAt: string; classId: number | null; isPublic: boolean; source: "manual" | "exam" | "homework" };
 
 export default function PublicEvents() {
   const from = new Date().toISOString().slice(0, 10);
@@ -30,7 +30,7 @@ export default function PublicEvents() {
     finally { setSavingId(null); }
   };
   return <PageContainer>
-    <PageHeader breadcrumb title="Public events" description="Approve future school-wide events for the public website. Class, exam and assignment events remain private." />
+    <PageHeader breadcrumb title="Public events" description="Approve future school-wide events for the public website. Class, exam and homework events remain private." />
     {isError ? <ErrorState title="Unable to load events" description="Try again shortly." onRetry={refetch} />
       : isLoading ? <div className="space-y-2 rounded-lg border p-4" aria-busy="true">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-12 w-full" />)}</div>
       : events.length === 0 ? <EmptyState icon={CalendarDays} title="No future school-wide events" description="Create a school-wide calendar event first; it can then be reviewed here." />

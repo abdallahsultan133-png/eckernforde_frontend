@@ -13,12 +13,12 @@ type AuthLayoutProps = {
 export function AuthLayout({ eyebrow, title, description, children, footer, signInWelcome = false }: AuthLayoutProps) {
   return (
     <main className="auth-page">
-      <section className="auth-visual" aria-label="Eckernforde Academy school portal">
+      <section className="auth-visual" aria-label="School portal">
         <div className="auth-visual-grid" aria-hidden="true" />
         <div className="auth-visual-top">
           <div className="auth-brand auth-brand-light">
             <span className="auth-brand-mark"><GraduationCap aria-hidden="true" /></span>
-            <span>Eckernforde Academy</span>
+            <span>School Portal</span>
           </div>
           <span className="auth-campus-label">School community portal</span>
         </div>
@@ -46,8 +46,8 @@ export function AuthLayout({ eyebrow, title, description, children, footer, sign
         <div className="auth-form-wrap">
           {signInWelcome ? <div className="auth-sign-in-panel">
             <div className="auth-school-logos" aria-label="Eckernforde schools">
-              <img src="/eckernforde-english-medium-primary-badge.png" alt="Eckernforde English Medium Primary School" />
-              <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Cambridge Secondary School" />
+              <img src="/eckernforde-english-medium-primary-badge.png" alt="Primary school badge" />
+              <img src="/eckernforde-cambridge-badge.png" alt="Secondary school badge" />
             </div>
             <div className="auth-heading auth-sign-in-welcome">
               <h2 className="auth-kicker">Welcome to Eckernforde<br />Academy Management System<br />[EAMS]</h2>
@@ -55,7 +55,7 @@ export function AuthLayout({ eyebrow, title, description, children, footer, sign
             </div>
           </div> : <div className="auth-mobile-brand auth-brand">
             <span className="auth-brand-mark"><GraduationCap aria-hidden="true" /></span>
-            <span>Eckernforde Academy</span>
+            <span>School Portal</span>
           </div>}
           {(eyebrow || title || description) && <div className="auth-heading">
             {eyebrow && <p className="auth-kicker">{eyebrow}</p>}

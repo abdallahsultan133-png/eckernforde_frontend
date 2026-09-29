@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useGetIdentity } from "@refinedev/core";
-import { FileText, Plus } from "lucide-react";
+import { BarChart3, FileText, Plus } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
 import { PageContainer } from "@/components/layout/page-container.tsx";
-import { SectionHeader } from "@/components/layout/section-header.tsx";
 import { FilterBar } from "@/components/ui/filter-bar.tsx";
 import { DeadlineCountdown } from "@/components/deadline-countdown.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -93,13 +92,20 @@ const AssignmentsList = () => {
   const selectedAcademicYearId = searchParams.get("academicYearId");
   const hasParentContext = Boolean(selectedChildId && selectedAcademicYearId);
   const assignmentsPath = isParent && hasParentContext
-    ? `/assignments?limit=100&childId=${encodeURIComponent(selectedChildId!)}&academicYearId=${encodeURIComponent(selectedAcademicYearId!)}`
-    : isParent ? null : "/assignments?limit=100";
+    ? `/homework?limit=100&childId=${encodeURIComponent(selectedChildId!)}&academicYearId=${encodeURIComponent(selectedAcademicYearId!)}`
+    : isParent ? null : "/homework?limit=100";
 
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: AssignmentItem[] }>(
     assignmentsPath,
   );
-  const assignments = useMemo(() => data?.data ?? [], [data]);
+  const assignments = useMemo(() => {
+    const unique = new Map<string, AssignmentItem>();
+    for (const item of data?.data ?? []) {
+      const contentKey = `${item.title.trim().toLowerCase()}|${(item.description ?? "").trim().toLowerCase()}|${item.class.id}`;
+      unique.set(contentKey, unique.get(contentKey) ?? item);
+    }
+    return [...unique.values()];
+  }, [data]);
 
   const subjectOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -135,47 +141,51 @@ const AssignmentsList = () => {
     filters.map((f) => [f.key, bySubject.filter((a) => f.match(a, now)).length]),
   ) as Record<string, number>;
 
-  if (isParent && !hasParentContext) return <ParentAcademicSelector mode="assignments" />;
+  if (isParent && !hasParentContext) return <ParentAcademicSelector mode="homework" />;
 
   return (
     <PageContainer className="assignment-list">
       <PageHeader
         breadcrumb
-        title={isParent ? "Assignments" : "Assignments"}
+        title="Homework"
         description={
           staff
-            ? "Track submissions and grading across your classes."
+            ? "Track homework submissions and grading across your classes."
             : isParent
-              ? "Coursework for the selected child and academic year."
+              ? undefined
               : "Everything assigned across your classes, and where each one stands."
         }
         actions={
-          staff ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/grades">
+                <BarChart3 className="mr-1.5 h-4 w-4" />
+                Grades
+              </Link>
+            </Button>
+            {staff && (
               <Button asChild>
-                <Link to="/assignments/create">
+                <Link to="/homework/create">
                   <Plus className="mr-1.5 h-4 w-4" />
-                  New assignment
+                  New homework
                 </Link>
               </Button>
-          ) : undefined
+            )}
+          </div>
         }
       />
 
       {!isLoading && !isError && assignments.length > 0 && (
-        <section aria-labelledby="assignment-worklist-title" className="space-y-4">
-          <SectionHeader
-            title={<span id="assignment-worklist-title">{staff ? "Assignment worklist" : "Coursework"}</span>}
-            description={staff ? "Prioritized by due date, with submission and grading progress." : "Prioritized by due date and your submission status."}
-          />
+        <section aria-labelledby={isParent ? undefined : "assignment-worklist-title"} aria-label={isParent ? "Homework filters" : undefined} className="space-y-4">
           <FilterBar
-            search={<SearchInput value={search} onChange={setSearch} placeholder="Search assignments" aria-label="Search assignments" />}
+            search={<SearchInput value={search} onChange={setSearch} placeholder="Search homework" aria-label="Search homework" />}
             active={Boolean(search || filterKey !== "all" || subjectId !== ALL_SUBJECTS)}
             onClear={() => { setSearch(""); setFilterKey("all"); setSubjectId(ALL_SUBJECTS); }}
-            resultLabel={`${visible.length.toLocaleString()} ${visible.length === 1 ? "assignment" : "assignments"} in this view`}
+            resultLabel={`${visible.length.toLocaleString()} homework item${visible.length === 1 ? "" : "s"} in this view`}
           >
             {subjectOptions.length > 1 && (
               <Select value={subjectId} onValueChange={setSubjectId}>
-                <SelectTrigger className="h-10 w-full sm:w-[200px]" aria-label="Filter assignments by subject">
+                <SelectTrigger className="h-10 w-full sm:w-[200px]" aria-label="Filter homework by subject">
                   <SelectValue placeholder="All subjects" />
                 </SelectTrigger>
                 <SelectContent>
@@ -185,7 +195,7 @@ const AssignmentsList = () => {
               </Select>
             )}
           </FilterBar>
-          <div role="group" aria-label="Filter assignments by workflow state" className="flex gap-1 overflow-x-auto border-b border-border">
+          <div role="group" aria-label="Filter homework by workflow state" className="flex gap-1 overflow-x-auto border-b border-border">
             {filters.map((f) => (
               <button
                 key={f.key}
@@ -227,30 +237,30 @@ const AssignmentsList = () => {
           ))}
         </div>
       ) : isError ? (
-        <ErrorState description="Couldn't load assignments." onRetry={refetch} />
+        <ErrorState description="Couldn't load homework." onRetry={refetch} />
       ) : assignments.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title="No assignments yet"
+          title="No homework yet"
           description={
             staff
-              ? "Create your first assignment to start collecting and grading student work."
-              : "Once your teachers post assignments, they'll show up here."
+              ? "Create your first homework task to start collecting and grading student work."
+              : "Once your teachers post homework, it will show up here."
           }
-          action={staff ? { label: "Create assignment", to: "/assignments/create" } : undefined}
+          action={staff ? { label: "Create homework", to: "/homework/create" } : undefined}
         />
       ) : visible.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Nothing here"
-          description={normalizedSearch ? `No assignments match "${search}" with the ${activeFilter.label.toLowerCase()} filter.` : `No assignments match "${activeFilter.label}".`}
+          description={normalizedSearch ? `No homework matches "${search}" with the ${activeFilter.label.toLowerCase()} filter.` : `No homework matches "${activeFilter.label}".`}
         />
       ) : (
         <ul className="assignment-list-items divide-y border-y border-border bg-card">
           {visible.map((a) => (
             <li key={a.id}>
               <Link
-                to={`/assignments/${a.id}`}
+                to={`/homework/${a.id}`}
                 className="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-secondary/35 sm:px-5"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
@@ -259,7 +269,7 @@ const AssignmentsList = () => {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{a.title}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {a.class.name} · {a.maxScore} pts
+                    {a.subject?.name ?? "Subject not recorded"} · {a.maxScore} pts
                   </span>
                 </span>
                 <span className="hidden sm:block">

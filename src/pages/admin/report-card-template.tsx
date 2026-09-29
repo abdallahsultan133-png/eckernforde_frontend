@@ -30,7 +30,7 @@ type Template = {
 
 const emptyTemplate: Template = {
   name: "Official school report card",
-  schoolName: "Eckernforde Cambridge Secondary School",
+  schoolName: "Eckernforde Schools",
   schoolAddress: "",
   headmasterName: "",
   headmasterSignature: "",
@@ -50,7 +50,7 @@ export default function ReportCardTemplatePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (data?.data) setForm({ ...emptyTemplate, ...data.data, logoUrl: data.data.logoUrl || emptyTemplate.logoUrl });
+    if (data?.data) setForm({ ...emptyTemplate, ...data.data, schoolName: "Eckernforde Schools", logoUrl: data.data.logoUrl || emptyTemplate.logoUrl });
   }, [data]);
 
   const update = <K extends keyof Template>(key: K, value: Template[K]) => setForm((current) => ({ ...current, [key]: value }));
@@ -85,7 +85,7 @@ export default function ReportCardTemplatePage() {
         <CardHeader><CardTitle>Template details</CardTitle><CardDescription>Changes are reflected in the preview and published to reports after saving.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           <label className="block space-y-1.5 text-sm font-medium">Template name<Input value={form.name} onChange={(event) => update("name", event.target.value)} /></label>
-          <label className="block space-y-1.5 text-sm font-medium">School name<Input value={form.schoolName} onChange={(event) => update("schoolName", event.target.value)} /></label>
+          <label className="block space-y-1.5 text-sm font-medium">School name<Input value="Eckernforde Schools" disabled /></label>
           <label className="block space-y-1.5 text-sm font-medium">School address<Textarea value={form.schoolAddress ?? ""} onChange={(event) => update("schoolAddress", event.target.value)} rows={2} /></label>
           <label className="block space-y-1.5 text-sm font-medium">Headmaster name<Input value={form.headmasterName ?? ""} onChange={(event) => update("headmasterName", event.target.value)} /></label>
           <label className="block space-y-1.5 text-sm font-medium">Signature label or image URL<Input value={form.headmasterSignature ?? ""} onChange={(event) => update("headmasterSignature", event.target.value)} placeholder="Headmaster signature" /></label>

@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useGetIdentity } from "@refinedev/core";
 import type { User } from "@/types";
-import { ROLE_LABEL } from "@/lib/roles";
+import { UserRole } from "@/types";
 import { useApiQuery } from "@/hooks/use-api-query";
+import { portalSchoolName } from "@/lib/school-brand";
 
 const firstName = (name?: string) => name?.trim().split(/\s+/)[0] ?? "";
 
@@ -14,15 +15,11 @@ const firstName = (name?: string) => name?.trim().split(/\s+/)[0] ?? "";
  */
 export function DashboardGreeting({ subtitle }: { subtitle: ReactNode }) {
   const { data: identity } = useGetIdentity<User>();
-  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(identity?.role === "student" ? "/portal-context" : null);
+  const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
   const reduce = useReducedMotion();
   const name = firstName(identity?.name);
-  const role = identity?.role ? ROLE_LABEL[identity.role] : "School portal";
-  const schoolName = portal?.data.context?.schoolBand === "secondary"
-    ? "Eckernforde Cambridge Secondary School"
-    : portal?.data.context?.schoolBand === "primary"
-      ? "Eckernforde English Medium Primary School"
-      : role;
+  const schoolName = isSchoolStaff ? portalSchoolName(portal?.data.context?.schoolBand) : "School Portal";
   const today = new Intl.DateTimeFormat(undefined, {
     weekday: "long",
     month: "long",

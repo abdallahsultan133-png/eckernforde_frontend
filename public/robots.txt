@@ -11,7 +11,7 @@ Disallow: /classes
 Disallow: /students
 Disallow: /subjects
 Disallow: /attendance
-Disallow: /assignments
+Disallow: /homework
 Disallow: /announcements
 Disallow: /calendar
 Disallow: /insights

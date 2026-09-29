@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useGetIdentity } from "@refinedev/core";
-import { ClipboardList, FileBarChart } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
 import { PageContainer } from "@/components/layout/page-container.tsx";
@@ -30,7 +30,7 @@ const InsightsPage = () => {
         title="Academic insights"
         description={
           staff
-            ? "Role-scoped attendance, grade distribution, and class activity from recorded school data."
+            ? "Role-scoped attendance, grade distribution, and subject activity from recorded school data."
             : "Your recorded attendance and published academic performance over time."
         }
         actions={
@@ -41,17 +41,11 @@ const InsightsPage = () => {
                 Attendance report
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to={student ? "/grades/report-card" : "/grades"}>
-                <FileBarChart className="mr-1.5 h-4 w-4" />
-                {student ? "Report card" : "Assignment Grade Book"}
-              </Link>
-            </Button>
           </>
         }
       />
 
-      <AttendanceOverviewChart personal={student} />
+      <AttendanceOverviewChart personal={student} showExplanation />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <PerformanceChart personal={student} showClassRanking={staff} />

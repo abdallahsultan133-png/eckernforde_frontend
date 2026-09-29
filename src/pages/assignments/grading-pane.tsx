@@ -57,7 +57,7 @@ interface GradingPaneProps {
  * without leaving the page. Inspired by Canvas SpeedGrader / Brightspace.
  */
 export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
-  const queryKey = `/assignments/${assignmentId}/submissions`;
+  const queryKey = `/homework/${assignmentId}/submissions`;
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: Submission[] }>(queryKey);
   const queryClient = useQueryClient();
 
@@ -122,7 +122,7 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
 
     setSaving(true);
     try {
-      const res = await fetch(`${BACKEND_BASE_URL}/assignments/submissions/${selected.id}/grade`, {
+      const res = await fetch(`${BACKEND_BASE_URL}/homework/submissions/${selected.id}/grade`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -160,7 +160,7 @@ export function GradingPane({ assignmentId, maxScore }: GradingPaneProps) {
     );
   }
   if (isError) {
-    return <ErrorState description="Couldn't load submissions for this assignment." onRetry={refetch} />;
+    return <ErrorState description="Couldn't load submissions for this homework." onRetry={refetch} />;
   }
   if (submissions.length === 0) {
     return (

@@ -30,22 +30,18 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="icon"
       onClick={cycleTheme}
       className={cn(
-        "rounded-full",
-        "border-sidebar-border",
-        "bg-transparent",
+        "h-11 w-11 rounded-full bg-transparent",
         className,
-        "h-10",
-        "w-10"
       )}
     >
       <Sun
         className={cn(
-          "h-[1.2rem]",
-          "w-[1.2rem]",
+          "h-5",
+          "w-5",
           "rotate-0",
           "scale-100",
           "transition-all",
@@ -58,8 +54,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       <Moon
         className={cn(
           "absolute",
-          "h-[1.2rem]",
-          "w-[1.2rem]",
+          "h-5",
+          "w-5",
           "rotate-90",
           "scale-0",
           "transition-all",
@@ -73,8 +69,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       <Monitor
         className={cn(
           "absolute",
-          "h-[1.2rem]",
-          "w-[1.2rem]",
+          "h-5",
+          "w-5",
           "rotate-0",
           "scale-0",
           "transition-all",

@@ -13,14 +13,14 @@ export function WorkspaceStatistics({ office = false }: { office?: boolean }) {
   const items = office
     ? [["Students", display(data?.students)], ["Teachers", display(data?.teachers)], ["Classes", display(data?.classes)], ["Attendance - 30 days", display(data?.attendanceRate, "%")]]
     : [["My classes", display(data?.classes)], ["Attendance - 30 days", display(data?.attendanceRate, "%")], ["Subjects", display(data?.subjects)]];
-  return <dl className="campus-detail-list">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{!office && data?.assignmentCompletionRate != null && <div><dt>Assignment completion</dt><dd>{display(data.assignmentCompletionRate, "%")}</dd></div>}</dl>;
+  return <dl className="campus-detail-list">{items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{!office && data?.assignmentCompletionRate != null && <div><dt>Homework completion</dt><dd>{display(data.assignmentCompletionRate, "%")}</dd></div>}</dl>;
 }
 
 export function TeachingAttention() {
   const { data, isLoading, isError, refetch } = useApiQuery<Stats>("/dashboard/stats");
   const pending = data?.pendingGrading;
   return <ActionQueue title="Student submissions" isLoading={isLoading} isError={isError} onRetry={refetch}
-    items={pending ? [{ id: "grading", title: `${pending} submissions awaiting grading`, meta: "Review work and return feedback", href: "/assignments?filter=needs-grading" }] : []}
+    items={pending ? [{ id: "grading", title: `${pending} submissions awaiting grading`, meta: "Review work and return feedback", href: "/homework?filter=needs-grading" }] : []}
     emptyTitle={pending == null ? "Grading summary unavailable" : "Nothing waiting to be graded"}
-    emptyDescription="Open assignments to review your classes' work." />;
+    emptyDescription="Open homework to review your classes' work." />;
 }

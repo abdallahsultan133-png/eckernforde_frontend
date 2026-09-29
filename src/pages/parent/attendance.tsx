@@ -12,7 +12,7 @@ import { useApiQuery } from "@/hooks/use-api-query";
 
 type Child = { id: string; name: string };
 type AcademicYear = { id: number; name: string; startsOn: string; endsOn: string };
-type AttendanceRow = { id: number; classId: number; className: string; date: string; status: "present" | "absent" | "late" | "excused"; notes: string | null };
+type AttendanceRow = { id: number; classId: number; className: string; subjectName: string | null; date: string; status: "present" | "absent" | "late" | "excused"; notes: string | null };
 
 export default function ParentAttendance() {
   const [params] = useSearchParams();
@@ -38,7 +38,7 @@ export default function ParentAttendance() {
       : records.length === 0 ? <EmptyState icon={ClipboardCheck} title="No attendance recorded" description={`There are no attendance records for ${child.name} in ${year.name}.`} />
       : <>
         <dl className="grid grid-cols-2 divide-x border-y bg-card sm:grid-cols-4"><div className="p-4"><dt className="text-xs text-muted-foreground">Present</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{summary.present}</dd></div><div className="p-4"><dt className="text-xs text-muted-foreground">Absent</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{summary.absent}</dd></div><div className="p-4"><dt className="text-xs text-muted-foreground">Late</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{summary.late}</dd></div><div className="p-4"><dt className="text-xs text-muted-foreground">Excused</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{summary.excused}</dd></div></dl>
-        <div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Status</TableHead><TableHead>Note</TableHead></TableRow></TableHeader><TableBody>{records.map((record) => <TableRow key={record.id}><TableCell className="whitespace-nowrap">{new Date(`${record.date}T00:00:00`).toLocaleDateString()}</TableCell><TableCell className="font-medium">{record.className}</TableCell><TableCell><StatusBadge tone={record.status === "present" ? "success" : record.status === "late" ? "warning" : record.status === "absent" ? "critical" : "neutral"}>{record.status}</StatusBadge></TableCell><TableCell className="text-muted-foreground">{record.notes || "—"}</TableCell></TableRow>)}</TableBody></Table></div>
+        <div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Subject</TableHead><TableHead>Status</TableHead><TableHead>Note</TableHead></TableRow></TableHeader><TableBody>{records.map((record) => <TableRow key={record.id}><TableCell className="whitespace-nowrap">{new Date(`${record.date}T00:00:00`).toLocaleDateString()}</TableCell><TableCell className="font-medium">{record.subjectName ?? "Subject not recorded"}</TableCell><TableCell><StatusBadge tone={record.status === "present" ? "success" : record.status === "late" ? "warning" : record.status === "absent" ? "critical" : "neutral"}>{record.status}</StatusBadge></TableCell><TableCell className="text-muted-foreground">{record.notes || "—"}</TableCell></TableRow>)}</TableBody></Table></div>
       </>}
   </PageContainer>;
 }

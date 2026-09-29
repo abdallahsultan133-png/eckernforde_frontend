@@ -17,6 +17,7 @@ import { DeferredPdfDownload, type PdfModule } from "@/components/pdf/deferred-p
 import type { FormalTermResult } from "@/components/pdf/report-card-document";
 import { UserRole, type User } from "@/types";
 import { letterForScore } from "@/lib/grading/grade-bands";
+import { portalSchoolName, schoolBandFromResults } from "@/lib/school-brand";
 
 type Term = { id: number; name: string; type: "midterm" | "terminal"; academicYear: { name: string } };
 type Result = { id: number; score: number; schoolLevel: "nursery" | "primary" | "secondary" | null; applicable: boolean; subject: { name: string; code: string }; class: { id: number; name: string } };
@@ -24,7 +25,7 @@ type Division = { totalPoints: number | null; division: "I" | "II" | "III" | "IV
 type Position = { position: number; totalStudents: number; averageScore: number; divisionPoints: number | null };
 type TermResultsResponse = { data: Result[]; term: { id: number; name: string; type: "midterm" | "terminal" }; division: Division; position: Position | null };
 type Child = { id: string; name: string; email: string };
-type StudentInfoResponse = { data: { name: string; profile: { registrationNumber: string | null } | null } };
+type StudentInfoResponse = { data: { name: string; profile: { registrationNumber: string | null } | null; schoolBand?: "primary" | "secondary" | null; enrolledClasses?: Array<{ schoolLevel?: "nursery" | "primary" | "secondary" | null }> } };
 type ReportTemplate = {
   name: string;
   schoolName: string;
@@ -53,12 +54,12 @@ function calculatedDivision(result?: TermResultsResponse) {
 }
 
 const loadFormalReportCardPdf = async () => {
-  const [{ PDFDownloadLink }, { FormalReportCardDocument }] = await Promise.all([
+  const [{ pdf }, { FormalReportCardDocument }] = await Promise.all([
     import("@react-pdf/renderer"),
     import("@/components/pdf/report-card-document"),
   ]);
   return {
-    PDFDownloadLink: PDFDownloadLink as unknown as PdfModule["PDFDownloadLink"],
+    pdf: pdf as unknown as PdfModule["pdf"],
     DocumentComponent: FormalReportCardDocument as unknown as ComponentType<Record<string, unknown>>,
   };
 };
@@ -72,6 +73,7 @@ const colorForLetter = (letter: string | null) => {
 export default function TermResults() {
   const [searchParams] = useSearchParams();
   const historyYearId = searchParams.get("academicYearId");
+  const requestedStudentId = searchParams.get("childId") ?? "";
   const { narrateDownload } = useDownload();
   const { data: identity } = useGetIdentity<User>();
   const isParent = identity?.role === UserRole.PARENT;
@@ -80,11 +82,13 @@ export default function TermResults() {
   const { data: termsData, isLoading: termsLoading, isError: termsError, refetch: refetchTerms } = useApiQuery<{ data: Term[] }>(`/grades/academic-terms${historyYearId ? `?academicYearId=${encodeURIComponent(historyYearId)}` : ""}`);
   const terms = useMemo(() => termsData?.data ?? [], [termsData?.data]);
   const [termId, setTermId] = useState("");
-  const [studentId, setStudentId] = useState("");
+  const [studentId, setStudentId] = useState(requestedStudentId);
   useEffect(() => { if (!termId && terms.length) setTermId(String(terms[0].id)); }, [termId, terms]);
   useEffect(() => { if (isParent && !studentId && children.length) setStudentId(children[0].id); }, [children, isParent, studentId]);
   const resultStudentId = isParent ? studentId : identity?.id;
   const isStudent = identity?.role === UserRole.STUDENT;
+  const isSchoolStaff = isStudent || identity?.role === UserRole.TEACHER;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
   const showCombinedResults = isStudent || isParent;
   const combinedTerms = useMemo(() => {
     if (historyYearId || terms.length === 0) return terms;
@@ -97,6 +101,8 @@ export default function TermResults() {
   const { data: annualData, isLoading: annualLoading, isError: annualError, refetch: refetchAnnual } = useApiQuery<TermResultsResponse>(showCombinedResults && resultStudentId && combinedAnnual ? `/grades/term-results/${resultStudentId}?academicTermId=${combinedAnnual.id}` : null);
   const { data, isLoading, isError, refetch } = useApiQuery<TermResultsResponse>(!showCombinedResults && resultStudentId && termId ? `/grades/term-results/${resultStudentId}?academicTermId=${termId}` : null);
   const { data: studentInfoData } = useApiQuery<StudentInfoResponse>(resultStudentId ? `/profile/student/${resultStudentId}` : null);
+  const reportSchoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : studentInfoData?.data.schoolBand ?? schoolBandFromResults([...(midtermData?.data ?? []), ...(annualData?.data ?? []), ...(studentInfoData?.data.enrolledClasses ?? [])], Boolean(midtermData?.division?.division || annualData?.division?.division));
+  const portalReportSchoolName = portalSchoolName(reportSchoolBand);
   const { data: templateData } = useApiQuery<{ data: ReportTemplate }>(showCombinedResults ? "/report-card-template" : null);
   const { data: attendanceData } = useApiQuery<{ data: AttendanceRecord[] }>(showCombinedResults && resultStudentId ? `/attendance/student/${resultStudentId}?limit=200` : null);
   const results = data?.data ?? [];
@@ -121,10 +127,18 @@ export default function TermResults() {
   }, [attendanceData?.data, reportClassIds]);
   const reportFileName = `report-card-${reportStudentName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
   const reportDownloadReady = showCombinedResults && !midtermLoading && !annualLoading && formalTerms.length > 0 && !!templateData?.data;
-  const reportDownload = reportDownloadReady ? <DeferredPdfDownload fileName={reportFileName} load={loadFormalReportCardPdf} documentProps={{ studentName: reportStudentName, registrationNumber: reportRegistrationNumber, template: templateData.data, termResults: formalTerms, academicYearName: combinedTerms[0]?.academicYear.name, attendance: attendanceSummary }} onDownload={() => narrateDownload(reportFileName)} /> : null;
+  const reportDownload = reportDownloadReady ? <DeferredPdfDownload fileName={reportFileName} load={loadFormalReportCardPdf} documentProps={{ studentName: reportStudentName, schoolName: portalReportSchoolName, registrationNumber: reportRegistrationNumber, template: templateData.data, termResults: formalTerms, academicYearName: combinedTerms[0]?.academicYear.name, attendance: attendanceSummary }} onDownload={() => narrateDownload(reportFileName)} /> : null;
+  const pageTitle = isParent ? "Report" : historyYearId ? "Previous Report" : showCombinedResults ? "Report" : "Term Results";
+  const pageDescription = isParent
+    ? "Published results for the selected child and academic year."
+    : historyYearId
+      ? "Read-only results from the selected academic year."
+      : showCombinedResults
+        ? "Your published Midterm and Annual subject results."
+        : "Approved Midterm and Annual subject results.";
 
   return <div className="space-y-6">
-    <PageHeader className="print:hidden" breadcrumb title={historyYearId ? "Previous Report" : showCombinedResults ? "Report" : "Term Results"} description={historyYearId ? "Read-only results from the selected academic year." : showCombinedResults ? "Your published Midterm and Annual subject results." : "Approved Midterm and Annual subject results."} actions={<div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />Print report</Button>{reportDownload}</div>} />
+    <PageHeader className="print:hidden" breadcrumb title={pageTitle} description={pageDescription} actions={<div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />Print report</Button>{reportDownload}</div>} />
     {termsLoading || childrenLoading ? <Skeleton className="h-10 w-64" /> : termsError || childrenError ? <ErrorState title="Can't load academic terms" description="Try again shortly." onRetry={() => { refetchTerms(); refetchChildren(); }} /> : isParent && children.length === 0 ? <EmptyState icon={FileText} title="No linked children" description="Ask the school administrator to link your parent account to a student profile." /> : terms.length === 0 ? <EmptyState icon={FileText} title="No academic terms yet" description="Results will appear after the school creates an academic year and term." /> : <>
       <div className="flex flex-wrap items-center gap-3">
         {isParent && <Select value={studentId} onValueChange={setStudentId}><SelectTrigger className="w-full sm:w-[240px]"><SelectValue placeholder="Choose child" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.name}</SelectItem>)}</SelectContent></Select>}
@@ -158,9 +172,12 @@ function CombinedTermResults({ template, studentName, registrationNumber, academ
   const showAnnual = annualLoading || (annual?.data.length ?? 0) > 0;
   if (!showMidterm && !showAnnual) return <EmptyState icon={FileText} title="No results published" description="Your school has not published Midterm or Annual results yet." />;
   const accent = template?.accentColor ?? "#0f4c5c";
-  const rawSchoolName = template?.schoolName && template.schoolName !== "Academix School" ? template.schoolName : "Eckernforde Cambridge Secondary School";
-  const schoolName = rawSchoolName.toUpperCase();
-  const schoolLogo = template?.logoUrl || "/eckernforde-cambridge-badge.png";
+  const { data: identity } = useGetIdentity<User>();
+  const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
+  const schoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : schoolBandFromResults([...(midterm?.data ?? []), ...(annual?.data ?? [])], Boolean(midterm?.division?.division || annual?.division?.division));
+  const schoolName = portalSchoolName(schoolBand).toUpperCase();
+  const schoolLogo = template?.logoUrl || (schoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : "/eckernforde-cambridge-badge.png");
   const firstRow = midterm?.data[0] ?? annual?.data[0];
   return <div className="mx-auto max-w-4xl overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-sm print:shadow-none" style={{ borderTop: `5px solid ${accent}` }}>
     <header className="flex flex-col items-center gap-5 border-b p-5 text-center sm:p-8">
@@ -182,5 +199,5 @@ function ReportTermSection({ title, subtitle, result, loading, accent, showDivis
   const rows = result?.data ?? [];
   const hasSecondaryResults = rows.some((row) => row.schoolLevel === "secondary");
   const termDivision = result?.division?.division ? result.division : calculatedDivision(result);
-  return <section className="mt-6 first:mt-0"><div className="mb-2 flex items-end justify-between gap-3"><div><h3 className="font-semibold" style={{ color: accent }}>{title}</h3><p className="text-xs text-slate-500">{subtitle}</p></div>{showDivision && rows.length > 0 && <span className="text-sm font-semibold" style={{ color: accent }}>{termDivision?.division ? `Division ${termDivision.division} · ${termDivision.totalPoints} points` : "Division pending"}</span>}</div>{result?.position && <p className="mb-3 border-l-4 px-3 py-2 text-sm text-slate-600" style={{ borderColor: accent, backgroundColor: `${accent}0d` }}><strong style={{ color: accent }}>Position: {result.position.position} of {result.position.totalStudents}</strong><span className="ml-2">{result.position.divisionPoints !== null ? `${result.position.divisionPoints} division points` : `Overall average ${result.position.averageScore}%`}</span></p>}{loading ? <Skeleton className="h-32 w-full" /> : <div className="overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr style={{ backgroundColor: `${accent}18`, color: accent }}><th className="border p-2 text-left">Subject</th><th className="border p-2 text-center">Marks</th><th className="border p-2 text-center">Grade</th></tr></thead><tbody>{rows.map((row) => { const letter = letterForScore(row.score); return <tr key={row.id}><td className="border p-2">{row.subject.name}</td><td className="border p-2 text-center">{row.score}</td><td className="border p-2 text-center font-semibold" style={{ color: colorForLetter(letter) }}>{letter ?? "—"}</td></tr>; })}</tbody></table></div>}{!loading && hasSecondaryResults && <p className="mt-2 text-xs text-slate-500">Secondary division uses the best seven applicable subjects in this paper. Assignments do not contribute to division.</p>}</section>;
+  return <section className="mt-6 first:mt-0"><div className="mb-2 flex items-end justify-between gap-3"><div><h3 className="font-semibold" style={{ color: accent }}>{title}</h3><p className="text-xs text-slate-500">{subtitle}</p></div>{showDivision && rows.length > 0 && <span className="text-sm font-semibold" style={{ color: accent }}>{termDivision?.division ? `Division ${termDivision.division} · ${termDivision.totalPoints} points` : "Division pending"}</span>}</div>{result?.position && <p className="mb-3 border-l-4 px-3 py-2 text-sm text-slate-600" style={{ borderColor: accent, backgroundColor: `${accent}0d` }}><strong style={{ color: accent }}>Position: {result.position.position} of {result.position.totalStudents}</strong><span className="ml-2">{result.position.divisionPoints !== null ? `${result.position.divisionPoints} division points` : `Overall average ${result.position.averageScore}%`}</span></p>}{loading ? <Skeleton className="h-32 w-full" /> : <div className="overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr style={{ backgroundColor: `${accent}18`, color: accent }}><th className="border p-2 text-left">Subject</th><th className="border p-2 text-center">Marks</th><th className="border p-2 text-center">Grade</th></tr></thead><tbody>{rows.map((row) => { const letter = letterForScore(row.score); return <tr key={row.id}><td className="border p-2">{row.subject.name}</td><td className="border p-2 text-center">{row.score}</td><td className="border p-2 text-center font-semibold" style={{ color: colorForLetter(letter) }}>{letter ?? "—"}</td></tr>; })}</tbody></table></div>}{!loading && hasSecondaryResults && <p className="mt-2 text-xs text-slate-500">Secondary division uses the best seven applicable subjects in this paper. Homework does not contribute to division.</p>}</section>;
 }

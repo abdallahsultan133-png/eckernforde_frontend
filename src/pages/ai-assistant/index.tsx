@@ -42,7 +42,7 @@ type Suggestion = { icon: typeof UserRoundSearch; text: string };
 
 const SUGGESTIONS: Suggestion[] = [
     { icon: UserRoundSearch, text: "How is Jane Doe doing in her classes?" },
-    { icon: FileText, text: "Has John Smith submitted his latest assignments?" },
+    { icon: FileText, text: "Has John Smith submitted his latest homework?" },
     { icon: AlertCircle, text: "Which of my students have attendance below 75%?" },
     { icon: Sparkles, text: "Give me a quick summary for student stu_123." },
 ];
@@ -193,7 +193,7 @@ const AiAssistantPage = () => {
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight">AI Student Assistant</h1>
                         <p className="text-sm text-muted-foreground">
-                            Ask about any student by name or ID — grades, attendance, assignments, and documents.
+                            Ask about any student by name or ID — grades, attendance, homework, and documents.
                         </p>
                     </div>
                 </div>

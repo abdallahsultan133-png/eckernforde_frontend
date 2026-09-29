@@ -8,7 +8,7 @@ import routerProvider, {
   UnsavedChangesNotifier,
 } from "@refinedev/react-router";
 
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { MotionConfig } from "framer-motion";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
 import "./App.css";
@@ -99,6 +99,12 @@ const Devtools = import.meta.env.DEV
   : ({ children }: { children: ReactNode }) => <>{children}</>;
 
 function App() {
+  // Warm the dashboard route in the background while the authenticated shell
+  // is settling, so clicking Home feels immediate like the other nav routes.
+  useEffect(() => {
+    void import("@/pages/portal/entry.tsx");
+  }, []);
+
   return (
     <ErrorBoundary>
     <MotionConfig reducedMotion="user">
@@ -164,11 +170,11 @@ function App() {
                       list: '/attendance',
                       meta: { label: 'Attendance', icon: <ClipboardCheck />}
                   }, {
-                      name: 'assignments',
-                      list: '/assignments',
-                      create: '/assignments/create',
-                      show: '/assignments/:id',
-                      meta: { label: 'Assignments', icon: <FileText />}
+                      name: 'homework',
+                      list: '/homework',
+                      create: '/homework/create',
+                      show: '/homework/:id',
+                      meta: { label: 'Homework', icon: <FileText />}
                   }, {
                       name: 'announcements',
                       list: '/announcements',
@@ -268,17 +274,19 @@ function App() {
                               <Route path="qr/scan/:token" element={<QrAttendancePage />} />
                           </Route>
 
-                          <Route path="assignments">
+                          <Route path="homework">
                               <Route index element={<AssignmentsList />} />
                               <Route path="create" element={<RequireRole roles={STAFF_ROLES}><AssignmentsCreate /></RequireRole>} />
                               <Route path=":id/report" element={<RequireRole roles={STAFF_ROLES}><AssignmentReport /></RequireRole>} />
                               <Route path=":id" element={<AssignmentShow />} />
                           </Route>
 
-                          <Route path="parent/assignments" element={<RequireRole roles={[UserRole.PARENT]}><ParentAcademicSelector mode="assignments" /></RequireRole>} />
-                          <Route path="parent/assignments/view" element={<RequireRole roles={[UserRole.PARENT]}><AssignmentsList /></RequireRole>} />
+                          <Route path="parent/homework" element={<RequireRole roles={[UserRole.PARENT]}><ParentAcademicSelector mode="homework" /></RequireRole>} />
+                          <Route path="parent/homework/view" element={<RequireRole roles={[UserRole.PARENT]}><AssignmentsList /></RequireRole>} />
                           <Route path="parent/attendance" element={<RequireRole roles={[UserRole.PARENT]}><ParentAcademicSelector mode="attendance" /></RequireRole>} />
                           <Route path="parent/attendance/view" element={<RequireRole roles={[UserRole.PARENT]}><ParentAttendance /></RequireRole>} />
+                          <Route path="parent/reports" element={<RequireRole roles={[UserRole.PARENT]}><ParentAcademicSelector mode="reports" /></RequireRole>} />
+                          <Route path="parent/reports/view" element={<RequireRole roles={[UserRole.PARENT]}><TermResults /></RequireRole>} />
 
                           <Route path="announcements">
                               <Route index element={<AnnouncementsList />} />

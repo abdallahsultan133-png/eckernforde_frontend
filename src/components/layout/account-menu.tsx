@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router";
 import { useGetIdentity, useLogout } from "@refinedev/core";
-import { BookOpen, House, LogOut, User as UserIcon } from "lucide-react";
+import { BookOpen, LogOut, Settings, UserRound } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -64,16 +64,6 @@ export function AccountMenu({
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link
-            to="/profile"
-            onClick={onNavigate}
-            className="flex cursor-pointer items-center gap-2"
-          >
-            <UserIcon className="h-4 w-4" />
-            Profile &amp; Settings
-          </Link>
-        </DropdownMenuItem>
         {user?.role === UserRole.TEACHER && <DropdownMenuItem asChild>
           <Link
             to="/portal/setup?change=1"
@@ -95,13 +85,15 @@ export function AccountMenu({
           </Link>
         </DropdownMenuItem>}
         <DropdownMenuItem asChild>
-          <Link
-            to="/"
-            onClick={onNavigate}
-            className="flex cursor-pointer items-center gap-2"
-          >
-            <House className="h-4 w-4" />
-            School website
+          <Link to="/profile" onClick={onNavigate} className="flex cursor-pointer items-center gap-2">
+            <UserRound className="h-4 w-4" />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/profile#security" onClick={onNavigate} className="flex cursor-pointer items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
