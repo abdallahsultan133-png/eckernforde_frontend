@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGetIdentity } from "@refinedev/core";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
+import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     ChevronLeft, ChevronRight, Plus, Minus, Loader2, Trash2,
-    BookOpenCheck, CalendarDays, Flag, Clock, Repeat, Sparkles, CalendarRange, LayoutGrid, List, Rows3, CircleCheck,
+    BookOpenCheck, CalendarDays, Flag, Clock, Repeat, Sparkles, CalendarRange, LayoutGrid, List, Rows3,
     Download, ExternalLink, School, UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -33,6 +34,7 @@ import {
 import { BACKEND_BASE_URL } from "@/constants";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { UserRole, type User } from "@/types";
+import { portalSchoolName, type PortalSchoolBand } from "@/lib/school-brand";
 import { cn } from "@/lib/utils.ts";
 
 type CalendarEventType = "class" | "exam" | "holiday" | "event" | "deadline";
@@ -284,7 +286,23 @@ function DayView({ date, eventsOn, onSelect }: { date: Date; eventsOn: (date: Da
 
 const CalendarPage = () => {
     const { data: identity } = useGetIdentity<User>();
-    const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const { data: portal } = useHistoricalPortal();
+    const archiveContext = portal?.data.archiveContext;
+    const isTeacher = identity?.role === UserRole.TEACHER;
+    const { data: teacherPortal } = useApiQuery<{ data: { context: { schoolBand: PortalSchoolBand } | null; archiveContext?: { schoolBand: PortalSchoolBand } | null } }>(isTeacher ? "/portal-context" : null);
+    const schoolBand: PortalSchoolBand = identity?.role === UserRole.PRIMARY_HEADMASTER
+        ? "primary"
+        : identity?.role === UserRole.SECONDARY_HEADMASTER
+            ? "secondary"
+            : archiveContext?.schoolBand ?? teacherPortal?.data.archiveContext?.schoolBand ?? teacherPortal?.data.context?.schoolBand;
+    const showSchoolBrand = isTeacher || identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER;
+    const schoolName = portalSchoolName(schoolBand);
+    const schoolBadge = schoolBand === "primary"
+        ? "/eckernforde-english-medium-primary-badge.png"
+        : schoolBand === "secondary"
+            ? "/eckernforde-cambridge-badge.png"
+            : null;
+    const isAdmin = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
     const isParent = identity?.role === UserRole.PARENT;
 
     const queryClient = useQueryClient();
@@ -297,6 +315,13 @@ const CalendarPage = () => {
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [childId, setChildId] = useState("");
+
+    useEffect(() => {
+        if (!archiveContext?.academicYear.startsOn) return;
+        const start = new Date(`${archiveContext.academicYear.startsOn}T00:00:00`);
+        setCurrent(new Date(start.getFullYear(), start.getMonth(), 1));
+        setSelectedDay(null);
+    }, [archiveContext?.academicYear.id, archiveContext?.academicYear.startsOn]);
 
     // Form state
     const [title, setTitle] = useState("");
@@ -339,7 +364,8 @@ const CalendarPage = () => {
     };
     const goToToday = () => {
         setDirection(0);
-        setCurrent(new Date(today.getFullYear(), today.getMonth(), 1));
+        const target = archiveContext?.academicYear.startsOn ? new Date(`${archiveContext.academicYear.startsOn}T00:00:00`) : today;
+        setCurrent(new Date(target.getFullYear(), target.getMonth(), 1));
     };
     const openDay = (d: Date) => {
         if (d.getMonth() !== month || d.getFullYear() !== year) {
@@ -367,11 +393,8 @@ const CalendarPage = () => {
         .filter((e) => new Date(e.startAt).getTime() >= now.getTime())
         .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
         .slice(0, 6);
-    const nextUp = upcomingEvents[0];
-    const examOrDeadlineCount = monthEvents.filter((e) => e.type === "exam" || e.type === "deadline").length;
     const focusDay = selectedDay ?? (isCurrentMonth ? today : new Date(year, month, 1));
     const viewAnchor = focusDay;
-    const focusEvents = eventsOn(focusDay);
 
     // fetch() rejects with a TypeError when the request never reached the server
     // (backend down, wrong VITE_BACKEND_BASE_URL, CORS) — surface that as
@@ -437,11 +460,15 @@ const CalendarPage = () => {
                 className="flex flex-wrap items-end justify-between gap-4"
             >
                 <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary">
-                        <CalendarRange className="h-5 w-5" />
-                    </div>
+                    {showSchoolBrand && schoolBadge ? (
+                        <img src={schoolBadge} alt={`${schoolName} badge`} className="h-11 w-11 shrink-0 object-contain" />
+                    ) : (
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary">
+                            <CalendarRange className="h-5 w-5" />
+                        </div>
+                    )}
                     <div>
-                        <h1 className="font-display text-2xl font-bold tracking-tight">School calendar</h1>
+                        <h1 className="font-display text-2xl font-bold tracking-tight">{showSchoolBrand && schoolBadge ? schoolName : "School calendar"}</h1>
                         <p className="text-sm text-muted-foreground">Classes, homework deadlines, exams and school events in one place.</p>
                     </div>
                 </div>
@@ -533,15 +560,6 @@ const CalendarPage = () => {
                 </div>
             </motion.div>
 
-            <Card className="overflow-hidden border-border/70 shadow-sm">
-                <div className="grid divide-y divide-border/70 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-                    <div className="px-4 py-3.5"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">This month</p><p className="mt-1 text-xl font-semibold tabular-nums">{monthEvents.length}</p><p className="text-xs text-muted-foreground">{MONTHS[month]} {year}</p></div>
-                    <div className="px-4 py-3.5"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Exams & deadlines</p><p className="mt-1 text-xl font-semibold tabular-nums">{examOrDeadlineCount}</p><p className="text-xs text-muted-foreground">{examOrDeadlineCount ? "Requiring preparation" : "Nothing urgent"}</p></div>
-                    <div className="bg-primary/[0.035] px-4 py-3.5"><p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary"><CalendarDays className="h-3.5 w-3.5" />Focus day</p><p className="mt-1 text-sm font-semibold">{focusDay.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</p><p className="flex items-center gap-1 text-xs text-muted-foreground">{focusEvents.length ? <><CircleCheck className="h-3 w-3 text-primary" />{focusEvents.length} item{focusEvents.length === 1 ? "" : "s"} planned</> : "Open schedule"}</p></div>
-                    <div className="px-4 py-3.5"><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Next scheduled</p><p className="mt-1 truncate text-sm font-semibold">{nextUp?.title ?? "Nothing scheduled"}</p><p className="text-xs text-muted-foreground">{nextUp ? new Date(nextUp.startAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "Add an event to begin"}</p></div>
-                </div>
-            </Card>
-
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Month grid */}
                 <Card className="relative gap-0 overflow-hidden border-border/60 py-0 shadow-sm lg:col-span-2">
@@ -586,7 +604,7 @@ const CalendarPage = () => {
                             </div>
                             {!isCurrentMonth && (
                                 <Button variant="outline" size="sm" className="mr-1 h-7 px-2.5 text-xs" onClick={goToToday}>
-                                    Today
+                                    {archiveContext ? "Year start" : "Today"}
                                 </Button>
                             )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Previous month" onClick={() => goToMonth(-1)}>

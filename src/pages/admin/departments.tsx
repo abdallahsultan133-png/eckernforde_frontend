@@ -24,8 +24,8 @@ import { BACKEND_BASE_URL } from "@/constants";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { UserRole, type Department, type User } from "@/types";
 
-type FormState = { name: string; code: string; description: string };
-const emptyForm: FormState = { name: "", code: "", description: "" };
+type FormState = { name: string; description: string };
+const emptyForm: FormState = { name: "", description: "" };
 
 const DepartmentsPage = () => {
     const { data: identity } = useGetIdentity<User>();
@@ -37,7 +37,7 @@ const DepartmentsPage = () => {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (identity && identity.role !== UserRole.ADMIN && identity.role !== UserRole.SUPER_ADMIN) {
+        if (identity && identity.role !== UserRole.PRIMARY_HEADMASTER && identity.role !== UserRole.SECONDARY_HEADMASTER && identity.role !== UserRole.SUPER_ADMIN) {
             navigate("/unauthorized");
         }
     }, [identity, navigate]);
@@ -49,14 +49,13 @@ const DepartmentsPage = () => {
     const openCreate = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true); };
     const openEdit = (d: Department) => {
         setEditing(d);
-        setForm({ name: d.name, code: d.code ?? "", description: d.description ?? "" });
+        setForm({ name: d.name, description: d.description ?? "" });
         setDialogOpen(true);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.name.trim()) return toast.error("Name is required.");
-        if (!form.code.trim()) return toast.error("Code is required.");
 
         setSubmitting(true);
         try {
@@ -67,7 +66,6 @@ const DepartmentsPage = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: form.name.trim(),
-                    code: form.code.trim().toUpperCase(),
                     description: form.description.trim() || undefined,
                 }),
             });
@@ -95,6 +93,7 @@ const DepartmentsPage = () => {
         <PageContainer className="departments">
             <PageHeader
                 breadcrumb
+                showBackLink={false}
                 title={
                     <span className="flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-muted-foreground" />
@@ -117,9 +116,6 @@ const DepartmentsPage = () => {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <Field label="Name" required>
                                 <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Computer Science" />
-                            </Field>
-                            <Field label="Code" required>
-                                <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="CS" />
                             </Field>
                             <Field label="Description">
                                 <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} />
@@ -153,7 +149,6 @@ const DepartmentsPage = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Code</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -162,7 +157,6 @@ const DepartmentsPage = () => {
                         <TableBody>
                             {departments.map((d) => (
                                 <TableRow key={d.id}>
-                                    <TableCell className="font-mono text-xs">{d.code}</TableCell>
                                     <TableCell className="font-medium">{d.name}</TableCell>
                                     <TableCell className="text-sm text-muted-foreground max-w-md truncate">{d.description ?? "—"}</TableCell>
                                     <TableCell className="text-right">

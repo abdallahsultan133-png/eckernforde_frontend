@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useList } from "@refinedev/core";
-import { Link, useSearchParams } from "react-router";
+import { useGetIdentity, useList } from "@refinedev/core";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { BarChart3, Check, CircleSlash, Clock, FileText, Loader2, QrCode, X } from "lucide-react";
 
+import { Breadcrumb } from "@/components/layout/breadcrumb.tsx";
 import { PageHeader } from "@/components/layout/page-header.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -15,8 +16,11 @@ import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { ErrorState } from "@/components/ui/error-state.tsx";
 import { cn } from "@/lib/utils.ts";
 import { BACKEND_BASE_URL } from "@/constants";
-import { useApiQuery } from "@/hooks/use-api-query.ts";
-import type { ClassDetails } from "@/types";
+import { fetchJson, useApiQuery } from "@/hooks/use-api-query.ts";
+import { UserRole, type ClassDetails, type User } from "@/types";
+import { HeadmasterStageSelector, type HeadmasterStage, stageLabel } from "@/components/academic/headmaster-stage-selector.tsx";
+import { useSuperAdminSchoolScope } from "@/components/academic/super-admin-school-scope.tsx";
+import { SchoolLevelSelector } from "@/components/academic/school-level-selector.tsx";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -42,10 +46,33 @@ const getInitials = (name = "") =>
   name.trim().split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
-const attendanceClassLabel = (classItem: ClassDetails) =>
-  classItem.subject?.name ? `${classItem.subject.name} — ${classItem.name}` : classItem.name;
+const matchesStage = (name: string, stage: HeadmasterStage) => {
+  const value = name.trim().toLowerCase().replace(/[.\s-]+/g, "_");
+  if (stage === "nursery") return value.startsWith("nursery");
+  if (stage.startsWith("kindergarten_")) {
+    const roman = stage.replace("kindergarten_", "");
+    return value.startsWith(`kg_${roman}`) || value.startsWith(`kindergarten_${roman}`);
+  }
+  if (stage.startsWith("standard_")) {
+    const roman = stage.replace("standard_", "");
+    return value.startsWith(`standard_${roman}`) || value.startsWith(`class_${roman}`);
+  }
+  return value.startsWith(stage);
+};
 
 const MarkAttendance = () => {
+  const { data: identity } = useGetIdentity<User>();
+  const navigate = useNavigate();
+  const headmasterLevel = identity?.role === UserRole.PRIMARY_HEADMASTER
+    ? "primary"
+    : identity?.role === UserRole.SECONDARY_HEADMASTER
+      ? "secondary"
+      : null;
+  const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
+  const superAdminScope = useSuperAdminSchoolScope(isSuperAdmin);
+  const [selectedStage, setSelectedStage] = useState<HeadmasterStage | "">("");
+  const activeStage = headmasterLevel ? selectedStage : isSuperAdmin ? superAdminScope.stage : "";
+  const headmasterLike = Boolean(headmasterLevel || isSuperAdmin);
   // Prefill the class when arriving from a class workspace (/attendance?classId=5).
   const [searchParams] = useSearchParams();
   const [classId, setClassId] = useState<string>(searchParams.get("classId") ?? "");
@@ -59,12 +86,26 @@ const MarkAttendance = () => {
     pagination: { pageSize: 100 },
   });
   const classes = useMemo(() => classesQuery?.data?.data ?? [], [classesQuery?.data?.data]);
+  const { data: headmasterClassesData, isLoading: headmasterClassesLoading, isError: headmasterClassesError, refetch: refetchHeadmasterClasses } = useApiQuery<{ data: ClassDetails[] }>(
+    headmasterLevel ? `/classes?limit=100&schoolLevel=${headmasterLevel}` : isSuperAdmin && superAdminScope.schoolLevel && superAdminScope.yearId && activeStage
+      ? `/classes?limit=100&schoolLevel=${superAdminScope.schoolLevel}&academicYearId=${superAdminScope.yearId}&stage=${activeStage}` : null,
+  );
+  const headmasterClasses = useMemo(
+    () => activeStage ? (headmasterClassesData?.data ?? []).filter((item) => matchesStage(item.name, activeStage)) : [],
+    [headmasterClassesData, activeStage],
+  );
+  const availableClasses = headmasterLevel || isSuperAdmin ? headmasterClasses : classes;
 
   useEffect(() => {
-    if (!classId && classes.length > 0) setClassId(String(classes[0].id));
-  }, [classes, classId]);
+    if (headmasterLevel || isSuperAdmin) {
+      if (isSuperAdmin && activeStage && headmasterClassesLoading) setClassId("");
+      else if (activeStage && availableClasses.length > 0 && !availableClasses.some((item) => String(item.id) === classId)) setClassId(String(availableClasses[0].id));
+      if (!activeStage) setClassId("");
+    } else if (!classId && classes.length > 0) setClassId(String(classes[0].id));
+  }, [availableClasses, classId, classes, headmasterLevel, isSuperAdmin, activeStage, headmasterClassesLoading]);
 
-  const rosterPath = classId && date ? `/attendance/class/${classId}?date=${date}` : null;
+  const selectedClassAllowed = !isSuperAdmin || availableClasses.some((item) => String(item.id) === classId);
+  const rosterPath = classId && date && selectedClassAllowed ? `/attendance/class/${classId}?date=${date}` : null;
   const { data: rosterData, isLoading, isError, refetch } = useApiQuery<{ data: RosterRow[] }>(rosterPath);
   const roster = useMemo(() => rosterData?.data ?? [], [rosterData]);
 
@@ -130,28 +171,94 @@ const MarkAttendance = () => {
 
   return (
     <div className="attendance-mark space-y-6">
+      {/* Attendance controls follow the class/form selection. */}
+      <Breadcrumb />
+      {isSuperAdmin && <SchoolLevelSelector
+        label="School name"
+        value={superAdminScope.schoolLevel}
+        onChange={(schoolLevel) => { superAdminScope.setSchoolLevel(schoolLevel); superAdminScope.setYearId(""); superAdminScope.setStage(""); setClassId(""); }}
+      />}
+      {isSuperAdmin && superAdminScope.schoolLevel && <div className="max-w-xl space-y-2">
+        <label htmlFor="super-admin-attendance-year" className="text-sm font-semibold">Academic year</label>
+        {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
+          <ErrorState description="Unable to load academic years." onRetry={superAdminScope.retryYears} />
+        ) : (
+          <Select value={superAdminScope.yearId} onValueChange={(yearId) => { superAdminScope.setYearId(yearId); superAdminScope.setStage(""); setClassId(""); }}>
+            <SelectTrigger id="super-admin-attendance-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+            <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+          </Select>
+        )}
+      </div>}
+      {(headmasterLevel || (isSuperAdmin && superAdminScope.schoolLevel && superAdminScope.yearId)) && (
+        <HeadmasterStageSelector
+          role={headmasterLevel
+            ? identity!.role
+            : superAdminScope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+          value={activeStage}
+          onChange={(stage) => {
+            if (headmasterLevel) setSelectedStage(stage);
+            else superAdminScope.setStage(stage);
+            setClassId("");
+          }}
+          title={headmasterLevel === "primary" || (isSuperAdmin && superAdminScope.schoolLevel === "primary") ? "Choose a class" : "Choose a form"}
+          description={headmasterLevel === "primary" || (isSuperAdmin && superAdminScope.schoolLevel === "primary")
+            ? "Choose the class whose students you want to mark attendance for."
+            : "Choose the form whose students you want to mark attendance for."}
+        />
+      )}
+      {headmasterLike && activeStage && headmasterClassesError && <ErrorState description="Could not load classes for this selection." onRetry={refetchHeadmasterClasses} />}
+
       <PageHeader
-        breadcrumb
+        breadcrumb={false}
         title="Mark Attendance"
         description="Mark everyone present, then flip the exceptions."
         actions={
           <>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/attendance/report">
+            <Button variant="ghost" size="sm"
+              onClick={async () => {
+                if (headmasterLike && !activeStage) {
+                  toast.error("Select a class or form first to open its attendance report.");
+                  return;
+                }
+                if (headmasterLike && !classId) {
+                  toast.error(`The selected ${headmasterLevel === "primary" || (isSuperAdmin && superAdminScope.schoolLevel === "primary") ? "class" : "form"} does not have attendance data.`);
+                  return;
+                }
+                if (headmasterLike && classId) {
+                  try {
+                    const reportClassIds = availableClasses.length > 0 ? availableClasses.map((item) => String(item.id)) : [classId];
+                    const reports = await Promise.all(reportClassIds.map(async (reportClassId) => ({
+                      classId: reportClassId,
+                      report: await fetchJson<{ period?: { firstDate: string | null } }>(`/attendance/class/${reportClassId}/report`),
+                    })));
+                    const reportWithData = reports.find(({ report }) => Boolean(report.period?.firstDate));
+                    if (!reportWithData) {
+                      toast.error(`The selected ${headmasterLevel === "primary" || (isSuperAdmin && superAdminScope.schoolLevel === "primary") ? "class" : "form"} does not have attendance data.`);
+                      return;
+                    }
+                    navigate(`/attendance/report?classId=${reportWithData.classId}`);
+                    return;
+                  } catch {
+                    toast.error("Couldn't check attendance data. Please try again.");
+                    return;
+                  }
+                }
+                navigate(classId ? `/attendance/report?classId=${classId}` : "/attendance/report");
+              }}>
                 <BarChart3 className="mr-1.5 h-4 w-4" /> Report
-              </Link>
+              {/* report navigation handled by the button */}
             </Button>
             <Button asChild variant="ghost" size="sm">
               <Link to="/attendance/qr">
                 <QrCode className="mr-1.5 h-4 w-4" /> QR
               </Link>
             </Button>
-            <Select value={classId} onValueChange={setClassId}>
+            <Select value={classId} onValueChange={setClassId} disabled={headmasterLike ? !activeStage || headmasterClassesLoading : false}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select a class" />
+                <SelectValue placeholder={(headmasterLevel || isSuperAdmin) && !activeStage ? identity?.role === UserRole.PRIMARY_HEADMASTER || (isSuperAdmin && superAdminScope.schoolLevel === "primary") ? "Choose a class first" : "Choose a form first" : "Select a class"} />
               </SelectTrigger>
               <SelectContent>
-                {classes.map((c) => (
+                {availableClasses.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -167,6 +274,8 @@ const MarkAttendance = () => {
           </>
         }
       />
+
+      {headmasterLike && activeStage && classId && <p className="text-sm text-muted-foreground">Attendance for {stageLabel(activeStage)}.</p>}
 
       {!isLoading && !isError && roster.length > 0 && (
         <div className="space-y-3">

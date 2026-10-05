@@ -30,7 +30,7 @@ export function StudentsTab({ classId, canManage }: { classId: number; canManage
   ) : undefined;
 
   return (
-    <SectionCard title="Enrolled students" count={isLoading || isError ? undefined : students.length} action={manageButton} flush>
+    <SectionCard title="Enrolled students" count={isLoading || isError ? undefined : students.length} action={manageButton} className="[&>div:first-child]:pb-0" flush>
       {isLoading ? (
         <div className="divide-y">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -67,13 +67,17 @@ export function StudentsTab({ classId, canManage }: { classId: number; canManage
       ) : (
         <ul className="divide-y">
           {students.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-5 py-2">
+            <li key={s.id} className="flex items-center gap-3 px-5 py-0">
               <Avatar className="h-9 w-9">
-                {s.image && <AvatarImage src={s.image} alt={s.name} />}
+                {s.image && <AvatarImage src={s.image} alt={s.name} className="object-cover" />}
                 <AvatarFallback>{getInitials(s.name)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <Link to={`/students/${s.id}`} className="text-sm font-medium hover:underline">
+                <Link
+                  to={`/students/${encodeURIComponent(s.id)}`}
+                  className="text-sm font-medium hover:underline"
+                  aria-label={`View profile for ${s.name}`}
+                >
                   {s.name}
                 </Link>
               </div>

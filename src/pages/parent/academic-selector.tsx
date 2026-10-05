@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { useGetIdentity } from "@refinedev/core";
 import { BarChart3, CalendarDays, ClipboardCheck, FileText, GraduationCap } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiQuery } from "@/hooks/use-api-query";
+import { readParentRecordContext, saveParentRecordContext } from "@/lib/parent-record-context";
+import type { User } from "@/types";
 
 export type ParentAcademicMode = "homework" | "attendance" | "reports";
 type Child = { id: string; name: string; profile: { registrationNumber: string | null } | null };
@@ -17,31 +20,36 @@ type AcademicYear = { id: number; name: string; startsOn: string; endsOn: string
 
 export function ParentAcademicSelector({ mode }: { mode: ParentAcademicMode }) {
   const navigate = useNavigate();
+  const { data: identity } = useGetIdentity<User>();
   const childrenQuery = useApiQuery<{ data: Child[] }>("/profile/my-children");
   const yearsQuery = useApiQuery<{ data: AcademicYear[] }>("/grades/academic-years");
   const children = childrenQuery.data?.data ?? [];
   const years = useMemo(() => [...(yearsQuery.data?.data ?? [])].sort((a, b) => Number(b.active ?? false) - Number(a.active ?? false) || b.startsOn.localeCompare(a.startsOn)), [yearsQuery.data]);
   const [childId, setChildId] = useState("");
   const [academicYearId, setAcademicYearId] = useState("");
-  const selectedChildId = childId || children[0]?.id || "";
-  const selectedYearId = academicYearId || (years.find((year) => year.active)?.id ?? years[0]?.id)?.toString() || "";
+  const savedContext = useMemo(() => readParentRecordContext(identity?.id), [identity?.id]);
+  const savedChildId = children.some((child) => child.id === savedContext?.childId) ? savedContext!.childId : "";
+  const savedYearId = years.some((year) => year.id === savedContext?.academicYearId) ? String(savedContext!.academicYearId) : "";
+  const selectedChildId = childId || savedChildId || children[0]?.id || "";
+  const selectedYearId = academicYearId || savedYearId || (years.find((year) => year.active)?.id ?? years[0]?.id)?.toString() || "";
   const isLoading = childrenQuery.isLoading || yearsQuery.isLoading;
   const isError = childrenQuery.isError || yearsQuery.isError;
 
   const openRecords = () => {
     if (!selectedChildId || !selectedYearId) return;
+    if (identity?.id) saveParentRecordContext(identity.id, { childId: selectedChildId, academicYearId: Number(selectedYearId) });
     const query = new URLSearchParams({ childId: selectedChildId, academicYearId: selectedYearId });
     navigate(`/parent/${mode}/view?${query.toString()}`);
   };
 
-  const title = mode === "attendance" ? "Review attendance" : mode === "reports" ? "Generate report" : "Review homework";
+  const title = mode === "attendance" ? "Review attendance" : mode === "reports" ? "Grades" : "Review homework";
   const description = mode === "attendance"
     ? "Choose a child and academic year before opening their attendance record."
     : mode === "reports"
-      ? "Choose a child and academic year before opening their published academic report."
+      ? "Choose a child and academic year before opening their published grades."
       : "Choose a child and academic year before opening their homework.";
   const Icon = mode === "attendance" ? ClipboardCheck : mode === "reports" ? BarChart3 : FileText;
-  const openLabel = mode === "reports" ? "Open report" : `Open ${mode}`;
+  const openLabel = mode === "reports" ? "Open grades" : `Open ${mode}`;
 
   return <PageContainer className="max-w-3xl">
     <PageHeader breadcrumb title={title} description={description} />

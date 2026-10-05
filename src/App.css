@@ -388,8 +388,9 @@
 
 /* Keep every clickable button rectangular, including native buttons that do
    not use the shared Button primitive. */
-button,
-[data-slot="button"] { border-radius: .375rem !important; }
+.portal-shell button,
+.portal-shell [data-slot="button"],
+.portal-shell [role="button"] { border-radius: 0 !important; }
 
 input,
 textarea,

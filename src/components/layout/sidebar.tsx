@@ -28,7 +28,6 @@ import {
   Sparkles,
   UserCheck,
   UserRound,
-  Users,
   Globe2,
   Inbox,
   X,
@@ -50,6 +49,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { portalSchoolName, portalSchoolTagline } from "@/lib/school-brand";
+import { PARENT_RECORD_CONTEXT_EVENT, parentRecordHref, readParentRecordContext, type ParentRecordContext } from "@/lib/parent-record-context";
 import { cn } from "@/lib/utils.ts";
 import { APP_TAGLINE } from "@/constants";
 import { ROLE_LABEL, STAFF_ROLES, ADMIN_ROLES } from "@/lib/roles";
@@ -121,7 +121,6 @@ const NAV: NavGroup[] = [
       { label: "Students", to: "/students", icon: GraduationCap, roles: ADMIN_ROLES },
       { label: "Teachers", to: "/teachers", icon: UserRound, roles: ADMIN_ROLES },
       { label: "Parents & Guardians", to: "/guardians", icon: HeartHandshake, roles: ADMIN_ROLES },
-      { label: "Users & Access", to: "/users", icon: Users, roles: ADMIN_ROLES },
     ],
   },
   {
@@ -129,15 +128,8 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Homework", to: "/homework", icon: FileText, toByRole: { [UserRole.PARENT]: "/parent/homework" } },
       { label: "Attendance", to: "/attendance", icon: UserCheck, toByRole: { [UserRole.PARENT]: "/parent/attendance" } },
+      { label: "Reports", to: "/reports", icon: BarChart3, roles: [UserRole.STUDENT] },
       { label: "Reports", to: "/parent/reports", icon: BarChart3, roles: [UserRole.PARENT] },
-      {
-        label: "Grades",
-        to: "/grades",
-        icon: BarChart3,
-        roles: [UserRole.STUDENT, ...STAFF_ROLES],
-        labelByRole: { [UserRole.STUDENT]: "Report" },
-        toByRole: { [UserRole.STUDENT]: "/grades/term-results" },
-      },
       {
         label: "Insights",
         to: "/insights",
@@ -161,6 +153,7 @@ const NAV: NavGroup[] = [
       { label: "AI Assistant", to: "/ai-assistant", icon: Sparkles, roles: ADMIN_ROLES },
       { label: "Audit Log", to: "/admin/audit-logs", icon: ScrollText, roles: ADMIN_ROLES },
       { label: "Admissions Enquiries", to: "/admin/admissions", icon: Inbox, roles: ADMIN_ROLES },
+      { label: "Publish Results", to: "/admin/publish-results", icon: BarChart3, roles: ADMIN_ROLES },
       { label: "Publications", to: "/admin/publications", icon: Globe2, roles: ADMIN_ROLES },
       { label: "Public Events", to: "/admin/public-events", icon: CalendarDays, roles: ADMIN_ROLES },
       { label: "Report Card Template", to: "/admin/report-card-template", icon: FileText, roles: ADMIN_ROLES },
@@ -168,26 +161,42 @@ const NAV: NavGroup[] = [
   },
 ];
 
-function useNavGroups(role?: UserRole): NavGroup[] {
+function useNavGroups(role?: UserRole, parentContext: ParentRecordContext | null = null): NavGroup[] {
   return React.useMemo(() => {
     return NAV.map((group) => ({
       label: group.label,
-      items: group.items.filter((item) => !item.roles || (role && item.roles.includes(role))),
+      items: group.items
+        .filter((item) => !item.roles || (role && item.roles.includes(role)))
+        .map((item) => role === UserRole.PARENT && parentContext && ["Homework", "Attendance", "Reports"].includes(item.label)
+          ? { ...item, toByRole: { ...item.toByRole, [UserRole.PARENT]: parentRecordHref(item.label.toLowerCase() as "homework" | "attendance" | "reports", parentContext) } }
+          : item),
     })).filter((group) => group.items.length > 0);
-  }, [role]);
+  }, [parentContext, role]);
 }
 
 function isRouteActive(pathname: string, to: string, exact?: boolean) {
-  if (exact) return pathname === to;
-  if (to === "/portal") return pathname === "/portal";
-  return pathname === to || pathname.startsWith(`${to}/`);
+  const destinationPath = to.split("?", 1)[0] ?? to;
+  if (exact) return pathname === destinationPath;
+  if (destinationPath === "/portal") return pathname === "/portal";
+  return pathname === destinationPath || pathname.startsWith(`${destinationPath}/`);
 }
 
 // ── Sidebar ──────────────────────────────────────────────────────────────────
 export function Sidebar() {
   const { data: identity } = useGetIdentity<User>();
   const role = identity?.role;
-  const groups = useNavGroups(role);
+  const [parentContext, setParentContext] = React.useState<ParentRecordContext | null>(null);
+  React.useEffect(() => {
+    const refresh = () => setParentContext(readParentRecordContext(identity?.id));
+    refresh();
+    window.addEventListener(PARENT_RECORD_CONTEXT_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(PARENT_RECORD_CONTEXT_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, [identity?.id]);
+  const groups = useNavGroups(role, role === UserRole.PARENT ? parentContext : null);
   const { pathname } = useLocation();
 
   // The one badge backed by a real endpoint. Poll gently; refetch is cheap
@@ -392,33 +401,24 @@ function BrandHeader() {
   const { data: identity } = useGetIdentity<User>();
   const isAdmin = Boolean(identity?.role && ADMIN_ROLES.includes(identity.role));
   const isParent = identity?.role === UserRole.PARENT;
-  const usesAcademyBrand = isAdmin || isParent;
-  const isSchoolStaff = identity?.role === UserRole.TEACHER || identity?.role === UserRole.STUDENT;
-  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
+  const isHeadmaster = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER;
+  const usesAcademyBrand = (isAdmin && !isHeadmaster) || isParent;
+  const isSchoolStaff = identity?.role === UserRole.TEACHER || identity?.role === UserRole.STUDENT || isHeadmaster;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null; archiveContext?: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff && !isHeadmaster ? "/portal-context" : null);
   const { open, isMobile, toggleSidebar, setOpenMobile } = useShadcnSidebar();
   const expanded = open || isMobile;
   // Keep the primary brand compact enough to remain legible in the expanded
   // sidebar. The school-band detail remains available in the tagline below.
-  const schoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : null;
+  const schoolBand = isHeadmaster
+    ? identity?.role === UserRole.PRIMARY_HEADMASTER ? "primary" : "secondary"
+    : isSchoolStaff ? portal?.data.archiveContext?.schoolBand ?? portal?.data.context?.schoolBand : null;
   // Do not briefly flash the generic Eckernforde Schools label while the
   // student's portal context is loading; resolve the exact school name as
   // soon as the context identifies the primary/secondary campus.
-  const schoolName = isSchoolStaff
-    ? schoolBand ? portalSchoolName(schoolBand) : "School Portal"
-    : "School Portal";
-  const schoolTagline = usesAcademyBrand
-    ? "School Portal"
-    : schoolBand ? portalSchoolTagline(schoolBand) : APP_TAGLINE;
-  const schoolDisplayName = schoolBand === "secondary"
-    ? "Eckernforde Cambridge"
-    : schoolBand === "primary"
-      ? "Eckernforde English Medium"
-      : schoolName;
-  const schoolDisplayTagline = schoolBand === "secondary"
-    ? "Secondary School"
-    : schoolBand === "primary"
-      ? "Primary School"
-      : schoolTagline;
+  const schoolName = schoolBand ? portalSchoolName(schoolBand) : "School Portal";
+  const schoolTagline = schoolBand ? portalSchoolTagline(schoolBand) : usesAcademyBrand ? "School Portal" : APP_TAGLINE;
+  const schoolDisplayName = schoolName;
+  const schoolDisplayTagline = schoolTagline;
   const schoolLogo = isSchoolStaff && schoolBand === "secondary"
     ? "/eckernforde-cambridge-badge.png"
     : isSchoolStaff && schoolBand === "primary"
@@ -426,22 +426,22 @@ function BrandHeader() {
       : null;
 
   const mark = (
-    <span className={cn("flex h-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-sidebar-primary-foreground [&>svg]:h-[18px] [&>svg]:w-[18px]", usesAcademyBrand ? "w-auto gap-0.5 bg-transparent px-0 shadow-none" : schoolLogo ? "w-10 bg-transparent shadow-none" : "w-10 bg-sidebar-primary shadow-sm")}>
-      {usesAcademyBrand && expanded ? <><img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Schools" className="h-8 w-8 object-contain" /><img src="/eckernforde-english-medium-primary-badge.png" alt="Eckernforde Schools" className="h-8 w-8 object-contain" /></> : usesAcademyBrand ? <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Schools" className="h-9 w-9 object-contain" /> : schoolLogo ? <img src={schoolLogo} alt={schoolName} className="h-full w-full object-contain" /> : title.icon}
+    <span className={cn("flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sidebar-primary-foreground [&>svg]:h-4 [&>svg]:w-4", usesAcademyBrand ? "w-auto gap-0.5 bg-transparent px-0 shadow-none" : schoolLogo ? "w-8 bg-transparent shadow-none" : "w-8 bg-sidebar-primary shadow-sm")}>
+      {usesAcademyBrand && expanded ? <><img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Schools" className="h-7 w-7 object-contain" /><img src="/eckernforde-english-medium-primary-badge.png" alt="Eckernforde Schools" className="h-7 w-7 object-contain" /></> : usesAcademyBrand ? <img src="/eckernforde-cambridge-badge.png" alt="Eckernforde Schools" className="h-8 w-8 object-contain" /> : schoolLogo ? <img src={schoolLogo} alt={schoolName} className="h-full w-full object-contain" /> : title.icon}
     </span>
   );
 
   return (
-    <ShadcnSidebarHeader className="min-h-16 h-auto flex-row items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-3">
+    <ShadcnSidebarHeader className="min-h-14 h-auto flex-row items-center gap-1.5 border-b border-sidebar-border bg-sidebar px-2.5 py-2">
       {expanded ? (
         <>
-          <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 px-1.5 py-1">
             {mark}
             <div className="min-w-0 flex-1 leading-none">
-              <p className="max-w-[15rem] whitespace-normal break-words text-[12px] font-bold leading-tight tracking-tight text-sidebar-foreground">
+              <p className="max-w-[15rem] whitespace-normal break-words text-[11px] font-bold leading-[1.05] tracking-tight text-sidebar-foreground">
                 {schoolDisplayName}
               </p>
-              <p className="mt-1 whitespace-normal text-[11px] font-semibold leading-tight text-muted-foreground">{schoolDisplayTagline}</p>
+              <p className="mt-0.5 whitespace-normal text-[10px] font-semibold leading-tight text-muted-foreground">{schoolDisplayTagline}</p>
             </div>
           </div>
 

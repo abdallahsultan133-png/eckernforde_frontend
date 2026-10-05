@@ -27,7 +27,7 @@ const GoogleIcon = () => (
     </svg>
 );
 
-export const GoogleSignInButton = ({ asLink = false }: { asLink?: boolean }) => {
+export const GoogleSignInButton = ({ asLink = false, label }: { asLink?: boolean; label?: string }) => {
     const [loading, setLoading] = useState(false);
 
     const handleClick = async () => {
@@ -56,7 +56,7 @@ export const GoogleSignInButton = ({ asLink = false }: { asLink?: boolean }) => 
     return (
         <Button type="button" variant={asLink ? "link" : "outline"} className={asLink ? "auth-inline-link h-11 gap-2" : "h-11 w-full"} onClick={handleClick} disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon />}
-            <span className={asLink ? undefined : "ml-2"}>{asLink ? "Sign in with Google" : "Continue with Google"}</span>
+            <span className={asLink ? undefined : "ml-2"}>{label ?? (asLink ? "Sign in with Google" : "Continue with Google")}</span>
         </Button>
     );
 };

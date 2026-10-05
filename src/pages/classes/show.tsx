@@ -5,7 +5,6 @@ import { AdvancedImage } from "@cloudinary/react";
 import {
     Check,
     Copy,
-    FileBarChart,
     GraduationCap,
     PencilLine,
     UsersRound,
@@ -107,12 +106,6 @@ const Show = () => {
                 }
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <Button asChild variant="outline" size="sm">
-                            <Link to="/insights">
-                                <FileBarChart className="mr-1.5 h-4 w-4" />
-                                Insights
-                            </Link>
-                        </Button>
                         {staff && (
                           <>
                             <Button asChild variant="outline" size="sm">
@@ -133,11 +126,19 @@ const Show = () => {
                 }
             />
 
-            <div className="class-context-strip grid gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/60 sm:grid-cols-2 lg:grid-cols-4" aria-label="Class summary">
-                <ContextMetric label="Level" value={cls.schoolLevel ? cls.schoolLevel.replace("_", " ") : "Not set"} />
-                <ContextMetric label="Subject" value={cls.subject?.name ?? cls.courseName ?? "Not assigned"} />
-                <ContextMetric label="Capacity" value={`${cls.capacity} seats`} />
-                <ContextMetric label="Schedule" value={cls.schedules?.length ? `${cls.schedules.length} session${cls.schedules.length === 1 ? "" : "s"}` : "Not set"} />
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span>
+                    Level: <span className="font-semibold text-foreground">{cls.schoolLevel ? cls.schoolLevel.replace("_", " ") : "Not set"}</span>
+                </span>
+                <span>
+                    Subject: <span className="font-semibold text-foreground">{cls.subject?.name ?? cls.courseName ?? "Not assigned"}</span>
+                </span>
+                <span>
+                    Capacity: <span className="font-semibold text-foreground">{cls.capacity} seats</span>
+                </span>
+                <span>
+                    Schedule: <span className="font-semibold text-foreground">{cls.schedules?.length ? `${cls.schedules.length} session${cls.schedules.length === 1 ? "" : "s"}` : "Not set"}</span>
+                </span>
             </div>
 
             {cls.bannerUrl && (
@@ -216,24 +217,6 @@ function Overview({ cls, staff }: { cls: ClassDetails; staff: boolean }) {
                         )}
                     </DetailBlock>
 
-                    <DetailBlock label="Subject">
-                        {cls.subject ? (
-                            <>
-                                <p className="text-sm font-medium">
-                                    <span className="font-mono text-xs text-muted-foreground">{cls.subject.code}</span>{" "}
-                                    {cls.subject.name}
-                                </p>
-                                {cls.subject.description && (
-                                    <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                        {cls.subject.description}
-                                    </p>
-                                )}
-                            </>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">—</p>
-                        )}
-                    </DetailBlock>
-
                     <DetailBlock label="Department">
                         <p className="text-sm font-medium">{cls.department?.name ?? "—"}</p>
                         {cls.department?.description && (
@@ -243,9 +226,6 @@ function Overview({ cls, staff }: { cls: ClassDetails; staff: boolean }) {
                         )}
                     </DetailBlock>
 
-                    <DetailBlock label="Capacity">
-                        <p className="text-sm font-medium">{cls.capacity} seats</p>
-                    </DetailBlock>
                 </div>
 
                 {cls.schedules?.length > 0 && (
@@ -283,14 +263,6 @@ function Overview({ cls, staff }: { cls: ClassDetails; staff: boolean }) {
     );
 }
 
-function ContextMetric({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="bg-card px-4 py-3.5 sm:px-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-            <p className="mt-1 truncate text-sm font-semibold capitalize">{value}</p>
-        </div>
-    );
-}
 
 function DetailBlock({ label, children }: { label: string; children: ReactNode }) {
     return (

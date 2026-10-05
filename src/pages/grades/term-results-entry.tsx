@@ -23,6 +23,7 @@ import type { ClassDetails, User } from "@/types";
 type Term = { id: number; name: string; type: "midterm" | "terminal"; academicYear: { name: string } };
 type ExistingResult = { studentId: string; score: number; applicable: boolean; published: boolean };
 type Entry = { score: string; applicable: boolean };
+type ResultClassGroup = { key: string; name: string; schoolLevel: ClassDetails["schoolLevel"]; courses: ClassDetails[] };
 
 const levelLabel = (level?: ClassDetails["schoolLevel"]) => level ? `${level[0].toUpperCase()}${level.slice(1)}` : "Not classified";
 
@@ -30,10 +31,23 @@ export default function TermResultsEntry() {
   const queryClient = useQueryClient();
   const { query: classesQuery } = useList<ClassDetails>({ resource: "classes", pagination: { pageSize: 100 } });
   const classes = useMemo(() => classesQuery?.data?.data ?? [], [classesQuery?.data?.data]);
+  const classGroups = useMemo(() => {
+    const groups = new Map<string, ResultClassGroup>();
+    for (const course of classes) {
+      const key = JSON.stringify([course.name, course.schoolLevel ?? null]);
+      const group = groups.get(key) ?? { key, name: course.name, schoolLevel: course.schoolLevel, courses: [] };
+      group.courses.push(course);
+      groups.set(key, group);
+    }
+    return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [classes]);
+  const [classGroupKey, setClassGroupKey] = useState("");
   const [classId, setClassId] = useState("");
   const [termId, setTermId] = useState("");
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [saving, setSaving] = useState(false);
+  const selectedGroup = classGroups.find((group) => group.key === classGroupKey);
+  const subjectClasses = selectedGroup?.courses ?? [];
   const selectedClass = classes.find((course) => String(course.id) === classId);
 
   const { data: termData, isLoading: termsLoading, isError: termsError, refetch: refetchTerms } = useApiQuery<{ data: Term[] }>("/grades/academic-terms");
@@ -43,7 +57,12 @@ export default function TermResultsEntry() {
   const resultsPath = classId && termId ? `/grades/term-results/class/${classId}?academicTermId=${termId}` : null;
   const { data: existingData, isLoading: existingLoading, isError: existingError, refetch: refetchExisting } = useApiQuery<{ data: ExistingResult[] }>(resultsPath);
 
-  useEffect(() => { if (!classId && classes.length) setClassId(String(classes[0].id)); }, [classId, classes]);
+  useEffect(() => {
+    if (classGroupKey && !classGroups.some((group) => group.key === classGroupKey)) {
+      setClassGroupKey("");
+      setClassId("");
+    }
+  }, [classGroupKey, classGroups]);
   useEffect(() => { if (!termId && terms.length) setTermId(String(terms[0].id)); }, [termId, terms]);
   useEffect(() => { if (!classId) setEntries({}); }, [classId]);
   useEffect(() => {
@@ -102,7 +121,7 @@ export default function TermResultsEntry() {
       <PageHeader
         breadcrumb
         title="Record term results"
-        description="Enter Midterm or Terminal subject scores for an assigned class. Grades are calculated from the stored grading rules."
+        description="Choose a class or form, then a subject, to enter Midterm or Terminal scores. Grades are calculated from the stored grading rules."
         actions={students.length > 0 && selectedClass?.schoolLevel && !loading && !error ? (
           <Button onClick={save} disabled={saving || invalidCount > 0 || enteredCount === 0}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -117,11 +136,15 @@ export default function TermResultsEntry() {
           description="A score belongs to the selected class subject. Publishing remains a separate authorized administrative action."
           action={<StatusBadge tone={publishedState === "Published" ? "success" : "neutral"}>{publishedState}</StatusBadge>}
         />
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <Select value={classId} onValueChange={setClassId}>
-            <SelectTrigger aria-label="Select class"><SelectValue placeholder="Choose class" /></SelectTrigger>
-            <SelectContent>{classes.map((course) => <SelectItem key={course.id} value={String(course.id)}>{course.name} · {levelLabel(course.schoolLevel)}</SelectItem>)}</SelectContent>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Select value={classGroupKey} onValueChange={(value) => { setClassGroupKey(value); setClassId(""); setEntries({}); }}>
+            <SelectTrigger aria-label="Select class"><SelectValue placeholder="Select a class" /></SelectTrigger>
+            <SelectContent>{classGroups.map((group) => <SelectItem key={group.key} value={group.key}>{group.name} · {levelLabel(group.schoolLevel)}</SelectItem>)}</SelectContent>
           </Select>
+          {classGroupKey && <Select value={classId} onValueChange={(value) => { setClassId(value); setEntries({}); }} disabled={subjectClasses.length === 0}>
+            <SelectTrigger aria-label="Select subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
+            <SelectContent>{subjectClasses.map((course) => <SelectItem key={course.id} value={String(course.id)}>{course.subject?.name ?? course.courseName}</SelectItem>)}</SelectContent>
+          </Select>}
           <Select value={termId} onValueChange={setTermId}>
             <SelectTrigger aria-label="Select academic term"><SelectValue placeholder="Choose term" /></SelectTrigger>
             <SelectContent>{terms.map((term) => <SelectItem key={term.id} value={String(term.id)}>{term.academicYear.name} · {term.name} ({term.type === "terminal" ? "Terminal" : "Midterm"})</SelectItem>)}</SelectContent>
@@ -133,8 +156,14 @@ export default function TermResultsEntry() {
         <div className="space-y-2 border-y border-border p-4" aria-busy="true">{Array.from({ length: 7 }).map((_, index) => <Skeleton key={index} className="h-12 w-full" />)}</div>
       ) : error ? (
         <ErrorState title="Can't load result entry" description="Check your connection and permissions, then retry." onRetry={() => { refetchTerms(); refetchRoster(); refetchExisting(); }} />
-      ) : !selectedClass ? (
+      ) : classes.length === 0 ? (
         <EmptyState icon={FilePenLine} title="No assigned classes" description="Results can be entered only for classes assigned to you." />
+      ) : !classGroupKey ? (
+        <EmptyState icon={FilePenLine} title="Choose a class" description="Select a class or form to see the subjects assigned to you." />
+      ) : !classId ? (
+        <EmptyState icon={FilePenLine} title="Choose a subject" description={`Select a subject in ${selectedGroup?.name ?? "this class"} to load its student register.`} />
+      ) : !selectedClass ? (
+        <EmptyState icon={FilePenLine} title="Subject unavailable" description="Choose a subject assigned to this class or form." />
       ) : !selectedClass.schoolLevel ? (
         <EmptyState icon={FilePenLine} title="Class classification needed" description="Ask an administrator to classify this class as Nursery, Primary, or Secondary before recording results." />
       ) : students.length === 0 ? (

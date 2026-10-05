@@ -18,6 +18,7 @@ import type { FormalTermResult } from "@/components/pdf/report-card-document";
 import { UserRole, type User } from "@/types";
 import { letterForScore } from "@/lib/grading/grade-bands";
 import { portalSchoolName, schoolBandFromResults } from "@/lib/school-brand";
+import { isStaff } from "@/lib/roles";
 
 type Term = { id: number; name: string; type: "midterm" | "terminal"; academicYear: { name: string } };
 type Result = { id: number; score: number; schoolLevel: "nursery" | "primary" | "secondary" | null; applicable: boolean; subject: { name: string; code: string }; class: { id: number; name: string } };
@@ -73,7 +74,7 @@ const colorForLetter = (letter: string | null) => {
 export default function TermResults() {
   const [searchParams] = useSearchParams();
   const historyYearId = searchParams.get("academicYearId");
-  const requestedStudentId = searchParams.get("childId") ?? "";
+  const requestedStudentId = searchParams.get("studentId") ?? searchParams.get("childId") ?? "";
   const { narrateDownload } = useDownload();
   const { data: identity } = useGetIdentity<User>();
   const isParent = identity?.role === UserRole.PARENT;
@@ -85,11 +86,13 @@ export default function TermResults() {
   const [studentId, setStudentId] = useState(requestedStudentId);
   useEffect(() => { if (!termId && terms.length) setTermId(String(terms[0].id)); }, [termId, terms]);
   useEffect(() => { if (isParent && !studentId && children.length) setStudentId(children[0].id); }, [children, isParent, studentId]);
-  const resultStudentId = isParent ? studentId : identity?.id;
   const isStudent = identity?.role === UserRole.STUDENT;
+  const isTeacher = identity?.role === UserRole.TEACHER;
+  const isStaffViewer = isStaff(identity?.role);
+  const resultStudentId = isParent ? studentId : isStaffViewer ? requestedStudentId : identity?.id;
   const isSchoolStaff = isStudent || identity?.role === UserRole.TEACHER;
   const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
-  const showCombinedResults = isStudent || isParent;
+  const showCombinedResults = isStudent || isParent || isStaffViewer;
   const combinedTerms = useMemo(() => {
     if (historyYearId || terms.length === 0) return terms;
     const currentYearName = terms[0]?.academicYear.name;
@@ -103,8 +106,9 @@ export default function TermResults() {
   const { data: studentInfoData } = useApiQuery<StudentInfoResponse>(resultStudentId ? `/profile/student/${resultStudentId}` : null);
   const reportSchoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : studentInfoData?.data.schoolBand ?? schoolBandFromResults([...(midtermData?.data ?? []), ...(annualData?.data ?? []), ...(studentInfoData?.data.enrolledClasses ?? [])], Boolean(midtermData?.division?.division || annualData?.division?.division));
   const portalReportSchoolName = portalSchoolName(reportSchoolBand);
-  const { data: templateData } = useApiQuery<{ data: ReportTemplate }>(showCombinedResults ? "/report-card-template" : null);
-  const { data: attendanceData } = useApiQuery<{ data: AttendanceRecord[] }>(showCombinedResults && resultStudentId ? `/attendance/student/${resultStudentId}?limit=200` : null);
+  const canDownloadReport = showCombinedResults;
+  const { data: templateData } = useApiQuery<{ data: ReportTemplate }>(canDownloadReport ? "/report-card-template" : null);
+  const { data: attendanceData } = useApiQuery<{ data: AttendanceRecord[] }>(canDownloadReport && resultStudentId ? `/attendance/student/${resultStudentId}?limit=200` : null);
   const results = data?.data ?? [];
   const division = data?.division?.division ? data.division : calculatedDivision(data);
   const selected = terms.find((term) => String(term.id) === termId);
@@ -114,8 +118,9 @@ export default function TermResults() {
   const formalTerms: FormalTermResult[] = [
       ...(midtermData?.data.length ? [{ title: "Midterm", termName: midtermData.term.name, rows: midtermData.data, division: midtermData.division?.division ?? calculatedDivision(midtermData)?.division ?? null, totalPoints: midtermData.division?.totalPoints ?? calculatedDivision(midtermData)?.totalPoints ?? null, position: midtermData.position }] : []),
       ...(annualData?.data.length ? [{ title: "Terminal", termName: annualData.term.name, rows: annualData.data, division: annualData.division?.division ?? calculatedDivision(annualData)?.division ?? null, totalPoints: annualData.division?.totalPoints ?? calculatedDivision(annualData)?.totalPoints ?? null, position: annualData.position }] : []),
+      ...(!showCombinedResults && data?.data.length ? [{ title: data.term.type === "terminal" ? "Terminal" : "Midterm", termName: data.term.name, rows: data.data, division: data.division?.division ?? calculatedDivision(data)?.division ?? null, totalPoints: data.division?.totalPoints ?? calculatedDivision(data)?.totalPoints ?? null, position: data.position }] : []),
   ];
-  const reportClassIds = useMemo(() => new Set([...(midtermData?.data ?? []), ...(annualData?.data ?? [])].map((row) => row.class.id)), [midtermData?.data, annualData?.data]);
+  const reportClassIds = useMemo(() => new Set([...(midtermData?.data ?? []), ...(annualData?.data ?? []), ...(!showCombinedResults ? (data?.data ?? []) : [])].map((row) => row.class.id)), [midtermData?.data, annualData?.data, data?.data, showCombinedResults]);
   const attendanceSummary = useMemo<AttendanceSummary>(() => {
     const summary: AttendanceSummary = { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
     for (const record of attendanceData?.data ?? []) {
@@ -126,20 +131,22 @@ export default function TermResults() {
     return summary;
   }, [attendanceData?.data, reportClassIds]);
   const reportFileName = `report-card-${reportStudentName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
-  const reportDownloadReady = showCombinedResults && !midtermLoading && !annualLoading && formalTerms.length > 0 && !!templateData?.data;
-  const reportDownload = reportDownloadReady ? <DeferredPdfDownload fileName={reportFileName} load={loadFormalReportCardPdf} documentProps={{ studentName: reportStudentName, schoolName: portalReportSchoolName, registrationNumber: reportRegistrationNumber, template: templateData.data, termResults: formalTerms, academicYearName: combinedTerms[0]?.academicYear.name, attendance: attendanceSummary }} onDownload={() => narrateDownload(reportFileName)} /> : null;
-  const pageTitle = isParent ? "Report" : historyYearId ? "Previous Report" : showCombinedResults ? "Report" : "Term Results";
+  const reportDownloadReady = canDownloadReport && !(showCombinedResults ? (midtermLoading || annualLoading) : isLoading) && formalTerms.length > 0;
+  const reportDownload = reportDownloadReady ? <DeferredPdfDownload fileName={reportFileName} load={loadFormalReportCardPdf} documentProps={{ studentName: reportStudentName, schoolName: portalReportSchoolName, registrationNumber: reportRegistrationNumber, template: templateData?.data, termResults: formalTerms, academicYearName: (showCombinedResults ? combinedTerms[0] : selected)?.academicYear.name, attendance: attendanceSummary }} onDownload={() => narrateDownload(reportFileName)} /> : null;
+  const pageTitle = isParent || isStudent || isTeacher ? "Report" : historyYearId ? "Previous Report" : "Term Results";
   const pageDescription = isParent
     ? "Published results for the selected child and academic year."
+      : isStaffViewer
+      ? "Published results and report card for the selected student."
     : historyYearId
       ? "Read-only results from the selected academic year."
-      : showCombinedResults
+      : showCombinedResults || isTeacher
         ? "Your published Midterm and Annual subject results."
         : "Approved Midterm and Annual subject results.";
 
   return <div className="space-y-6">
-    <PageHeader className="print:hidden" breadcrumb title={pageTitle} description={pageDescription} actions={<div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />Print report</Button>{reportDownload}</div>} />
-    {termsLoading || childrenLoading ? <Skeleton className="h-10 w-64" /> : termsError || childrenError ? <ErrorState title="Can't load academic terms" description="Try again shortly." onRetry={() => { refetchTerms(); refetchChildren(); }} /> : isParent && children.length === 0 ? <EmptyState icon={FileText} title="No linked children" description="Ask the school administrator to link your parent account to a student profile." /> : terms.length === 0 ? <EmptyState icon={FileText} title="No academic terms yet" description="Results will appear after the school creates an academic year and term." /> : <>
+    <PageHeader className="print:hidden" breadcrumb title={pageTitle} description={pageDescription} backTo={isStaffViewer && requestedStudentId ? `/students/${encodeURIComponent(requestedStudentId)}` : undefined} backLabel="Back to Student Profile" actions={<div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />Print report</Button>{reportDownload}</div>} />
+    {termsLoading || childrenLoading ? <Skeleton className="h-10 w-64" /> : termsError || childrenError ? <ErrorState title="Can't load academic terms" description="Try again shortly." onRetry={() => { refetchTerms(); refetchChildren(); }} /> : isParent && children.length === 0 ? <EmptyState icon={FileText} title="No linked children" description="Ask the school administrator to link your parent account to a student profile." /> : isStaffViewer && !resultStudentId ? <EmptyState icon={FileText} title="Choose a student" description="Open a student's name from a class roster to view their published term results." /> : terms.length === 0 ? <EmptyState icon={FileText} title="No academic terms yet" description="Results will appear after the school creates an academic year and term." /> : <>
       <div className="flex flex-wrap items-center gap-3">
         {isParent && <Select value={studentId} onValueChange={setStudentId}><SelectTrigger className="w-full sm:w-[240px]"><SelectValue placeholder="Choose child" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.name}</SelectItem>)}</SelectContent></Select>}
         {!showCombinedResults && <><Select value={termId} onValueChange={setTermId}><SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Choose a term" /></SelectTrigger><SelectContent>{terms.map((term) => <SelectItem key={term.id} value={String(term.id)}>{term.academicYear.name} · {term.name} ({term.type === "terminal" ? "Terminal" : "Midterm"})</SelectItem>)}</SelectContent></Select>{selected && <span className="text-sm text-muted-foreground">{selected.type === "terminal" ? "Terminal results" : "Midterm results"}</span>}</>}

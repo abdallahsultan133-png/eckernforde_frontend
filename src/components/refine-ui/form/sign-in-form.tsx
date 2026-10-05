@@ -36,7 +36,7 @@ export const SignInForm = () => {
         <LinkFromRefine to="/forgot-password" className="auth-inline-link">Forgot password?</LinkFromRefine></div>
       <Button type="submit" className="auth-submit" disabled={loading || !BACKEND_BASE_URL}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <LogIn className="mr-2 h-4 w-4" aria-hidden="true" />}{loading ? "Signing in..." : "Sign in"}</Button>
     </form>
-    {BACKEND_BASE_URL && <div className="mt-3 flex justify-center"><GoogleSignInButton asLink /></div>}
+    {BACKEND_BASE_URL && <div className="mt-3 space-y-2 text-center"><GoogleSignInButton asLink /><p className="text-xs text-muted-foreground">You can use the same Google email here. Email/password sign-in requires an Academix password; use <LinkFromRefine to="/forgot-password" className="auth-inline-link">Forgot password?</LinkFromRefine> to create one.</p></div>}
     <p className="auth-switch">Don't have an account? <Link to="/register">Create an account</Link></p>
   </AuthLayout>;
 };

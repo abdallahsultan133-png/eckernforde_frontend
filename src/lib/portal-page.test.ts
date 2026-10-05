@@ -6,6 +6,7 @@ describe("portal page context", () => {
     expect(portalPage("/grades/term-results/record").title).toBe("Record results");
     expect(portalPage("/grades/report-card/student-1").title).toBe("Report cards");
     expect(portalPage("/grades").title).toBe("Homework Grade Book");
+    expect(portalPage("/reports").title).toBe("Reports");
     expect(portalPage("/homework/42").title).toBe("Homework");
     expect(portalPage("/parent/reports/view").title).toBe("Reports");
   });

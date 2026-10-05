@@ -44,6 +44,7 @@ const PortalEntry = lazy(() => import("@/pages/portal/entry.tsx"));
 const PortalSetup = lazy(() => import("@/pages/portal/setup.tsx"));
 const AcademicHistory = lazy(() => import("@/pages/portal/academic-history.tsx"));
 const AcademicArchive = lazy(() => import("@/pages/portal/academic-archive.tsx"));
+const TeacherAcademicHistory = lazy(() => import("@/pages/portal/teacher-academic-history.tsx"));
 const ActivityPage = lazy(() => import("@/pages/activity.tsx"));
 const SubjectsList = lazy(() => import("@/pages/subjects/list.tsx"));
 const SubjectsCreate = lazy(() => import("@/pages/subjects/create.tsx"));
@@ -250,6 +251,8 @@ function App() {
 
                           <Route path="/portal/history" element={<RequireRole roles={[UserRole.STUDENT]}><AcademicHistory /></RequireRole>} />
                           <Route path="/portal/history/:academicYearId" element={<RequireRole roles={[UserRole.STUDENT]}><AcademicArchive /></RequireRole>} />
+                          <Route path="/portal/teacher-history" element={<RequireRole roles={[UserRole.TEACHER]}><TeacherAcademicHistory /></RequireRole>} />
+                          <Route path="portal/exams" element={<ExamsPage />} />
                           <Route path="activity" element={<ActivityPage />} />
                           <Route path="notifications" element={<NotificationsPage />} />
 
@@ -276,6 +279,7 @@ function App() {
 
                           <Route path="homework">
                               <Route index element={<AssignmentsList />} />
+                              <Route path="grades" element={<Gradebook />} />
                               <Route path="create" element={<RequireRole roles={STAFF_ROLES}><AssignmentsCreate /></RequireRole>} />
                               <Route path=":id/report" element={<RequireRole roles={STAFF_ROLES}><AssignmentReport /></RequireRole>} />
                               <Route path=":id" element={<AssignmentShow />} />
@@ -300,12 +304,14 @@ function App() {
 
                           <Route path="grades">
                               <Route index element={<Gradebook />} />
-                              <Route path="exams" element={<ExamsPage />} />
+                              <Route path="exams" element={<Navigate to="/portal/exams" replace />} />
                               <Route path="report-card" element={<ReportCard />} />
                               <Route path="report-card/:id" element={<ReportCard />} />
                               <Route path="term-results" element={<TermResults />} />
                               <Route path="term-results/record" element={<RequireRole roles={STAFF_ROLES}><TermResultsEntry /></RequireRole>} />
                           </Route>
+                          <Route path="reports" element={<RequireRole roles={[UserRole.STUDENT]}><TermResults /></RequireRole>} />
+                          <Route path="report" element={<Navigate to="/reports" replace />} />
 
                           <Route path="calendar" element={<CalendarPage />} />
                           <Route path="insights" element={<RequireRole roles={[UserRole.STUDENT, ...STAFF_ROLES]}><InsightsPage /></RequireRole>} />

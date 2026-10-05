@@ -16,10 +16,10 @@ const firstName = (name?: string) => name?.trim().split(/\s+/)[0] ?? "";
 export function DashboardGreeting({ subtitle }: { subtitle: ReactNode }) {
   const { data: identity } = useGetIdentity<User>();
   const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
-  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null; archiveContext?: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
   const reduce = useReducedMotion();
   const name = firstName(identity?.name);
-  const schoolName = isSchoolStaff ? portalSchoolName(portal?.data.context?.schoolBand) : "School Portal";
+  const schoolName = isSchoolStaff ? portalSchoolName(portal?.data.archiveContext?.schoolBand ?? portal?.data.context?.schoolBand) : "School Portal";
   const today = new Intl.DateTimeFormat(undefined, {
     weekday: "long",
     month: "long",

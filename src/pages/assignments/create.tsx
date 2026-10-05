@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Field } from "@/components/ui/field.tsx";
+import { TimeSelect } from "@/components/ui/time-select.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import FileUploadWidget, { type FileUploadValue } from "@/components/file-upload-widget.tsx";
@@ -28,7 +29,8 @@ const AssignmentsCreate = () => {
   const [classId, setClassId] = useState(searchParams.get("classId") ?? "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [dueAt, setDueAt] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [maxScore, setMaxScore] = useState("100");
   const [attachment, setAttachment] = useState<FileUploadValue | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,7 +51,7 @@ const AssignmentsCreate = () => {
           classId: Number(classId),
           title: title.trim(),
           description: description.trim() || undefined,
-          dueAt: dueAt || undefined,
+          dueAt: dueDate && dueTime ? `${dueDate}T${dueTime}` : undefined,
           maxScore: Number(maxScore) || 100,
           attachmentUrl: attachment?.url,
           attachmentCldPubId: attachment?.publicId,
@@ -92,12 +94,12 @@ const AssignmentsCreate = () => {
         </section>
 
         <section aria-labelledby="assignment-context-title" className="border-t border-border pt-4">
-          <SectionHeader title={<span id="assignment-context-title">Academic context</span>} description="The selected class determines the subject and students who receive this homework." />
+          <SectionHeader title={<span id="assignment-context-title">Academic context</span>} description="The selected subject determines the class and students who receive this homework." />
           <div className="mt-5 max-w-xl">
-            <Field label="Class" required htmlFor="assignment-class">
+            <Field label="Subject" required htmlFor="assignment-subject">
               <Select value={classId} onValueChange={setClassId}>
-                <SelectTrigger id="assignment-class" className="w-full">
-                  <SelectValue placeholder="Select a class" />
+                <SelectTrigger id="assignment-subject" className="w-full">
+                  <SelectValue placeholder="Select a subject" />
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((c) => (
@@ -116,7 +118,24 @@ const AssignmentsCreate = () => {
                 label="Due date"
                 hint="Students see a live countdown to this moment; submissions close automatically once it passes."
               >
-                <Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => {
+                    const nextDate = e.target.value;
+                    setDueDate(nextDate);
+                    if (!nextDate) setDueTime("");
+                    else if (!dueTime) setDueTime("23:59");
+                  }}
+                />
+              </Field>
+              <Field label="Time" hint="Choose the local school time when submissions close.">
+                <TimeSelect
+                  value={dueTime}
+                  onValueChange={setDueTime}
+                  disabled={!dueDate}
+                  placeholder={dueDate ? "Select time" : "Choose a due date first"}
+                />
               </Field>
               <Field label="Max score">
                 <Input type="number" min={1} value={maxScore} onChange={(e) => setMaxScore(e.target.value)} />

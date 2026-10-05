@@ -36,7 +36,7 @@ const AuditLogsPage = () => {
     const [limit, setLimit] = useState("50");
 
     useEffect(() => {
-        if (identity && identity.role !== UserRole.ADMIN && identity.role !== UserRole.SUPER_ADMIN) {
+        if (identity && identity.role !== UserRole.PRIMARY_HEADMASTER && identity.role !== UserRole.SECONDARY_HEADMASTER && identity.role !== UserRole.SUPER_ADMIN) {
             navigate("/unauthorized");
         }
     }, [identity, navigate]);

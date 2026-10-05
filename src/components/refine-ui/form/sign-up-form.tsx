@@ -10,6 +10,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import "@/components/auth/auth.css";
 import { BACKEND_BASE_URL } from "@/constants";
 import { friendlyAuthError } from "@/lib/auth-messages";
+import { GoogleSignInButton } from "./google-sign-in-button";
 
 export const SignUpForm = () => {
   const [firstName, setFirstName] = useState("");
@@ -38,9 +39,10 @@ export const SignUpForm = () => {
     });
   };
 
-  return <AuthLayout title="Create your account" description="Join the school portal.">
+  return <AuthLayout title="Create your account" description="Join the school portal." showBranding={false}>
     {!BACKEND_BASE_URL && <div className="auth-alert" role="alert"><strong>Portal connection is not configured.</strong><br />Set <code>VITE_BACKEND_BASE_URL</code> in the frontend environment, then restart the app.</div>}
     {error && <div className="auth-form-error" role="alert">{error}</div>}
+    {BACKEND_BASE_URL && <div className="space-y-2"><GoogleSignInButton label="Sign up with Google" /><p className="text-center text-xs text-muted-foreground">Google creates the account using your Google email. School administrators assign school access afterward.</p><div className="flex items-center gap-3 py-1 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /><span>or use email and password</span><span className="h-px flex-1 bg-border" /></div></div>}
     <form onSubmit={handleSignUp} className="auth-form">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="auth-field"><Label htmlFor="firstName">First name</Label><Input id="firstName" autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} required /></div><div className="auth-field"><Label htmlFor="lastName">Last name</Label><Input id="lastName" autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} required /></div></div>
       <div className="auth-field"><Label htmlFor="register-email">Email address</Label><Input id="register-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>

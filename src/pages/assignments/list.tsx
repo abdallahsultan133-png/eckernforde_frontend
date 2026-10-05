@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useGetIdentity } from "@refinedev/core";
+import { toast } from "sonner";
 import { BarChart3, FileText, Plus } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
@@ -15,10 +16,14 @@ import { StatusBadge } from "@/components/ui/status-badge.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { SearchInput } from "@/components/ui/search-input.tsx";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 import { isStaff } from "@/lib/roles.ts";
 import { cn } from "@/lib/utils.ts";
 import { UserRole, type User } from "@/types";
 import { ParentAcademicSelector } from "@/pages/parent/academic-selector";
+import { HeadmasterStageSelector, type HeadmasterStage, stageLabel } from "@/components/academic/headmaster-stage-selector.tsx";
+import { useSuperAdminSchoolScope } from "@/components/academic/super-admin-school-scope.tsx";
+import { SchoolLevelSelector } from "@/components/academic/school-level-selector.tsx";
 
 type AssignmentItem = {
   id: number;
@@ -32,6 +37,30 @@ type AssignmentItem = {
   submissionCount: number;
   gradedCount: number;
   mySubmission: { status: "submitted" | "late" | "graded"; score: number | null } | null;
+};
+
+type HeadmasterClass = {
+  id: number;
+  name: string;
+  schoolLevel: "primary" | "secondary" | null;
+  academicYearId: number | null;
+  subject: { id: number; name: string } | null;
+};
+
+type GradeAvailability = { classId: number; hasGrades: boolean };
+
+const matchesStage = (name: string, stage: HeadmasterStage) => {
+  const value = name.trim().toLowerCase().replace(/[.\s-]+/g, "_");
+  if (stage === "nursery") return value.startsWith("nursery");
+  if (stage.startsWith("kindergarten_")) {
+    const roman = stage.replace("kindergarten_", "");
+    return value.startsWith(`kg_${roman}`) || value.startsWith(`kindergarten_${roman}`);
+  }
+  if (stage.startsWith("standard_")) {
+    const roman = stage.replace("standard_", "");
+    return value.startsWith(`standard_${roman}`) || value.startsWith(`class_${roman}`);
+  }
+  return value.startsWith(stage);
 };
 
 type Filter = { key: string; label: string; match: (a: AssignmentItem, now: number) => boolean };
@@ -81,17 +110,79 @@ const STUDENT_FILTERS: Filter[] = [
   },
 ];
 
+// Parents are viewing the selected student's work, so keep the same workflow
+// labels and states as the student homework page.
+const PARENT_FILTERS: Filter[] = STUDENT_FILTERS;
+
 const ALL_SUBJECTS = "all";
 
 const AssignmentsList = () => {
   const { data: identity } = useGetIdentity<User>();
+  const { data: portal } = useHistoricalPortal();
   const staff = isStaff(identity?.role);
+  const canManage = staff && !portal?.data.archiveContext;
+  const isStudent = identity?.role === UserRole.STUDENT;
+  const isTeacher = identity?.role === UserRole.TEACHER;
   const isParent = identity?.role === UserRole.PARENT;
+  const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
+  const superAdminScope = useSuperAdminSchoolScope(isSuperAdmin);
+  const headmasterLevel = identity?.role === UserRole.PRIMARY_HEADMASTER
+    ? "primary"
+    : identity?.role === UserRole.SECONDARY_HEADMASTER
+      ? "secondary"
+      : null;
+  const [selectedStage, setSelectedStage] = useState<HeadmasterStage | "">("");
+  const activeStage = headmasterLevel ? selectedStage : isSuperAdmin ? superAdminScope.stage : "";
+  const headmasterLike = Boolean(headmasterLevel || isSuperAdmin);
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [searchParams] = useSearchParams();
   const selectedChildId = searchParams.get("childId");
   const selectedAcademicYearId = searchParams.get("academicYearId");
   const hasParentContext = Boolean(selectedChildId && selectedAcademicYearId);
-  const assignmentsPath = isParent && hasParentContext
+  const parentContextQuery = hasParentContext
+    ? `?childId=${encodeURIComponent(selectedChildId!)}&academicYearId=${encodeURIComponent(selectedAcademicYearId!)}`
+    : "";
+  const gradesHref = isParent
+    ? hasParentContext ? `/homework/grades${parentContextQuery}` : "/parent/homework"
+    : isTeacher || isStudent
+      ? "/homework/grades"
+      : "/grades";
+  const gradesLabel = "Grades";
+  const showGradesLink = true;
+  const { data: parentChildrenData } = useApiQuery<{ data: { id: string; name: string }[] }>(isParent && hasParentContext ? "/profile/my-children" : null);
+  const { data: parentYearsData } = useApiQuery<{ data: { id: number; name: string }[] }>(isParent && hasParentContext ? "/grades/academic-years" : null);
+  const selectedChildName = parentChildrenData?.data.find((child) => child.id === selectedChildId)?.name;
+  const selectedYearName = parentYearsData?.data.find((year) => String(year.id) === selectedAcademicYearId)?.name;
+  const { data: headmasterClassesData, isLoading: headmasterClassesLoading, isError: headmasterClassesError, refetch: refetchHeadmasterClasses } = useApiQuery<{ data: HeadmasterClass[] }>(
+    headmasterLevel ? `/classes?limit=100&schoolLevel=${headmasterLevel}` : isSuperAdmin && superAdminScope.schoolLevel && superAdminScope.yearId && activeStage
+      ? `/classes?limit=100&schoolLevel=${superAdminScope.schoolLevel}&academicYearId=${superAdminScope.yearId}&stage=${activeStage}` : null,
+  );
+  const headmasterClasses = useMemo(() => {
+    if (!(headmasterLevel || isSuperAdmin) || !activeStage) return [];
+    return (headmasterClassesData?.data ?? []).filter((item) => matchesStage(item.name, activeStage));
+  }, [headmasterClassesData, headmasterLevel, isSuperAdmin, activeStage]);
+  const headmasterSubjects = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const item of headmasterClasses) if (item.subject) seen.set(String(item.subject.id), item.subject.name);
+    return [...seen.entries()].map(([id, name]) => ({ id, name }));
+  }, [headmasterClasses]);
+  const selectedHeadmasterClass = headmasterClasses.find((item) => String(item.subject?.id) === selectedSubjectId) ?? null;
+  const gradeAvailabilityPath = headmasterLike && headmasterClasses.length
+    ? `/grades/grade-availability?classIds=${headmasterClasses.map((item) => item.id).join(",")}`
+    : null;
+  const { data: gradeAvailabilityData, isLoading: headmasterGradesLoading } = useApiQuery<{ data: GradeAvailability[] }>(gradeAvailabilityPath);
+  const gradeAvailability = gradeAvailabilityData?.data ?? [];
+  const hasGradesByClassId = new Map(gradeAvailability.map((item) => [item.classId, item.hasGrades]));
+  const selectedStageHasGrades = gradeAvailability.some((item) => item.hasGrades);
+  const selectedStageGradeClass = headmasterClasses.find((item) => hasGradesByClassId.get(item.id) === true) ?? null;
+  const selectedSubjectHasGrades = selectedHeadmasterClass
+    ? hasGradesByClassId.get(selectedHeadmasterClass.id) === true
+    : false;
+
+  // The selected class is resolved above so grade availability can use it too.
+  const assignmentsPath = !identity ? null : headmasterLike
+    ? selectedHeadmasterClass ? `/homework?limit=100&classId=${selectedHeadmasterClass.id}` : null
+    : isParent && hasParentContext
     ? `/homework?limit=100&childId=${encodeURIComponent(selectedChildId!)}&academicYearId=${encodeURIComponent(selectedAcademicYearId!)}`
     : isParent ? null : "/homework?limit=100";
 
@@ -107,6 +198,10 @@ const AssignmentsList = () => {
     return [...unique.values()];
   }, [data]);
 
+  useEffect(() => {
+    if (selectedSubjectId && !headmasterSubjects.some((subject) => subject.id === selectedSubjectId)) setSelectedSubjectId("");
+  }, [headmasterSubjects, selectedSubjectId]);
+
   const subjectOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const a of assignments) {
@@ -115,9 +210,11 @@ const AssignmentsList = () => {
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
   }, [assignments]);
 
-  const filters = staff ? STAFF_FILTERS : STUDENT_FILTERS;
+  const filters = staff ? STAFF_FILTERS : isParent ? PARENT_FILTERS : STUDENT_FILTERS;
   const [filterKey, setFilterKey] = useState(searchParams.get("filter") ?? "all");
-  const [subjectId, setSubjectId] = useState(searchParams.get("subjectId") ?? ALL_SUBJECTS);
+  const [subjectId, setSubjectId] = useState(
+    isStudent ? ALL_SUBJECTS : (searchParams.get("subjectId") ?? ALL_SUBJECTS),
+  );
   const [search, setSearch] = useState("");
 
   const now = Date.now();
@@ -147,33 +244,80 @@ const AssignmentsList = () => {
     <PageContainer className="assignment-list">
       <PageHeader
         breadcrumb
+        showBackLink={!isParent}
         title="Homework"
         description={
           staff
             ? "Track homework submissions and grading across your classes."
             : isParent
-              ? undefined
+              ? selectedChildName && selectedYearName ? `${selectedChildName} · ${selectedYearName}` : "Homework for the selected child and academic year."
               : "Everything assigned across your classes, and where each one stands."
         }
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/grades">
-                <BarChart3 className="mr-1.5 h-4 w-4" />
-                Grades
-              </Link>
-            </Button>
-            {staff && (
-              <Button asChild>
-                <Link to="/homework/create">
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  New homework
-                </Link>
-              </Button>
-            )}
-          </div>
-        }
+        actions={isParent ? <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild><Link to={gradesHref}><BarChart3 className="mr-1.5 h-4 w-4" />Grades</Link></Button>
+        </div> : !staff && showGradesLink ? <Button variant="outline" asChild>
+            <Link to={gradesHref}>
+              <BarChart3 className="mr-1.5 h-4 w-4" />
+              {gradesLabel}
+            </Link>
+          </Button> : undefined}
       />
+
+      {headmasterLike && (
+        <div className="space-y-4">
+          {isSuperAdmin && <SchoolLevelSelector
+            label="School name"
+            value={superAdminScope.schoolLevel}
+            onChange={(schoolLevel) => { superAdminScope.setSchoolLevel(schoolLevel); superAdminScope.setYearId(""); superAdminScope.setStage(""); setSelectedSubjectId(""); }}
+          />}
+          {isSuperAdmin && superAdminScope.schoolLevel && <div className="max-w-xl space-y-2">
+            <label htmlFor="super-admin-homework-year" className="text-sm font-semibold">Academic year</label>
+            {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
+              <ErrorState description="Unable to load academic years." onRetry={superAdminScope.retryYears} />
+            ) : (
+              <Select value={superAdminScope.yearId} onValueChange={(yearId) => { superAdminScope.setYearId(yearId); superAdminScope.setStage(""); setSelectedSubjectId(""); }}>
+                <SelectTrigger id="super-admin-homework-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+                <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+          </div>}
+          {(headmasterLevel || (isSuperAdmin && superAdminScope.schoolLevel && superAdminScope.yearId)) && <HeadmasterStageSelector
+            role={headmasterLevel
+              ? identity!.role
+              : superAdminScope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+            value={activeStage}
+            onChange={(stage) => {
+              if (headmasterLevel) setSelectedStage(stage);
+              else superAdminScope.setStage(stage);
+              setSelectedSubjectId("");
+            }}
+            title="Choose a class or form"
+            description="Choose a class or form first, then select one of its subjects to view homework."
+          />}
+          {activeStage && (
+            <div className="max-w-xl space-y-2">
+              <label htmlFor="headmaster-homework-subject" className="text-sm font-medium">Subject in {stageLabel(activeStage)}</label>
+              {headmasterClassesLoading ? <Skeleton className="h-11 w-full" /> : headmasterClassesError ? (
+                <ErrorState description="Couldn&apos;t load subjects for this class." onRetry={refetchHeadmasterClasses} />
+              ) : (
+                <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={headmasterSubjects.length === 0}>
+                  <SelectTrigger id="headmaster-homework-subject" className="h-11 w-full"><SelectValue placeholder="Choose a subject" /></SelectTrigger>
+                  <SelectContent>{headmasterSubjects.map((subject) => <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+              {!headmasterClassesLoading && !headmasterClassesError && headmasterSubjects.length === 0 && <p className="text-sm text-muted-foreground">No subjects have been added to this class yet.</p>}
+            </div>
+          )}
+      {activeStage && !headmasterGradesLoading && gradeAvailabilityData && !selectedStageHasGrades && (
+        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">The selected {stageLabel(activeStage)} has no grades at the moment.</p>
+      )}
+      {activeStage && selectedHeadmasterClass && !headmasterGradesLoading && gradeAvailabilityData && selectedStageHasGrades && !selectedSubjectHasGrades && (
+        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">This subject has no marked homework yet. Grades are available elsewhere in the selected {stageLabel(activeStage)}.</p>
+      )}
+
+          {/* Grade availability status is shown above. */}
+        </div>
+      )}
 
       {!isLoading && !isError && assignments.length > 0 && (
         <section aria-labelledby={isParent ? undefined : "assignment-worklist-title"} aria-label={isParent ? "Homework filters" : undefined} className="space-y-4">
@@ -243,11 +387,11 @@ const AssignmentsList = () => {
           icon={FileText}
           title="No homework yet"
           description={
-            staff
+            canManage
               ? "Create your first homework task to start collecting and grading student work."
-              : "Once your teachers post homework, it will show up here."
+              : staff ? "No homework was saved for this previous-year selection." : "Once your teachers post homework, it will show up here."
           }
-          action={staff ? { label: "Create homework", to: "/homework/create" } : undefined}
+          action={canManage ? { label: "Create homework", to: "/homework/create" } : undefined}
         />
       ) : visible.length === 0 ? (
         <EmptyState
@@ -260,7 +404,7 @@ const AssignmentsList = () => {
           {visible.map((a) => (
             <li key={a.id}>
               <Link
-                to={`/homework/${a.id}`}
+                to={`/homework/${a.id}${isParent ? parentContextQuery : ""}`}
                 className="flex items-center gap-4 px-4 py-4 transition-colors hover:bg-secondary/35 sm:px-5"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
@@ -281,6 +425,29 @@ const AssignmentsList = () => {
           ))}
         </ul>
       )}
+
+      <div className="flex flex-wrap justify-end gap-2 border-t pt-6">
+        {staff && showGradesLink && (!headmasterLike || (Boolean(activeStage && selectedHeadmasterClass) && !headmasterGradesLoading && selectedStageHasGrades)) && <Button variant="outline" asChild>
+          <Link
+            to={headmasterLike && selectedStageGradeClass ? `/grades?classId=${selectedStageGradeClass.id}` : gradesHref}
+            onClick={(event) => {
+              if (headmasterLike && (!activeStage || !selectedHeadmasterClass)) {
+                event.preventDefault();
+                toast.error("Select a class or form first to open its report.");
+              }
+            }}
+          >
+            <BarChart3 className="mr-1.5 h-4 w-4" />
+            {gradesLabel}
+          </Link>
+        </Button>}
+        {canManage && <Button asChild>
+          <Link to="/homework/create">
+            <Plus className="mr-1.5 h-4 w-4" />
+            New homework
+          </Link>
+        </Button>}
+      </div>
     </PageContainer>
   );
 };

@@ -50,6 +50,8 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value.ts";
 import { toCsv } from "@/lib/csv.ts";
 import { useDownload } from "@/hooks/use-download.ts";
 import { UserRole, type User } from "@/types";
+import { HeadmasterStageSelector, type HeadmasterStage, stageLabel } from "@/components/academic/headmaster-stage-selector.tsx";
+import { SchoolLevelSelector, type SchoolLevel } from "@/components/academic/school-level-selector.tsx";
 
 type ManagedUser = {
   id: string;
@@ -57,12 +59,25 @@ type ManagedUser = {
   email: string;
   role: UserRole;
   image: string | null;
+  children?: Array<{ id: string; name: string; classes: string[] }>;
 };
+
+type PasswordResetRequest = {
+  id: number;
+  email: string;
+  status: string;
+  requestedAt: string;
+  handledAt: string | null;
+  user: Pick<ManagedUser, "id" | "name" | "email" | "role"> | null;
+};
+
+type AcademicYear = { id: number; name: string; active: boolean };
 
 const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.STUDENT]: "Student",
   [UserRole.TEACHER]: "Teacher",
-  [UserRole.ADMIN]: "Admin",
+  [UserRole.PRIMARY_HEADMASTER]: "Primary Headmaster",
+  [UserRole.SECONDARY_HEADMASTER]: "Secondary Headmaster",
   [UserRole.PARENT]: "Parent",
   [UserRole.SUPER_ADMIN]: "Super Admin",
 };
@@ -81,8 +96,19 @@ const UsersList = () => {
         ? { title: "Parents & guardians", description: "Find family portal accounts. Child relationships are managed from the student record.", singular: "guardian" }
         : { title: "People & access", description: "Find school accounts, review their access, and manage roles permitted by your administrator level.", singular: "person" };
   const { data: identity, isLoading: identityLoading } = useGetIdentity<User>();
-  const isAdminLike = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+  const isAdminLike = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
   const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
+  const isHeadmaster = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER;
+  const isHeadmasterStudentDirectory = isHeadmaster && directoryRole === UserRole.STUDENT;
+  const [selectedStage, setSelectedStage] = useState<HeadmasterStage | "">("");
+  const [selectedSchoolLevel, setSelectedSchoolLevel] = useState<SchoolLevel | "">("");
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState("");
+  const isScopedSuperAdminDirectory = isSuperAdmin && directoryRole !== null;
+  const needsStageScope = directoryRole === UserRole.STUDENT || directoryRole === UserRole.TEACHER;
+  const { data: academicYearsData, isLoading: academicYearsLoading, isError: academicYearsError, refetch: refetchAcademicYears } = useApiQuery<{ data: AcademicYear[] }>(
+    isSuperAdmin && needsStageScope ? "/grades/academic-years" : null,
+  );
+  const academicYears = academicYearsData?.data ?? [];
 
   const queryClient = useQueryClient();
   const { download } = useDownload();
@@ -103,6 +129,11 @@ const UsersList = () => {
   const systemEnabled = systemData?.data?.enabled ?? true;
   const teachersEnabled = systemData?.data?.teachersEnabled ?? true;
   const studentsParentsEnabled = systemData?.data?.studentsParentsEnabled ?? true;
+  const { data: resetQueueData, isLoading: resetQueueLoading, isError: resetQueueError, refetch: refetchResetQueue } = useApiQuery<{ data: PasswordResetRequest[] }>(
+    isSuperAdmin ? "/password-reset-requests?limit=100" : null,
+  );
+  const resetRequests = resetQueueData?.data ?? [];
+  const [queueResettingId, setQueueResettingId] = useState<number | null>(null);
 
   useEffect(() => {
     setRoleFilter(directoryRole ?? "all");
@@ -135,6 +166,27 @@ const UsersList = () => {
         const params = new URLSearchParams({ limit: "100" });
         if (debouncedSearch) params.set("search", debouncedSearch);
         if (roleFilter !== "all") params.set("role", roleFilter);
+        if (isScopedSuperAdminDirectory) {
+          if (!selectedSchoolLevel || (needsStageScope && (!selectedAcademicYearId || !selectedStage))) return null;
+          params.set("schoolLevel", selectedSchoolLevel);
+          if (needsStageScope) params.set("academicYearId", selectedAcademicYearId);
+          if (directoryRole === UserRole.STUDENT) {
+            params.delete("limit");
+            params.set("stage", selectedStage);
+            return `/users/students?${params.toString()}`;
+          }
+          if (directoryRole === UserRole.TEACHER) params.set("stage", selectedStage);
+        }
+        if (isHeadmasterStudentDirectory) {
+          if (!selectedStage) return null;
+          params.delete("limit");
+          params.set("stage", selectedStage);
+          return `/users/students?${params.toString()}`;
+        }
+        if (isHeadmaster && directoryRole === UserRole.TEACHER) {
+          params.set("role", UserRole.TEACHER);
+          return `/users?${params.toString()}`;
+        }
         return `/users?${params.toString()}`;
       })()
     : null;
@@ -195,6 +247,29 @@ const UsersList = () => {
     }
   };
 
+  const handleQueueTemporaryPassword = async (request: PasswordResetRequest) => {
+    setQueueResettingId(request.id);
+    try {
+      const res = await fetch(`${BACKEND_BASE_URL}/password-reset-requests/${request.id}/temporary-password`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error ?? "Failed to generate temporary password");
+
+      setTempResult({
+        name: json.data.name,
+        email: json.data.email,
+        password: json.data.temporaryPassword,
+      });
+      await refetchResetQueue();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to generate temporary password");
+    } finally {
+      setQueueResettingId(null);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -236,6 +311,39 @@ const UsersList = () => {
     );
   };
 
+  if (isScopedSuperAdminDirectory && (!selectedSchoolLevel || (needsStageScope && (!selectedAcademicYearId || !selectedStage)))) {
+    return (
+      <PageContainer className="users-list">
+        <PageHeader breadcrumb title={directoryCopy.title} description={directoryCopy.description} />
+        <div className="space-y-4">
+          <SchoolLevelSelector
+            label="School name"
+            value={selectedSchoolLevel}
+            onChange={(level) => { setSelectedSchoolLevel(level); setSelectedAcademicYearId(""); setSelectedStage(""); }}
+          />
+          {selectedSchoolLevel && needsStageScope && <div className="max-w-xl space-y-2">
+            <label htmlFor="super-admin-directory-year" className="text-sm font-semibold">Academic year</label>
+            {academicYearsLoading ? <Skeleton className="h-11 w-full" /> : academicYearsError ? (
+              <ErrorState description="Unable to load academic years." onRetry={refetchAcademicYears} />
+            ) : (
+              <Select value={selectedAcademicYearId} onValueChange={(yearId) => { setSelectedAcademicYearId(yearId); setSelectedStage(""); }}>
+                <SelectTrigger id="super-admin-directory-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+                <SelectContent>{academicYears.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+          </div>}
+          {selectedSchoolLevel && selectedAcademicYearId && needsStageScope && <HeadmasterStageSelector
+            role={selectedSchoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+            value={selectedStage}
+            onChange={setSelectedStage}
+            title={selectedSchoolLevel === "primary" ? "Choose a class" : "Choose a form"}
+            description={`Choose the class or form whose ${directoryCopy.title.toLowerCase()} you want to view.`}
+          />}
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer className="users-list">
       <PageHeader
@@ -244,15 +352,56 @@ const UsersList = () => {
         description={directoryCopy.description}
         actions={
           <div className="flex items-center gap-3">
+            {isScopedSuperAdminDirectory && !needsStageScope && <Button variant="outline" size="sm" onClick={() => { setSelectedSchoolLevel(""); setSelectedStage(""); }}>Change school</Button>}
             {users.length > 0 && <Button variant="outline" size="sm" onClick={handleExportCsv}><Download className="mr-1.5 h-4 w-4" /> Export CSV</Button>}
           </div>
         }
       />
 
+      {isScopedSuperAdminDirectory && needsStageScope && <div className="space-y-4">
+        <SchoolLevelSelector
+          label="School name"
+          value={selectedSchoolLevel}
+          onChange={(level) => { setSelectedSchoolLevel(level); setSelectedAcademicYearId(""); setSelectedStage(""); }}
+        />
+        {selectedSchoolLevel && <div className="max-w-xl space-y-2">
+          <label htmlFor="super-admin-directory-year" className="text-sm font-semibold">Academic year</label>
+          {academicYearsLoading ? <Skeleton className="h-11 w-full" /> : academicYearsError ? (
+            <ErrorState description="Unable to load academic years." onRetry={refetchAcademicYears} />
+          ) : (
+            <Select value={selectedAcademicYearId} onValueChange={(yearId) => { setSelectedAcademicYearId(yearId); setSelectedStage(""); }}>
+              <SelectTrigger id="super-admin-directory-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+              <SelectContent>{academicYears.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
+        </div>}
+        {selectedSchoolLevel && selectedAcademicYearId && <HeadmasterStageSelector
+          role={selectedSchoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+          value={selectedStage}
+          onChange={setSelectedStage}
+          title={selectedSchoolLevel === "primary" ? "Choose a class" : "Choose a form"}
+          description={`Choose the class or form whose ${directoryCopy.title.toLowerCase()} you want to view.`}
+        />}
+      </div>}
+
+      {isHeadmasterStudentDirectory && identity?.role && (
+        <HeadmasterStageSelector
+          role={identity.role}
+          value={selectedStage}
+          onChange={setSelectedStage}
+          title="Choose a class"
+          description="Choose a class to see every student assigned to that class or form."
+        />
+      )}
+
+      {isHeadmasterStudentDirectory && selectedStage && (
+        <p className="text-sm text-muted-foreground">Showing students in {stageLabel(selectedStage)}.</p>
+      )}
+
       {isAccessView && !isSuperAdmin && (
         <div className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-300">
           <ShieldAlert className="h-4 w-4 shrink-0" />
-          Only a super admin can grant admin-level roles. You can manage student/teacher/parent roles.
+          Only a super admin can grant headmaster-level roles. You can manage student/teacher/parent roles.
         </div>
       )}
 
@@ -282,11 +431,60 @@ const UsersList = () => {
         </section>
       )}
 
-      <section aria-labelledby="people-directory-title" className="space-y-4">
-        <SectionHeader
-          title={<span id="people-directory-title">School directory</span>}
-          description="Roles shown here are account permissions, not academic enrollment records."
-        />
+      {isSuperAdmin && (
+        <section aria-labelledby="password-recovery-title" className="space-y-4 border-y border-border bg-card py-5">
+          <div className="px-4 sm:px-5">
+            <SectionHeader
+              title={<span id="password-recovery-title">Password recovery requests</span>}
+              description="Users who requested a reset appear here. Generate a temporary password only when you need to give the user a direct login option."
+            />
+          </div>
+          {resetQueueLoading ? (
+            <div className="space-y-3 px-4 sm:px-5"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+          ) : resetQueueError ? (
+            <div className="px-4 sm:px-5"><ErrorState title="Unable to load password recovery requests" description="Try again shortly." onRetry={refetchResetQueue} /></div>
+          ) : resetRequests.length === 0 ? (
+            <p className="px-4 text-sm text-muted-foreground sm:px-5">No password recovery requests have been recorded.</p>
+          ) : (
+            <div className="overflow-x-auto border-y border-border">
+              <Table aria-label="Password recovery requests">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resetRequests.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell className="font-medium">{request.user?.name ?? "Account unavailable"}</TableCell>
+                      <TableCell className="text-muted-foreground">{request.user?.email ?? request.email}</TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(request.requestedAt).toLocaleString()}</TableCell>
+                      <TableCell className="capitalize">{request.status.replaceAll("_", " ")}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!request.user || queueResettingId === request.id}
+                          onClick={() => void handleQueueTemporaryPassword(request)}
+                        >
+                          {queueResettingId === request.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
+                          Generate temporary password
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className={`space-y-4 ${isHeadmasterStudentDirectory && !selectedStage ? "hidden" : ""}`}>
         <FilterBar
           search={
             <SearchInput
@@ -331,13 +529,14 @@ const UsersList = () => {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
+                {directoryRole === UserRole.PARENT && <TableHead className="min-w-[220px]">Children</TableHead>}
                 <TableHead className="w-[200px]">Role</TableHead>
                 <TableHead className="w-[52px]"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((u) => {
-                const canEditThisRole = isSuperAdmin || (u.role !== UserRole.ADMIN && u.role !== UserRole.SUPER_ADMIN);
+                const canEditThisRole = isSuperAdmin || (![UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN].includes(u.role));
                 return (
                   <TableRow key={u.id}>
                     <TableCell>
@@ -354,6 +553,14 @@ const UsersList = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    {directoryRole === UserRole.PARENT && <TableCell>
+                      {u.children?.length ? <ul className="space-y-2">
+                        {u.children.map((child) => <li key={child.id}>
+                          <Link to={`/students/${child.id}`} className="font-medium underline-offset-4 hover:text-primary hover:underline">{child.name}</Link>
+                          <span className="block text-xs text-muted-foreground">{child.classes.length ? child.classes.join(" · ") : "No current class or form"}</span>
+                        </li>)}
+                      </ul> : <span className="text-sm text-muted-foreground">No linked children</span>}
+                    </TableCell>}
                     <TableCell>
                       <Select
                         value={u.role}
@@ -365,7 +572,7 @@ const UsersList = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {Object.values(UserRole).map((r) => {
-                            const disallowed = (r === UserRole.ADMIN || r === UserRole.SUPER_ADMIN) && !isSuperAdmin;
+                            const disallowed = ([UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN].includes(r)) && !isSuperAdmin;
                             return (
                               <SelectItem key={r} value={r} disabled={disallowed}>
                                 {ROLE_LABELS[r]}

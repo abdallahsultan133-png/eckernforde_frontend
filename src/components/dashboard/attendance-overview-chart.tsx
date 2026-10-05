@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { VIZ, activeDot, axisProps, crosshair, gridProps } from "./chart-kit";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type TrendPoint = {
     date: string;
@@ -54,6 +55,7 @@ interface AttendanceOverviewChartProps {
     personal?: boolean;
     /** Show the longer interpretation guidance on the dedicated Insights page. */
     showExplanation?: boolean;
+    scopeByStage?: boolean;
 }
 
 type RatePoint = TrendPoint & { label: string; total: number };
@@ -89,10 +91,11 @@ function RateTooltip({
     );
 }
 
-export function AttendanceOverviewChart({ personal = false, showExplanation = false }: AttendanceOverviewChartProps) {
+export function AttendanceOverviewChart({ personal = false, showExplanation = false, scopeByStage = false }: AttendanceOverviewChartProps) {
     const [range, setRange] = useState<string>("30");
+    const { withYear, withScope, selectedStage } = useAdminDashboardYear();
     const { data, isLoading, isError, refetch } = useApiQuery<{ data: TrendPoint[] }>(
-        `/dashboard/attendance-trend?range=${range}`
+        scopeByStage && !selectedStage ? null : (scopeByStage ? withScope : withYear)(`/dashboard/attendance-trend?range=${range}`)
     );
     const points: RatePoint[] = (data?.data ?? []).map((p) => ({
         ...p,
@@ -130,7 +133,9 @@ export function AttendanceOverviewChart({ personal = false, showExplanation = fa
                 </Tabs>
             </div>
 
-            {isLoading ? (
+            {scopeByStage && !selectedStage ? (
+                <EmptyState className="h-[300px] justify-center" icon={CalendarRange} title="Choose a class or form" description="Select a class or form above to view its attendance insights." />
+            ) : isLoading ? (
                 <Skeleton className="h-[300px] w-full" />
             ) : isError ? (
                 <ErrorState

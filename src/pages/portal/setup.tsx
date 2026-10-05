@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useGetIdentity } from "@refinedev/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
-import { BookOpen, Check, ChevronRight, GraduationCap, Loader2 } from "lucide-react";
+import { Check, ChevronRight, GraduationCap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header.tsx";
@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { BACKEND_BASE_URL } from "@/constants";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { portalSchoolName } from "@/lib/school-brand.ts";
 import { UserRole, type User } from "@/types";
 
-type Stage = "nursery" | "kindergarten" | "standard_i" | "standard_ii" | "standard_iii" | "standard_iv" | "standard_v" | "standard_vi" | "standard_vii" | "form_i" | "form_ii" | "form_iii" | "form_iv";
+type Stage = "nursery" | "kindergarten_i" | "kindergarten_ii" | "kindergarten_iii" | "kindergarten" | "standard_i" | "standard_ii" | "standard_iii" | "standard_iv" | "standard_v" | "standard_vi" | "standard_vii" | "form_i" | "form_ii" | "form_iii" | "form_iv";
 type SchoolBand = "primary" | "secondary";
 type AcademicYear = { id: number; name: string; startsOn: string; endsOn: string };
 type ContextData = {
@@ -28,12 +29,12 @@ type ContextData = {
 };
 
 const stageLabels: Record<Stage, string> = {
-  nursery: "Nursery", kindergarten: "Kindergarten",
+  nursery: "Nursery", kindergarten_i: "KG I", kindergarten_ii: "KG II", kindergarten_iii: "KG III", kindergarten: "Kindergarten",
   standard_i: "Standard I", standard_ii: "Standard II", standard_iii: "Standard III",
   standard_iv: "Standard IV", standard_v: "Standard V", standard_vi: "Standard VI", standard_vii: "Standard VII",
   form_i: "Form I", form_ii: "Form II", form_iii: "Form III", form_iv: "Form IV",
 };
-const primaryStages: Stage[] = ["nursery", "kindergarten", "standard_i", "standard_ii", "standard_iii", "standard_iv", "standard_v", "standard_vi", "standard_vii"];
+const primaryStages: Stage[] = ["kindergarten_i", "kindergarten_ii", "kindergarten_iii", "nursery", "standard_i", "standard_ii", "standard_iii", "standard_iv", "standard_v", "standard_vi"];
 const secondaryStages: Stage[] = ["form_i", "form_ii", "form_iii", "form_iv"];
 
 export default function PortalSetup() {
@@ -81,7 +82,12 @@ export default function PortalSetup() {
       queryClient.setQueryData<{ data: ContextData & { context?: unknown } }>(["/portal-context"], (previous) =>
         previous ? { data: { ...previous.data, setupRequired: false, context: json.data } } : previous,
       );
-      await queryClient.invalidateQueries();
+      // A portal class/form is a data boundary. Reset cached resource queries
+      // so records from the previous context cannot remain visible while the
+      // newly-selected context is being fetched.
+      await queryClient.resetQueries({
+        predicate: (query) => query.queryKey[0] !== "/portal-context",
+      });
       toast.success("Portal context saved.");
       navigate("/portal", { replace: true });
     } catch (error) {
@@ -92,7 +98,7 @@ export default function PortalSetup() {
   };
 
   return <div className="mx-auto max-w-3xl space-y-6">
-    <PageHeader breadcrumb title="Set up your portal" description="Choose your school level, form or class, and academic year." />
+    <PageHeader breadcrumb showBackLink={!changing} title="Set up your portal" description="Choose your school level, form or class, and academic year." />
     <Card>
       <CardHeader>
         <CardTitle>{identity?.role === UserRole.TEACHER ? "Where are you teaching?" : "Where are you studying?"}</CardTitle>
@@ -107,8 +113,8 @@ export default function PortalSetup() {
             onClick={() => { setBand(item); setStage(null); setYearId(""); }}
             className={`flex min-h-28 items-start gap-3 border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${band === item ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
           >
-            <span className="grid h-9 w-9 place-items-center rounded-md bg-muted text-primary" aria-hidden="true">{item === "primary" ? <BookOpen className="h-5 w-5" /> : <GraduationCap className="h-5 w-5" />}</span>
-            <span><span className="block font-semibold capitalize">{item} school</span><span className="mt-1 block text-xs text-muted-foreground">{item === "primary" ? "Nursery, Kindergarten and Standard I–VII" : "Form I–IV"}</span></span>
+            <span className="grid h-14 w-14 shrink-0 place-items-center" aria-hidden="true"><img src={item === "primary" ? "/eckernforde-english-medium-primary-badge.png" : "/eckernforde-cambridge-badge.png"} alt="" className="h-full w-full object-contain" /></span>
+            <span><span className="block font-semibold">{portalSchoolName(item)}</span><span className="mt-1 block text-xs text-muted-foreground">{item === "primary" ? "Kindergarten I–III, Nursery and Standard I–VI" : "Form I–IV"}</span></span>
             {band === item && <Check className="ml-auto h-4 w-4 text-primary" aria-hidden="true" />}
           </button>)}
         </div>

@@ -61,7 +61,7 @@ type StudentData = {
   linkedParent: { id: string; name: string; email: string } | null;
   enrolledClasses: { id: number; name: string; schoolLevel?: "nursery" | "primary" | "secondary" | null; subject?: { id: number; name: string } | null }[];
   grades: { classId: number; finalGrade: number | null; letterGrade: string | null }[];
-  attendanceSummary: { total: number; present: number; rate: number | null };
+  attendanceSummary: { total: number; present: number; absent: number; late: number; excused: number; rate: number | null };
 };
 
 const getInitials = (name = "") =>
@@ -70,9 +70,17 @@ const getInitials = (name = "") =>
 const StudentProfilePage = () => {
   const { id } = useParams();
   const { data: identity } = useGetIdentity<User>();
-  const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+  const isAdmin = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
   const isParent = identity?.role === UserRole.PARENT;
+  const isOwnStudentProfile = identity?.role === UserRole.STUDENT && identity.id === id;
   const canManageDocs = isAdmin || identity?.role === UserRole.TEACHER || identity?.id === id;
+  const reportHref = isParent
+    ? "/parent/reports"
+    : isOwnStudentProfile
+      ? "/reports"
+    : id
+      ? `/grades/term-results?studentId=${encodeURIComponent(id)}`
+      : "/reports";
   const queryClient = useQueryClient();
 
   const [parentEmailInput, setParentEmailInput] = useState("");
@@ -88,6 +96,13 @@ const StudentProfilePage = () => {
       ? "primary"
       : null);
   const schoolName = portalSchoolName(schoolBand);
+  const subjectNames = new Set(data?.enrolledClasses.map((course) => course.subject?.name ?? course.name) ?? []);
+  const recordedGrades = data?.grades.filter((grade) => grade.finalGrade !== null || grade.letterGrade !== null) ?? [];
+  const numericGrades = recordedGrades.map((grade) => grade.finalGrade).filter((grade): grade is number => grade !== null);
+  const averageGrade = numericGrades.length
+    ? Math.round((numericGrades.reduce((total, grade) => total + grade, 0) / numericGrades.length) * 10) / 10
+    : null;
+  const currentClassName = data?.enrolledClasses[0]?.name ?? null;
 
   const documentsPath = id ? `/files/student/${id}` : null;
   const {
@@ -181,16 +196,17 @@ const StudentProfilePage = () => {
         }
         title={data.name}
         subtitle={data.profile?.registrationNumber ? `${schoolName} · Admission number ${data.profile.registrationNumber}` : schoolName}
+        status={<Badge variant="outline" className="gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-primary" />Student record</Badge>}
         metadata={
           <>
-            <span><strong className="font-medium text-foreground">{data.enrolledClasses.length}</strong> enrolled {data.enrolledClasses.length === 1 ? "class" : "classes"}</span>
-            <span><strong className="font-medium text-foreground">{data.grades.length}</strong> recorded {data.grades.length === 1 ? "result" : "results"}</span>
-            <span>{data.attendanceSummary.rate === null ? "Attendance not recorded" : <><strong className="font-medium text-foreground">{data.attendanceSummary.rate}%</strong> attendance</>}</span>
+            {currentClassName && <span><strong className="font-medium text-foreground">Class / form:</strong> {currentClassName}</span>}
+            <span><strong className="font-medium text-foreground">School:</strong> {schoolName}</span>
+            <span><strong className="font-medium text-foreground">Portal email:</strong> {data.email}</span>
           </>
         }
         actions={
           <>
-            <Button variant="outline" size="sm" asChild><Link to={isParent ? "/parent/reports" : "/grades/term-results"}><BookOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />Report card</Link></Button>
+            <Button variant="outline" size="sm" asChild><Link to={reportHref}><BookOpen className="mr-1.5 h-4 w-4" aria-hidden="true" />Report card</Link></Button>
             {isParent && <>
               <Button variant="outline" size="sm" asChild><Link to="/parent/attendance"><ClipboardCheck className="mr-1.5 h-4 w-4" aria-hidden="true" />Attendance</Link></Button>
               <Button variant="outline" size="sm" asChild><Link to="/parent/homework"><FileText className="mr-1.5 h-4 w-4" aria-hidden="true" />Homework</Link></Button>
@@ -198,6 +214,13 @@ const StudentProfilePage = () => {
           </>
         }
       />
+
+      <section aria-label="Student at a glance" className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-4">
+        <StudentMetric label="Current subjects" value={subjectNames.size} detail={currentClassName ?? "Not assigned"} />
+        <StudentMetric label="Attendance" value={data.attendanceSummary.rate === null ? "—" : `${data.attendanceSummary.rate}%`} detail={data.attendanceSummary.total ? `${data.attendanceSummary.present} of ${data.attendanceSummary.total} present` : "Not recorded"} />
+        <StudentMetric label="Average result" value={averageGrade === null ? "—" : `${averageGrade}%`} detail={averageGrade === null ? "No final grades" : `${recordedGrades.length} recorded ${recordedGrades.length === 1 ? "grade" : "grades"}`} />
+        <StudentMetric label="Documents" value={documentsLoading ? "…" : documents.length} detail={documents.length === 1 ? "File on record" : "Files on record"} />
+      </section>
 
       <nav aria-label="Student record sections" className="-mb-1 overflow-x-auto border-b border-border">
         <div className="flex min-w-max gap-5 px-1">
@@ -242,7 +265,10 @@ const StudentProfilePage = () => {
                   {data.enrolledClasses.map((course) => {
                     return (
                       <div key={course.id} className="flex items-center justify-between gap-4 py-3">
-                        {isParent ? <span className="min-w-0 truncate text-sm font-medium">{course.subject?.name ?? course.name}</span> : <Link to={`/classes/show/${course.id}`} className="min-w-0 truncate text-sm font-medium underline-offset-4 hover:text-primary hover:underline">{course.subject?.name ?? course.name}</Link>}
+                        <div className="min-w-0">
+                          {isParent ? <span className="block truncate text-sm font-medium">{course.subject?.name ?? course.name}</span> : <Link to={`/classes/show/${course.id}`} className="block truncate text-sm font-medium underline-offset-4 hover:text-primary hover:underline">{course.subject?.name ?? course.name}</Link>}
+                          {course.subject?.name && <p className="mt-0.5 truncate text-xs text-muted-foreground">{course.name}</p>}
+                        </div>
                         <div className="flex shrink-0 items-center gap-2">
                           {course.schoolLevel && <Badge variant="secondary" className="capitalize">{course.schoolLevel}</Badge>}
                         </div>
@@ -296,6 +322,14 @@ const StudentProfilePage = () => {
                   <span className="text-right text-xs text-muted-foreground">{data.attendanceSummary.present} of {data.attendanceSummary.total} sessions present</span>
                 </div>
                 <Progress value={data.attendanceSummary.rate ?? 0} className="h-2" />
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 text-sm">
+                  {[
+                    ["Present", data.attendanceSummary.present, "bg-emerald-500"],
+                    ["Absent", data.attendanceSummary.absent, "bg-rose-500"],
+                    ["Late", data.attendanceSummary.late, "bg-amber-500"],
+                    ["Excused", data.attendanceSummary.excused, "bg-sky-500"],
+                  ].map(([label, value, dot]) => <div key={String(label)} className="flex items-center justify-between gap-2"><dt className="flex items-center gap-2 text-muted-foreground"><span className={`h-2 w-2 rounded-full ${dot}`} />{label}</dt><dd className="font-medium tabular-nums">{value}</dd></div>)}
+                </dl>
               </div>
             ) : <p className="text-sm text-muted-foreground">No attendance sessions have been recorded.</p>}
           </ProfileSection>
@@ -331,13 +365,23 @@ const StudentProfilePage = () => {
 
 function ProfileSection({ id, title, icon, children }: { id: string; title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 border-t border-border pt-4">
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-center gap-2">
         <span className="text-muted-foreground" aria-hidden="true">{icon}</span>
         <h2 id={`${id}-title`} className="text-base font-semibold tracking-[-0.01em]">{title}</h2>
       </div>
       {children}
     </section>
+  );
+}
+
+function StudentMetric({ label, value, detail }: { label: string; value: ReactNode; detail: string }) {
+  return (
+    <div className="min-w-0 border-b border-r border-border p-4 even:border-r-0 sm:border-b-0 sm:border-r sm:p-5 sm:last:border-r-0">
+      <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 truncate text-xs text-muted-foreground" title={detail}>{detail}</p>
+    </div>
   );
 }
 

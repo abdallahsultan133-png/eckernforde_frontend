@@ -27,8 +27,10 @@ const Dashboard = () => {
             return <SchoolWorkspace role="student" />;
         case UserRole.PARENT:
             return <FamilyWorkspace />;
-        case UserRole.ADMIN:
-            return <SchoolWorkspace role="admin" />;
+        case UserRole.PRIMARY_HEADMASTER:
+            return <SchoolWorkspace role="primary_headmaster" />;
+        case UserRole.SECONDARY_HEADMASTER:
+            return <SchoolWorkspace role="secondary_headmaster" />;
         case UserRole.SUPER_ADMIN:
             return <SchoolWorkspace role="super_admin" />;
         default:

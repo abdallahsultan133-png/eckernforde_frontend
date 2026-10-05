@@ -15,17 +15,22 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { VIZ, axisProps, barCursor, gridProps } from "./chart-kit";
 import { VizTooltip } from "./viz-tooltip";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type GradeBucket = { grade: string; count: number };
-type ClassActivity = { classId: number; className: string; avgGrade: number | null };
+type ClassActivity = { classId: number; className: string; subjectName: string | null; avgGrade: number | null };
+type SubjectPerformance = { subjectId: number; subjectName: string; avgGrade: number | null; passedCount: number; needsAttentionCount: number; topGradeCount: number; failingCount: number };
 
 interface PerformanceChartProps {
     /** Show a compact top/bottom performing classes list below the bars — admin/teacher only. */
     showClassRanking?: boolean;
+    /** Show the top/bottom performing subjects below the bars. */
+    showSubjectRanking?: boolean;
+    /** Require a Headmaster to choose a class or form before loading results. */
+    requireClassOrForm?: boolean;
     /**
-     * Render the student-facing version: the data is the signed-in student's own
-     * final grades, so the copy, tooltip and caption explain the chart in "your
-     * classes" terms rather than "students".
+    * Render the student-facing version: the data is the signed-in student's
+    * published Midterm/Terminal average per subject, grouped by letter grade.
      */
     personal?: boolean;
 }
@@ -40,8 +45,9 @@ const GRADE_MEANING: Record<string, string> = {
     F: "Failing",
 };
 
-export function PerformanceChart({ showClassRanking = false, personal = false }: PerformanceChartProps) {
-    const { data, isLoading, isError, refetch } = useApiQuery<{ data: GradeBucket[] }>("/dashboard/grade-distribution");
+export function PerformanceChart({ showClassRanking = false, showSubjectRanking = false, requireClassOrForm = false, personal = false }: PerformanceChartProps) {
+    const { withScope, selectedStage } = useAdminDashboardYear();
+    const { data, isLoading, isError, refetch } = useApiQuery<{ data: GradeBucket[] }>(requireClassOrForm && !selectedStage ? null : withScope("/dashboard/grade-distribution"));
 
     // Grade is the identity (it's on the axis); the bar is a single "count"
     // series, so every bar is one hue. Always render A–F in order, filling
@@ -51,28 +57,44 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
     const total = buckets.reduce((s, b) => s + b.count, 0);
 
     const { data: activityData } = useApiQuery<{ data: ClassActivity[] }>(
-        showClassRanking ? "/dashboard/class-activity" : null
+        showClassRanking && (!requireClassOrForm || selectedStage) ? withScope("/dashboard/class-activity") : null
+    );
+    const { data: subjectData } = useApiQuery<{ data: SubjectPerformance[] }>(
+        showSubjectRanking && (!requireClassOrForm || selectedStage) ? withScope("/dashboard/subject-performance") : null
     );
     const ranked = (activityData?.data ?? []).filter((c) => c.avgGrade !== null);
     const topClasses = ranked.slice().sort((a, b) => (b.avgGrade ?? 0) - (a.avgGrade ?? 0)).slice(0, 3);
     const bottomClasses = ranked.slice().sort((a, b) => (a.avgGrade ?? 0) - (b.avgGrade ?? 0)).slice(0, 3);
+    const rankedSubjects = (subjectData?.data ?? []).filter((subject) => subject.avgGrade !== null);
+    const topSubjects = rankedSubjects.slice().sort((a, b) => b.topGradeCount - a.topGradeCount || (b.avgGrade ?? 0) - (a.avgGrade ?? 0)).slice(0, 2);
+    const bottomSubjects = rankedSubjects.slice().sort((a, b) => b.failingCount - a.failingCount || (a.avgGrade ?? 0) - (b.avgGrade ?? 0)).slice(0, 2);
 
     const topBand = buckets.slice().sort((a, b) => b.count - a.count).find((b) => b.count > 0)?.grade;
     const atOrAboveC = buckets.filter((b) => ["A", "B", "C"].includes(b.grade)).reduce((s, b) => s + b.count, 0);
 
-    const unit = personal ? "class" : "student";
-    const unitPlural = personal ? "classes" : "students";
+    const unit = personal ? "subject" : "student";
+    const unitPlural = personal ? "subjects" : "students";
+    const needsClassOrForm = requireClassOrForm && !selectedStage;
 
     return (
         <div className="rounded-xl border p-4">
-            <h2 className="text-xl font-semibold">Student Performance</h2>
+            <h2 className="text-xl font-semibold">{personal ? "Subject grade distribution" : "Student Performance"}</h2>
             <p className="mb-4 mt-1 text-sm text-muted-foreground">
-                {personal
-                    ? "Your final grade in each class, grouped by letter — how many of your classes landed at each grade."
-                    : `Final grades across all classes — number of ${unitPlural} at each letter grade.`}
+                {showSubjectRanking
+                    ? "Each student is counted once using the average of their Midterm and Terminal subject averages."
+                    : personal
+                    ? "Each subject is counted once using the average of your published Midterm and Terminal marks."
+                    : `Each ${unit} is counted once using published Midterm and Terminal subject averages.`}
             </p>
 
-            {isLoading ? (
+            {needsClassOrForm ? (
+                <EmptyState
+                    className="h-[260px] justify-center"
+                    icon={GraduationCap}
+                    title="Choose a class or form"
+                    description="Select a class or form above to view its subject performance."
+                />
+            ) : isLoading ? (
                 <Skeleton className="h-[260px] w-full" />
             ) : isError ? (
                 <ErrorState
@@ -87,10 +109,10 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                     title="No final grades yet"
                     description={
                         personal
-                            ? "Once your teachers post final grades, you'll see how many of your classes fall into each grade band."
+                            ? "A subject appears here once both its Midterm and Terminal results are published for this academic year."
                             : "Grade distribution will appear here once grades are recorded."
                     }
-                    action={{ label: personal ? "See my grades" : "Open homework grade book", to: "/grades" }}
+                    action={{ label: personal ? "Open report" : "Open homework grade book", to: personal ? "/reports" : "/grades" }}
                 />
             ) : (
                 <>
@@ -134,7 +156,7 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                         <div className="mt-4 space-y-2 border-t pt-4">
                             <p className="text-sm text-foreground">
                                 <span className="font-medium">{total}</span>{" "}
-                                {total === 1 ? "class" : "classes"} graded so far
+                                {total === 1 ? "subject" : "subjects"} graded so far
                                 {topBand ? (
                                     <> — most often a <span className="font-medium">{topBand}</span></>
                                 ) : null}
@@ -150,11 +172,42 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                                 ))}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                Only classes with a final grade recorded are counted. Ask your teacher if a class looks missing.
+                                Each counted subject has published Midterm and Terminal marks; the two marks are averaged before grading.
                             </p>
                         </div>
                     )}
                 </>
+            )}
+
+            {showSubjectRanking && rankedSubjects.length > 0 && (
+                <div className="mt-6 grid gap-4 border-t pt-4 sm:grid-cols-2">
+                    <div>
+                        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <TrendingUp className="h-3.5 w-3.5" /> Highest-performing subjects
+                        </p>
+                        <ul className="space-y-1.5">
+                            {topSubjects.map((subject) => (
+                                <li key={subject.subjectId} className="flex items-center justify-between text-sm">
+                                    <span className="truncate text-foreground">{subject.subjectName}</span>
+                                    <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">{subject.topGradeCount} A grades</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div>
+                        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <TrendingDown className="h-3.5 w-3.5" /> Subjects needing attention
+                        </p>
+                        <ul className="space-y-1.5">
+                            {bottomSubjects.map((subject) => (
+                                <li key={subject.subjectId} className="flex items-center justify-between text-sm">
+                                    <span className="truncate text-foreground">{subject.subjectName}</span>
+                                    <span className="font-medium tabular-nums text-amber-600 dark:text-amber-400">{subject.failingCount} F grades</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
             )}
 
             {showClassRanking && ranked.length > 0 && (
@@ -166,7 +219,7 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                         <ul className="space-y-1.5">
                             {topClasses.map((c) => (
                                 <li key={c.classId} className="flex items-center justify-between text-sm">
-                                    <span className="truncate text-foreground">{c.className}</span>
+                                    <span className="truncate text-foreground">{c.subjectName?.trim() || c.className}</span>
                                     <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">{c.avgGrade}%</span>
                                 </li>
                             ))}
@@ -179,7 +232,7 @@ export function PerformanceChart({ showClassRanking = false, personal = false }:
                         <ul className="space-y-1.5">
                             {bottomClasses.map((c) => (
                                 <li key={c.classId} className="flex items-center justify-between text-sm">
-                                    <span className="truncate text-foreground">{c.className}</span>
+                                    <span className="truncate text-foreground">{c.subjectName?.trim() || c.className}</span>
                                     <span className="font-medium tabular-nums text-amber-600 dark:text-amber-400">{c.avgGrade}%</span>
                                 </li>
                             ))}

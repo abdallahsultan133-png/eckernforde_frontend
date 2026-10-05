@@ -5,14 +5,16 @@ import AttendanceReport from "@/pages/attendance/report.tsx";
 import { ParentAcademicSelector } from "@/pages/parent/academic-selector";
 import { PageContainer } from "@/components/layout/page-container";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 
 // Teachers/admins mark attendance here; everyone else (students, parents) only
 // has read access on the backend, so they get the report view instead of a
 // form they can't submit.
 const AttendanceIndex = () => {
     const { data: identity, isLoading } = useGetIdentity<User>();
+    const { data: portal, isLoading: portalLoading } = useHistoricalPortal();
 
-    if (isLoading) {
+    if (isLoading || portalLoading) {
         return (
             <PageContainer aria-busy="true" aria-label="Loading attendance workspace">
                 <Skeleton className="h-20 w-full" />
@@ -22,9 +24,10 @@ const AttendanceIndex = () => {
         );
     }
 
-    const isStaff = identity?.role === UserRole.TEACHER || identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const isStaff = identity?.role === UserRole.TEACHER || identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
 
     if (identity?.role === UserRole.PARENT) return <ParentAcademicSelector mode="attendance" />;
+    if (identity?.role === UserRole.TEACHER && portal?.data.archiveContext) return <AttendanceReport />;
     return isStaff ? <MarkAttendance /> : <AttendanceReport />;
 };
 

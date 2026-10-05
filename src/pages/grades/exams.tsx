@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { BACKEND_BASE_URL } from "@/constants";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 import { UserRole, type User, type ClassDetails } from "@/types";
 
 type Exam = {
@@ -53,7 +54,10 @@ const examClassLabel = (classItem: ClassDetails) =>
 
 const ExamsPage = () => {
   const { data: identity } = useGetIdentity<User>();
-  const isTeacherOrAdmin = identity?.role === UserRole.TEACHER || identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+  const { data: portal } = useHistoricalPortal();
+  const historical = Boolean(portal?.data.archiveContext);
+  const isTeacherOrAdmin = identity?.role === UserRole.TEACHER || identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
+  const canManageExams = isTeacherOrAdmin && !historical;
 
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -83,6 +87,7 @@ const ExamsPage = () => {
   }, [classes, classId]);
 
   const classIsReady = classes.some((course) => String(course.id) === classId);
+  const selectedClass = classes.find((course) => String(course.id) === classId);
   const examsPath = classIsReady ? `/grades/exams?classId=${classId}` : null;
   const { data: examsData, isLoading: loading, isError, refetch } = useApiQuery<{ data: Exam[] }>(examsPath);
   const exams = examsData?.data ?? [];
@@ -159,7 +164,7 @@ const ExamsPage = () => {
         throw new Error(body?.error ?? body?.message ?? `Could not save results (${res.status}).`);
       }
       toast.success("Results saved.");
-      queryClient.invalidateQueries({ queryKey: [`/grades/exams/${examId}/results`] });
+      await queryClient.invalidateQueries({ queryKey: [`/grades/exams/${examId}/results`] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save results");
     }
@@ -176,15 +181,16 @@ const ExamsPage = () => {
     <PageContainer className="exams-page">
       <PageHeader
         breadcrumb
-        title="Examinations"
-        description="Schedule Midterm and Terminal examinations, then record results accurately for the selected class."
+        showBackLink={identity?.role !== UserRole.TEACHER}
+        title="Examinations & Results"
+        description="Schedule assessments, enter student marks, and keep each class result register up to date."
         actions={
           <>
             <Select value={classId} onValueChange={(v) => { setClassId(v); setExpandedExamId(null); }}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select class" /></SelectTrigger>
               <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>)}</SelectContent>
             </Select>
-            {isTeacherOrAdmin && (
+            {canManageExams && (
               <Button onClick={() => setShowForm((v) => !v)}>
                 <Plus className="mr-1.5 h-4 w-4" />{showForm ? "Close form" : "Create examination"}
               </Button>
@@ -193,7 +199,21 @@ const ExamsPage = () => {
         }
       />
 
-      {showForm && isTeacherOrAdmin && (
+      {classIsReady && selectedClass && (
+        <section className="flex flex-col gap-4 border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Selected class examination context">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Selected class</p>
+            <h2 className="mt-1 truncate text-xl font-bold">{examClassLabel(selectedClass)}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Open an assessment below to enter or update marks for enrolled students.</p>
+          </div>
+          <div className="shrink-0 border-l-2 border-primary/30 pl-4 text-sm sm:text-right">
+            <p className="text-muted-foreground">Scheduled assessments</p>
+            <p className="text-2xl font-semibold tabular-nums">{loading ? "—" : exams.length}</p>
+          </div>
+        </section>
+      )}
+
+      {showForm && canManageExams && (
         <section aria-labelledby="create-exam-title" className="max-w-4xl border-y border-border bg-card px-4 py-5 sm:px-5">
           <SectionHeader title={<span id="create-exam-title">Create examination</span>} description="Define the assessment type, schedule, scoring limit, and supported venue details." />
             <form onSubmit={handleCreate} className="mt-5 space-y-4">
@@ -223,7 +243,7 @@ const ExamsPage = () => {
 
       <section aria-labelledby="exam-register-title" className="space-y-4">
         <SectionHeader title={<span id="exam-register-title">Examination register</span>} description="Open an examination to review or enter its results." />
-      <div className="divide-y divide-border border-y border-border bg-card">
+      <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         {loading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />) :
           isError ? (
             <ErrorState description="Couldn't load exams for this class." onRetry={refetch} />
@@ -231,10 +251,10 @@ const ExamsPage = () => {
             <EmptyState
               icon={BookOpenCheck}
               title="No exams scheduled"
-              description={isTeacherOrAdmin ? "Create an exam to schedule it and enter scores." : "No exams have been scheduled for this class yet."}
+              description={canManageExams ? "Create an exam to schedule it and enter scores." : "No exams were saved for this class."}
             />
           ) : exams.map((exam) => (
-            <article key={exam.id}>
+            <article key={exam.id} className="transition-colors hover:bg-muted/20">
               <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{exam.title}</p><StatusBadge tone="neutral">{exam.examType === "annual" ? "Terminal" : "Midterm"}</StatusBadge></div>
@@ -246,7 +266,7 @@ const ExamsPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isTeacherOrAdmin && (
+                  {canManageExams && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" aria-label={`Delete exam: ${exam.title}`}><Trash2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" /></Button>
@@ -262,14 +282,14 @@ const ExamsPage = () => {
                   )}
                   <Button variant="outline" size="sm" onClick={() => toggleExpand(exam.id)}>
                     {expandedExamId === exam.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    {isTeacherOrAdmin ? "Enter results" : "My result"}
+                    {canManageExams ? "Enter results" : historical && isTeacherOrAdmin ? "View results" : "My result"}
                   </Button>
                 </div>
               </div>
 
               {expandedExamId === exam.id && (
                 <div className="border-t px-4 pb-4 pt-3">
-                  {isTeacherOrAdmin ? (
+                  {canManageExams ? (
                     <>
                       <Table>
                         <TableHeader>
@@ -298,6 +318,11 @@ const ExamsPage = () => {
                         {savingResults === exam.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Results
                       </Button>
                     </>
+                  ) : historical && isTeacherOrAdmin ? (
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Student</TableHead><TableHead className="text-right">Score / {exam.maxScore}</TableHead></TableRow></TableHeader>
+                      <TableBody>{examResults.length === 0 ? <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground">No results were recorded.</TableCell></TableRow> : examResults.map((result) => <TableRow key={result.id}><TableCell className="font-medium">{result.student.name}</TableCell><TableCell className="text-right tabular-nums">{result.score} / {exam.maxScore}</TableCell></TableRow>)}</TableBody>
+                    </Table>
                   ) : (
                     <div className="py-2 text-sm">
                       {examResults.length === 0 ? (

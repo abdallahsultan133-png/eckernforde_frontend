@@ -6,8 +6,8 @@ import ParentAttendance from "./attendance";
 
 vi.mock("@/hooks/use-api-query", () => ({
   useApiQuery: (path: string | null) => ({
-    data: path === "/profile/my-children"
-      ? { data: [{ id: "student-one", name: "Amina" }] }
+    data: path?.startsWith("/profile/my-children?")
+      ? { data: [{ id: "student-one", name: "Amina", enrolledClasses: [{ id: 10, name: "Form I", schoolLevel: "secondary", subject: { id: 4, name: "Mathematics" } }] }] }
       : path === "/grades/academic-years"
         ? { data: [{ id: 7, name: "2026", startsOn: "2026-01-01", endsOn: "2026-12-31" }] }
         : { data: [{ id: 1, classId: 10, className: "Form I", subjectName: "Mathematics", date: "2026-03-01", status: "present", notes: null }] },
@@ -16,6 +16,8 @@ vi.mock("@/hooks/use-api-query", () => ({
     refetch: vi.fn(),
   }),
 }));
+
+vi.mock("@/hooks/use-download", () => ({ useDownload: () => ({ narrateDownload: vi.fn() }) }));
 
 afterEach(cleanup);
 
@@ -26,7 +28,9 @@ it("shows the subject instead of the class in a parent's attendance record", () 
     </MemoryRouter>,
   );
 
-  expect(screen.getByRole("columnheader", { name: "Subject" })).toBeTruthy();
+  expect(screen.getAllByRole("columnheader", { name: "Subject" })).toHaveLength(2);
   expect(screen.queryByRole("columnheader", { name: "Class" })).toBeNull();
-  expect(screen.getByText("Mathematics")).toBeTruthy();
+  expect(screen.getAllByText("Mathematics").length).toBeGreaterThan(0);
+  expect(screen.getByRole("columnheader", { name: "Attendance Rate" })).toBeTruthy();
+  expect(screen.getByText("100%")).toBeTruthy();
 });

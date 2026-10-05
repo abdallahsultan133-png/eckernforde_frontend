@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { schoolDate, lessonState } from "@/lib/school-time";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type Event = { id: number; title: string; startAt: string; endAt: string | null; type: string; allDay: boolean; class: { id: number; name: string } | null };
 
@@ -14,7 +15,8 @@ export function TodaySchedule() {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 60_000); return () => clearInterval(timer); }, []);
   const day = schoolDate(new Date(now));
   const from = new Date(`${day}T00:00:00+03:00`).toISOString().slice(0, 10);
-  const { data, isLoading, isError, refetch } = useApiQuery<{ data: Event[] }>(`/calendar?from=${from}&to=${day}`);
+  const { withYear } = useAdminDashboardYear();
+  const { data, isLoading, isError, refetch } = useApiQuery<{ data: Event[] }>(withYear(`/calendar?from=${from}&to=${day}`));
   const lessons = (data?.data ?? []).filter((event) => (event.type === "class" || event.type === "exam") && schoolDate(new Date(event.startAt)) === day).sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
 
   return <div className="daily-schedule">

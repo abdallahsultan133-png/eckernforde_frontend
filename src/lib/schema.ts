@@ -3,7 +3,7 @@ import * as z from "zod";
 export const facultySchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
-    role: z.enum(["admin", "teacher", "student"], {
+    role: z.enum(["primary_headmaster", "secondary_headmaster", "teacher", "student"], {
         required_error: "Please select a role",
     }),
     department: z.string(),

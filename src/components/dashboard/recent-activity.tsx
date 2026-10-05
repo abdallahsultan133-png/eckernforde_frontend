@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Megaphone, FileText, CheckCircle2, Activity, ArrowRight } from "lucide-react";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type ActivityItem = {
   type: "announcement" | "assignment" | "submission";
@@ -43,8 +44,9 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ types, limit = 5, showReadMore = true }: RecentActivityProps = {}) {
+  const { withYear } = useAdminDashboardYear();
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: ActivityItem[] }>(
-    `/dashboard/recent-activity?limit=${limit}`,
+    withYear(`/dashboard/recent-activity?limit=${limit}`),
   );
   const activities = (data?.data ?? []).filter((a) => !types || types.includes(a.type));
 
