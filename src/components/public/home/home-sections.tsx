@@ -14,6 +14,7 @@ import { Link } from "react-router";
 
 import { PublicCta } from "@/components/public/public-cta";
 import { PUBLIC_BRAND } from "@/components/public/public-brand";
+import { Campus3DLoader } from "./campus-3d/campus-3d-loader";
 import { HomeReveal, ParallaxImage } from "./home-motion";
 
 export function SchoolIntroduction() {
@@ -117,7 +118,6 @@ export function CampusSection() {
           <PublicCta to="/about/campus-facilities" variant="text" showArrow>Explore our facilities</PublicCta>
         </HomeReveal>
 
-        {/* This visual boundary can be replaced by Campus3DExperience in Step 4. */}
         <div className="homepage-campus__experience-slot" data-campus-experience-slot>
           <div className="homepage-campus__perspective" aria-hidden="true">
             <span className="homepage-campus__plane homepage-campus__plane--one" />
@@ -129,6 +129,7 @@ export function CampusSection() {
             src="/images/kijani-community-voice.png"
             alt="A student standing in a green school courtyard"
           />
+          <Campus3DLoader />
           <div className="homepage-campus__caption">
             <Map aria-hidden="true" />
             <span>Campus perspective</span>
