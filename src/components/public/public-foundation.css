@@ -228,7 +228,7 @@
 
 .public-site .public-cta--primary,
 .public-site .public-primary-button {
-  color: #fff;
+  color: #fff !important;
   background: var(--public-emerald-700);
 }
 
@@ -243,14 +243,14 @@
 .public-site .public-cta--secondary,
 .public-site .public-secondary-button {
   border-color: var(--public-border-strong);
-  color: var(--public-green-900);
+  color: var(--public-green-900) !important;
   background: transparent;
 }
 
 .public-site .public-cta--secondary:hover,
 .public-site .public-secondary-button:hover {
   border-color: var(--public-green-900);
-  color: var(--public-warm-white);
+  color: var(--public-warm-white) !important;
   background: var(--public-green-900);
   transform: translateY(-2px);
 }
@@ -263,12 +263,12 @@
   border-bottom: 1px solid currentColor;
   border-radius: 0;
   padding: 0.6rem 0 0.45rem;
-  color: var(--public-green-900);
+  color: var(--public-green-900) !important;
 }
 
 .public-site .public-cta--text:hover,
 .public-site .public-text-link:hover {
-  color: var(--public-emerald-700);
+  color: var(--public-emerald-700) !important;
 }
 
 .public-site .public-cta--navigation {
