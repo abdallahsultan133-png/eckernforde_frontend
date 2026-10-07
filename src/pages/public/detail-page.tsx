@@ -1,6 +1,9 @@
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { PublicPageHero, PublicLandscapeHero, PublicEditorialSections } from "@/components/public/public-editorial";
+import { ReferenceCampus } from "@/components/public/home/reference-home";
+import AdmissionsPage from "./admissions";
+import NewsEventsPage from "./news-events";
 import { Link, useParams } from "react-router";
-import { PublicPageMeta } from "@/components/public/public-page-meta";
+
 import PublicNotFoundPage from "@/pages/public/not-found";
 
 type Detail = { eyebrow: string; title: string; intro: string; sections: Array<{ title: string; copy: string }>; image: string; back: string };
@@ -45,5 +48,15 @@ export default function PublicDetailPage() {
   const { slug = "" } = useParams();
   const page = DETAILS[slug];
   if (!page) return <PublicNotFoundPage />;
-  return <><PublicPageMeta title={page.eyebrow} description={page.intro} /><section className="public-page-hero public-detail-hero"><div><p className="public-eyebrow">{page.eyebrow}</p><h1>{page.title}</h1><p className="public-lede">{page.intro}</p></div><div className="public-detail-image"><img src={page.image} alt="" fetchPriority="high" decoding="async" /></div></section><section className="public-detail-content"><div className="public-detail-heading"><p className="public-eyebrow">In focus</p><h2>What families should know</h2></div><div className="public-detail-grid">{page.sections.map((section, index) => <article key={section.title}><span className="public-detail-number">0{index + 1}</span><h3>{section.title}</h3><p>{section.copy}</p><CheckCircle2 aria-hidden="true" /></article>)}</div><Link className="public-detail-back" to={page.back}><ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" /> Back to {page.back === "/" ? "home" : page.back.replace("/", "").replaceAll("-", " ")}</Link></section></>;
+  if (["latest", "calendar", "announcements"].includes(slug)) return <NewsEventsPage />;
+  if (slug === "visit") return <AdmissionsPage />;
+  const stage = ({ "early-years": "Nursery", primary: "Primary", secondary: "Secondary" } as Record<string, string>)[slug];
+  const title = stage || page.eyebrow.split(" / ").pop() || page.title;
+  const isCampus = ["campus-facilities", "facilities"].includes(slug);
+  return <>
+    {isCampus ? <PublicLandscapeHero title="Our campus" intro="Explore the setting for learning at ACADEMIX. Approved campus descriptions, photographs and location information are awaiting confirmation." media="campus-landscape" /> : <PublicPageHero title={title} label={page.eyebrow} intro={page.intro} media={slug + "-hero"} stage={stage} />}
+    <div id={isCampus ? "landscape-content" : undefined}>{isCampus && <ReferenceCampus standalone />}
+    <PublicEditorialSections sections={isCampus ? [{ title: "Learning spaces", copy: "Approved classroom and specialist-room descriptions, capacities and accessibility details are awaiting confirmation." }, { title: "Outdoor spaces", copy: "A verified account of play, sport and outdoor learning facilities will be published here alongside original school photography." }] : page.sections} prefix={slug} /></div>
+    <div className="ref-inner-section"><Link className="public-text-link" to={page.back}>← Back to {page.back.slice(1).replaceAll("-", " ")}</Link></div>
+  </>;
 }

@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import { PublicShell } from "./public-shell";
@@ -17,9 +17,11 @@ function renderShell(initialEntry = "/") {
 }
 
 describe("PublicShell", () => {
+  beforeEach(() => vi.spyOn(window, "scrollTo").mockImplementation(() => {}));
   afterEach(() => {
     cleanup();
     document.body.style.overflow = "";
+    vi.restoreAllMocks();
   });
 
   it("keeps the public foundation scoped and exposes the existing portal route", () => {
@@ -56,12 +58,13 @@ describe("PublicShell", () => {
 
   it("opens a desktop menu from the keyboard and exposes its overview route", async () => {
     renderShell();
-    const exploreTrigger = screen.getByRole("button", { name: "Explore" });
+    const exploreTrigger = screen.getByRole("button", { name: "Open navigation" });
     exploreTrigger.focus();
-    fireEvent.keyDown(exploreTrigger, { key: "ArrowDown" });
+    fireEvent.click(exploreTrigger);
+    fireEvent.click(await screen.findByRole("button", { name: "About us" }));
 
     const overviewLink = await screen.findByRole("link", {
-      name: /discover a connected school/i,
+      name: /about us overview/i,
     });
     expect(overviewLink.getAttribute("href")).toBe("/about");
   });

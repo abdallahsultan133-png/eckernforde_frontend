@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 
-import { SCHOOL_PROFILE } from "../../constants";
+import { PUBLIC_BRAND } from "./public-brand";
 import { PublicPageMeta } from "./public-page-meta";
 
 describe("PublicPageMeta", () => {
@@ -18,9 +18,9 @@ describe("PublicPageMeta", () => {
 
     render(<PublicPageMeta title="Admissions" description="Start an enquiry." />);
 
-    expect(document.title).toBe(`Admissions | ${SCHOOL_PROFILE.name}`);
+    expect(document.title).toBe(`Admissions | ${PUBLIC_BRAND.name}`);
     expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Start an enquiry.");
-    expect(document.querySelector('meta[property="og:title"]')?.getAttribute("content")).toBe(`Admissions | ${SCHOOL_PROFILE.name}`);
+    expect(document.querySelector('meta[property="og:title"]')?.getAttribute("content")).toBe(`Admissions | ${PUBLIC_BRAND.name}`);
     expect(document.querySelector('meta[name="twitter:description"]')?.getAttribute("content")).toBe("Start an enquiry.");
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://school.example/admissions");
     expect(document.querySelector('meta[property="og:url"]')?.getAttribute("content")).toBe("https://school.example/admissions");

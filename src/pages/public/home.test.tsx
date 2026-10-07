@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -55,12 +55,12 @@ describe("PublicHome", () => {
   it("presents one connected Nursery, Primary and Secondary journey with valid routes", () => {
     render(<MemoryRouter><PublicHome /></MemoryRouter>);
 
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Every beginning");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("opens a wider world.");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("A place to learn.");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("A place to grow.");
     expect(screen.getByRole("link", { name: /explore nursery/i }).getAttribute("href")).toBe("/academics/early-years");
     expect(screen.getByRole("link", { name: /explore primary/i }).getAttribute("href")).toBe("/academics/primary");
     expect(screen.getByRole("link", { name: /explore secondary/i }).getAttribute("href")).toBe("/academics/secondary");
-    expect(screen.getAllByRole("link", { name: /plan a visit/i }).every((link) => link.getAttribute("href") === "/admissions/visit")).toBe(true);
+    expect(screen.getByRole("link", { name: /plan a school visit/i }).getAttribute("href")).toBe("/admissions/visit");
   });
 
   it("uses approved public news and event queries without fabricated feed items", () => {
@@ -70,5 +70,29 @@ describe("PublicHome", () => {
     expect(screen.getByRole("heading", { name: "Open morning" })).toBeTruthy();
     expect(useApiQueryMock).toHaveBeenCalledWith("/announcements/public", { staleTime: 60_000 });
     expect(useApiQueryMock.mock.calls.some(([path]) => String(path).startsWith("/calendar/public?"))).toBe(true);
+  });
+
+  it("shows honest empty states instead of fabricated school stories", () => {
+    useApiQueryMock.mockReturnValue({ data: { data: [] }, isLoading: false, isError: false, refetch: vi.fn() });
+    render(<MemoryRouter><PublicHome /></MemoryRouter>);
+    expect(screen.getByText("No public news has been published yet.")).toBeTruthy();
+    expect(screen.getByText("No public events have been published yet.")).toBeTruthy();
+  });
+
+  it("offers retries when public feeds are unavailable", () => {
+    const refetch = vi.fn();
+    useApiQueryMock.mockReturnValue({ isLoading: false, isError: true, refetch });
+    render(<MemoryRouter><PublicHome /></MemoryRouter>);
+    fireEvent.click(screen.getAllByRole("button", { name: "Try again" })[0]);
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("opens campus details without inventing facility or address facts", () => {
+    render(<MemoryRouter><PublicHome /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: "Learning spaces" }));
+    expect(screen.getByRole("dialog", { name: "Learning spaces" })).toBeTruthy();
+    expect(screen.getByText(/Student numbers to be confirmed/)).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
