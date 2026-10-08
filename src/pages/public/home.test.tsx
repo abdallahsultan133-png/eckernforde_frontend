@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -87,12 +87,12 @@ describe("PublicHome", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("opens campus details without inventing facility or address facts", () => {
+  it("opens campus details without inventing facility or address facts", async () => {
     render(<MemoryRouter><PublicHome /></MemoryRouter>);
     fireEvent.click(screen.getByRole("button", { name: "Learning spaces" }));
     expect(screen.getByRole("dialog", { name: "Learning spaces" })).toBeTruthy();
     expect(screen.getByText(/Student numbers to be confirmed/)).toBeTruthy();
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

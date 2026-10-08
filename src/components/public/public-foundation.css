@@ -176,4 +176,25 @@
  .public-site .ref-editorial-row{display:flex;flex-direction:column;gap:35px;margin-bottom:65px;align-items:stretch}.public-site .ref-editorial-row>.ref-media{aspect-ratio:1.25;min-height:0;order:0!important}.public-site .ref-editorial-copy,.public-site .ref-editorial-row:nth-child(even) .ref-editorial-copy{padding:0 30px}.public-site .ref-editorial-copy:before{margin-bottom:30px}.public-site .ref-editorial-copy h2{font-size:42px}
  .public-site .ref-inner-section{padding:0 25px 65px}.public-site .ref-placeholder-label{inset:8%;gap:8px;padding:10px}.public-site .ref-placeholder-label small{font-size:8px}.public-site .ref-image-note{font-size:8px}
 }
-@media(prefers-reduced-motion:reduce){.public-site *,.public-site *::before,.public-site *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.public-site[data-motion="reduced"] *,.public-site[data-motion="reduced"] *::before,.public-site[data-motion="reduced"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+
+/* Public navigation follows its curved trigger on entrance and exit. */
+.public-site .ref-navigation-overlay{animation:none}
+.public-site .ref-navigation-body{transition:gap .5s}
+.public-site .ref-navigation-submenu{animation:public-submenu-arrive .5s ease both}
+.public-site .ref-navigation-links button{transition:opacity .4s}
+.public-site .ref-menu-trigger svg:not(.ref-curve){transition:translate .3s}
+.public-site .ref-menu-trigger:hover svg:not(.ref-curve){translate:0 5px}
+.public-site .ref-close{transition:scale .3s}
+.public-site .ref-close:hover{scale:.9}
+.public-site .ref-search button{transition:scale .3s,background .3s}
+.public-site .ref-search button:hover{scale:1.08;background:var(--ref-lime)}
+.public-site .ref-public-ctas{position:relative;z-index:2}
+.public-site .ref-public-ctas>a span{display:inline-block;transition:translate .3s,rotate .3s}
+.public-site .ref-public-ctas>a:is(:hover,:focus-visible) span{translate:4px -4px}
+@keyframes public-submenu-arrive{from{opacity:0;translate:60px 0}to{opacity:1;translate:0 0}}
+@media(max-width:1023px){.public-site .ref-navigation-submenu{animation:public-submenu-arrive .5s ease both}}
+
+.public-site .ref-motion-choice{position:fixed;bottom:20px;left:20px;z-index:45;display:flex;align-items:center;gap:12px;border:1px solid #ffffff80;border-radius:30px;padding:12px 18px;background:var(--ref-blue);color:white;font:14px Arial,sans-serif;box-shadow:0 2px 12px #0002}
+@media(max-width:1023px){.public-site .ref-motion-choice{bottom:calc(90px + env(safe-area-inset-bottom,0px))}}
+.public-site .ref-motion-preference{background:none;border:0;color:inherit;text-decoration:underline;text-underline-offset:4px;font:inherit}
