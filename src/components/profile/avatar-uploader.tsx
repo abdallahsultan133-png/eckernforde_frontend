@@ -108,8 +108,9 @@ export function AvatarUploader() {
   }, []);
 
   const hasPhoto = !!identity?.image;
-  const canChangeClass = identity?.role === UserRole.TEACHER;
-  const canViewHistory = identity?.role === UserRole.STUDENT;
+  const isTeacher = identity?.role === UserRole.TEACHER;
+  const canViewHistory = identity?.role === UserRole.STUDENT || isTeacher;
+  const historyPath = isTeacher ? "/portal/teacher-history" : "/portal/history";
 
   return (
     <div className="flex items-center gap-5">
@@ -162,10 +163,10 @@ export function AvatarUploader() {
           )}
           </div>
           <div className="grid gap-1 border-t pt-2">
-            {canChangeClass && <Link to="/portal/setup?change=1" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <BookOpen className="h-3.5 w-3.5" /> Change form or class
+            {isTeacher && <Link to="/classes" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <BookOpen className="h-3.5 w-3.5" /> Open teaching workspace
             </Link>}
-            {canViewHistory && <Link to="/portal/history" className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {canViewHistory && <Link to={historyPath} className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <BookOpenCheck className="h-3.5 w-3.5" /> Academic archive
             </Link>}
           </div>

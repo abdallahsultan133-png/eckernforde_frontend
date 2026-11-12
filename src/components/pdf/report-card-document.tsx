@@ -1,5 +1,8 @@
 import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import schoolBadge from "@/assets/eckernforde-cambridge-badge.png";
+import { schoolBandFromResults } from "@/lib/school-brand";
+
+const primaryBadge = "/eckernforde-english-medium-primary-badge.png";
 
 type GradeRow = {
     id: number;
@@ -199,11 +202,14 @@ export function ReportCardDocument({
         month: "long",
         day: "numeric",
     });
-
+    const reportBadge = schoolBandFromResults(grades.map((grade) => ({ class: { name: grade.class.name } }))) === "primary"
+        ? primaryBadge
+        : schoolBadge;
     return (
         <Document title={`Report Card - ${studentName}`}>
             <Page size="A4" style={styles.page}>
                 <View style={styles.header}>
+                    <Image src={reportBadge} style={{ width: 76, height: 76, objectFit: "contain", marginRight: 12 }} />
                     <View>
                         <Text style={styles.brand}>Eckernforde Schools</Text>
                         {template?.schoolAddress ? <Text style={styles.brandSub}>{template.schoolAddress}</Text> : null}
@@ -274,6 +280,7 @@ export function ReportCardDocument({
 type FormalReportCardDocumentProps = {
     studentName: string;
     schoolName?: string;
+    schoolBand?: "primary" | "secondary" | null;
     registrationNumber?: string | null;
     template?: {
         schoolName: string;
@@ -297,6 +304,7 @@ type FormalReportCardDocumentProps = {
 export function FormalReportCardDocument({
     studentName,
     schoolName: suppliedSchoolName,
+    schoolBand,
     registrationNumber,
     template,
     termResults,
@@ -307,7 +315,7 @@ export function FormalReportCardDocument({
     const schoolName = (suppliedSchoolName || "School Portal").toUpperCase();
     // The official report-card PDF always uses the school's supplied badge,
     // even when an older saved template contains an empty or broken logo URL.
-    const schoolLogo = schoolBadge;
+    const schoolLogo = schoolBand === "primary" ? primaryBadge : schoolBadge;
 
     return (
         <Document title={`Report Card - ${studentName}`}>

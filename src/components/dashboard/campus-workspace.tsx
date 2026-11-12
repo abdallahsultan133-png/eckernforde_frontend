@@ -9,7 +9,7 @@ export function CampusWorkspace({ title, description, actions, children }: {
   title: string; description: string; actions: { label: string; href: string }[]; children: ReactNode;
 }) {
   return <div className="campus-workspace">
-    <header className="campus-heading"><div><p className="campus-eyebrow">ACADEMIX / {title}</p>
+    <header className="campus-heading"><div><p className="campus-eyebrow">Eckernforde Schools / {title}</p>
       <DashboardGreeting subtitle={description} /><AcademicContext /></div></header>
     <div className="campus-board">
       <nav className="campus-toolbar" aria-label={`${title} shortcuts`}>

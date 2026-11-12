@@ -82,4 +82,16 @@ describe("authProvider session resilience", () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("explains how to enable email login for a Google-created account", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ code: "INVALID_EMAIL_OR_PASSWORD" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    )));
+
+    await expect(authProvider.login?.({ email: "teacher@school.edu", password: "password123" })).resolves.toMatchObject({
+      success: false,
+      error: { message: expect.stringContaining("use Forgot password") },
+    });
+  });
 });

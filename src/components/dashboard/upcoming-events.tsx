@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type EventType = "class" | "exam" | "holiday" | "event" | "deadline";
 
@@ -80,7 +81,8 @@ export function UpcomingEvents() {
     const from = new Date().toISOString().slice(0, 10);
     const to = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    const { data, isLoading, isError, refetch } = useApiQuery<{ data: CalendarEvent[] }>(`/calendar?from=${from}&to=${to}`);
+    const { withYear } = useAdminDashboardYear();
+    const { data, isLoading, isError, refetch } = useApiQuery<{ data: CalendarEvent[] }>(withYear(`/calendar?from=${from}&to=${to}`));
     const events = (data?.data ?? []).slice(0, 6);
 
     return (

@@ -6,12 +6,14 @@ describe("portal page context", () => {
     expect(portalPage("/grades/term-results/record").title).toBe("Record results");
     expect(portalPage("/grades/report-card/student-1").title).toBe("Report cards");
     expect(portalPage("/grades").title).toBe("Homework Grade Book");
+    expect(portalPage("/reports").title).toBe("Reports");
     expect(portalPage("/homework/42").title).toBe("Homework");
     expect(portalPage("/parent/reports/view").title).toBe("Reports");
   });
   it("recognizes administrative and family pages outside Refine resources", () => {
     expect(portalPage("/admin/publish-results").title).toBe("Publish results");
     expect(portalPage("/parent").title).toBe("Family records");
+    expect(portalPage("/users").title).toBe("Manage users");
   });
   it("distinguishes the student directory from an individual record", () => {
     expect(portalPage("/students").title).toBe("Students");

@@ -38,7 +38,7 @@ const Edit = () => {
     const { id } = useParams<{ id: string }>();
     const { data: identity } = useGetIdentity<User>();
     const isTeacher = identity?.role === UserRole.TEACHER;
-    const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const isAdmin = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
     const { data: yearsData } = useApiQuery<{ data: AcademicYear[] }>(isAdmin ? "/grades/academic-years" : null);
     const academicYears = yearsData?.data ?? [];
 
@@ -128,7 +128,6 @@ const Edit = () => {
                 breadcrumb
                 title="Edit class"
                 description="Update this class's academic context and teaching responsibility."
-                actions={<Button variant="outline" onClick={() => back()}>Cancel</Button>}
             />
             <section className="max-w-4xl overflow-hidden rounded-lg border bg-background">
                 <div className="p-5 sm:p-6">
@@ -348,7 +347,6 @@ const Edit = () => {
 
                                 <Separator />
                                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                    <Button type="button" variant="outline" onClick={() => back()} disabled={isSubmitting}>Cancel</Button>
                                     <Button type="submit" disabled={isSubmitting || isLoadingRecord}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {isSubmitting ? "Saving changes..." : "Save changes"}

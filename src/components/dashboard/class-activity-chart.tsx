@@ -16,6 +16,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { VIZ, axisProps, barCursor, gridProps } from "./chart-kit";
 import { VizTooltip } from "./viz-tooltip";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type ClassActivity = {
     classId: number;
@@ -40,6 +41,7 @@ type SubjectActivity = {
 interface ClassActivityChartProps {
     /** Render the student-facing version for the student's enrolled subjects. */
     personal?: boolean;
+    scopeByStage?: boolean;
 }
 const SERIES = [
     { key: "assignments", label: "Homework", color: VIZ.cat[0] },
@@ -49,9 +51,11 @@ const SERIES = [
 
 const truncate = (name: string, max = 16) => (name.length > max ? `${name.slice(0, max - 1)}...` : name);
 
-export function ClassActivityChart({ personal = false }: ClassActivityChartProps) {
-    const { data, isLoading, isError, refetch } = useApiQuery<{ data: ClassActivity[] }>("/dashboard/class-activity");
-    const { data: classData, isLoading: classesLoading } = useApiQuery<{ data: ClassLookup[] }>("/classes?limit=100");
+export function ClassActivityChart({ personal = false, scopeByStage = false }: ClassActivityChartProps) {
+    const { withYear, withScope, selectedStage } = useAdminDashboardYear();
+    const scopedPath = scopeByStage ? withScope : withYear;
+    const { data, isLoading, isError, refetch } = useApiQuery<{ data: ClassActivity[] }>(scopeByStage && !selectedStage ? null : scopedPath("/dashboard/class-activity"));
+    const { data: classData, isLoading: classesLoading } = useApiQuery<{ data: ClassLookup[] }>(scopeByStage && !selectedStage ? null : scopedPath("/classes?limit=100"));
     const subjectByClassId = useMemo(
         () => new Map((classData?.data ?? []).map((item) => [item.id, item.subject?.name?.trim() || "Other subjects"])),
         [classData?.data],
@@ -97,7 +101,9 @@ export function ClassActivityChart({ personal = false }: ClassActivityChartProps
                     : "Homework, submissions, and attendance by subject over the last 30 days."}
             </p>
 
-            {isLoading || classesLoading ? (
+            {scopeByStage && !selectedStage ? (
+                <EmptyState className="h-[280px] justify-center" icon={Activity} title="Choose a class or form" description="Select a class or form above to view its activity insights." />
+            ) : isLoading || classesLoading ? (
                 <Skeleton className="h-[280px] w-full" />
             ) : isError ? (
                 <ErrorState

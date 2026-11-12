@@ -8,18 +8,19 @@ type AuthLayoutProps = {
   children: ReactNode;
   footer?: ReactNode;
   signInWelcome?: boolean;
+  showBranding?: boolean;
 };
 
-export function AuthLayout({ eyebrow, title, description, children, footer, signInWelcome = false }: AuthLayoutProps) {
+export function AuthLayout({ eyebrow, title, description, children, footer, signInWelcome = false, showBranding = true }: AuthLayoutProps) {
   return (
     <main className="auth-page">
       <section className="auth-visual" aria-label="School portal">
         <div className="auth-visual-grid" aria-hidden="true" />
         <div className="auth-visual-top">
-          <div className="auth-brand auth-brand-light">
+          {showBranding && <div className="auth-brand auth-brand-light">
             <span className="auth-brand-mark"><GraduationCap aria-hidden="true" /></span>
             <span>School Portal</span>
-          </div>
+          </div>}
           <span className="auth-campus-label">School community portal</span>
         </div>
 
@@ -27,7 +28,7 @@ export function AuthLayout({ eyebrow, title, description, children, footer, sign
           <p className="auth-kicker">Learn. Grow. Achieve.</p>
           <h1>A connected school day, in one secure place.</h1>
           <p>
-            ACADEMIX brings learning, teaching, family communication, attendance and academic progress together for every stage of school life.
+            Eckernforde Schools brings learning, teaching, family communication, attendance and academic progress together for every stage of school life.
           </p>
           <div className="auth-values" aria-label="Portal features">
             <span>Nursery to Secondary</span>
@@ -50,13 +51,13 @@ export function AuthLayout({ eyebrow, title, description, children, footer, sign
               <img src="/eckernforde-cambridge-badge.png" alt="Secondary school badge" />
             </div>
             <div className="auth-heading auth-sign-in-welcome">
-              <h2 className="auth-kicker">Welcome to Eckernforde<br />Academy Management System<br />[EAMS]</h2>
+              <h2 className="auth-kicker">Welcome to Eckernforde<br />Schools Management System<br />[ESMS]</h2>
               <p>Please sign-in to your account</p>
             </div>
-          </div> : <div className="auth-mobile-brand auth-brand">
+          </div> : showBranding ? <div className="auth-mobile-brand auth-brand">
             <span className="auth-brand-mark"><GraduationCap aria-hidden="true" /></span>
             <span>School Portal</span>
-          </div>}
+          </div> : null}
           {(eyebrow || title || description) && <div className="auth-heading">
             {eyebrow && <p className="auth-kicker">{eyebrow}</p>}
             {title && <h2>{title}</h2>}

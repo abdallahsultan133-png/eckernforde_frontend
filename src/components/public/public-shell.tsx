@@ -1,80 +1,486 @@
-import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, Home, Menu, Search, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import {
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  useIsPresent,
+} from "framer-motion";
+import { ArrowRight, Menu, Search, X } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { APP_NAME, SCHOOL_PROFILE } from "@/constants";
-import { PublicPageMeta } from "@/components/public/public-page-meta";
+import { PublicPageMeta } from "./public-page-meta";
+import { PublicOverlay } from "./public-overlay";
+import { PUBLIC_BRAND } from "./public-brand";
+import { PublicMedia } from "./public-media";
+import {
+  setPublicMotionPreference,
+  usePublicReducedMotion,
+} from "./public-motion";
+import {
+  PUBLIC_NAVIGATION,
+  PUBLIC_STAGE_NAVIGATION,
+} from "./public-navigation";
+export { PUBLIC_NAVIGATION } from "./public-navigation";
+import "./public-foundation.css";
 
-type NavSection = { label: string; href: string; intro: string; featured: string; image: string; items: Array<{ label: string; href: string }> };
-
-const NAVIGATION: NavSection[] = [
-  { label: "About", href: "/about", intro: "The people, purpose and place behind the school.", featured: "A school shaped by care, curiosity and participation.", image: "/images/kijani-community-voice.png", items: [{ label: "Our story", href: "/about/our-story" }, { label: "Mission and values", href: "/about/mission-values" }, { label: "Leadership", href: "/about/leadership" }, { label: "Campus and facilities", href: "/about/campus-facilities" }, { label: "Safeguarding", href: "/about/safeguarding" }] },
-  { label: "Learning", href: "/academics", intro: "A connected journey from Nursery to Form IV.", featured: "Learning grows when children are known, challenged and inspired.", image: "/images/kijani-creative-learning.png", items: [{ label: "Early Years", href: "/academics/early-years" }, { label: "Primary School", href: "/academics/primary" }, { label: "Secondary School", href: "/academics/secondary" }, { label: "Curriculum and subjects", href: "/academics/curriculum" }, { label: "Learning support", href: "/academics/learning-support" }, { label: "Examinations", href: "/academics/examinations" }] },
-  { label: "Admissions", href: "/admissions", intro: "Everything families need to take the next step.", featured: "Start with a conversation. We will help you find your way.", image: "/images/kijani-hero.png", items: [{ label: "Why choose us", href: "/admissions/why-choose-us" }, { label: "The admissions journey", href: "/admissions/journey" }, { label: "Entry requirements", href: "/admissions/requirements" }, { label: "Book a visit", href: "/admissions/visit" }, { label: "Request information", href: "/admissions/request-information" }, { label: "Frequently asked questions", href: "/admissions/faqs" }] },
-  { label: "School life", href: "/school-life", intro: "The experiences, relationships and passions that shape a school day.", featured: "There is more than one way to learn, contribute and belong.", image: "/images/kijani-community-voice.png", items: [{ label: "Student life", href: "/school-life/student-life" }, { label: "Sports and wellbeing", href: "/school-life/sports-wellbeing" }, { label: "Arts and music", href: "/school-life/arts-music" }, { label: "Clubs and activities", href: "/school-life/clubs-activities" }, { label: "Trips and service", href: "/school-life/trips-service" }, { label: "Our facilities", href: "/school-life/facilities" }] },
-  { label: "Community", href: "/community", intro: "A school community is built by everyone in it.", featured: "Families, students, teachers and alumni all have a part to play.", image: "/images/kijani-hero.png", items: [{ label: "Students", href: "/community/students" }, { label: "Families", href: "/community/families" }, { label: "Teachers and staff", href: "/community/staff" }, { label: "Alumni", href: "/community/alumni" }, { label: "Resources and policies", href: "/community/resources-policies" }] },
-  { label: "News & events", href: "/news-events", intro: "The latest stories, dates and announcements from school.", featured: "See what is happening across our community.", image: "/images/kijani-creative-learning.png", items: [{ label: "Latest news", href: "/news-events/latest" }, { label: "Events calendar", href: "/news-events/calendar" }, { label: "Announcements", href: "/news-events/announcements" }, { label: "Gallery", href: "/gallery" }] },
-];
-
-export function PublicShell() {
-  const { pathname } = useLocation();
+export function PublicWordmark() {
+  return (
+    <Link to="/" className="ref-wordmark" aria-label="Eckernforde Schools home">
+      <span aria-hidden="true" className="ref-monogram">
+        {PUBLIC_BRAND.mark}
+      </span>
+      <span>
+        Eckernforde Schools<small>NURSERY · PRIMARY · SECONDARY</small>
+      </span>
+    </Link>
+  );
+}
+export function PublicArrowLink({
+  to,
+  children,
+  className = "",
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link className={`ref-pill ${className}`} to={to}>
+      {children}
+      <span className="ref-arrow">
+        <ArrowRight size={15} aria-hidden="true" />
+      </span>
+    </Link>
+  );
+}
+function SearchForm({ onSubmit }: { onSubmit?: () => void }) {
   const navigate = useNavigate();
-  const navRef = useRef<HTMLElement>(null);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [atBottom, setAtBottom] = useState(false);
-  const active = NAVIGATION.find((item) => item.label === openMenu);
-  const pageTitle = pathname === "/" ? "Home" : pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) || "School";
-
-  useEffect(() => { setOpenMenu(null); setMobileOpen(false); setSearchOpen(false); }, [pathname]);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    navigate(
+      `/news-events${
+        query.trim() ? `?search=${encodeURIComponent(query.trim())}` : ""
+      }`
+    );
+    onSubmit?.();
+  };
+  return (
+    <form className="ref-search" role="search" onSubmit={submit}>
+      <input
+        type="search"
+        aria-label="Search news and events"
+        placeholder="Search …"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button aria-label="Submit search">
+        <Search size={17} />
+      </button>
+    </form>
+  );
+}
+function Curve({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <svg
+        className="ref-curve"
+        viewBox="0 0 420 60"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d="M0 0 C100 0 146 59 210 59 C274 59 320 0 420 0 Z" />
+      </svg>
+      {children}
+    </>
+  );
+}
+function NavigationSubmenu({
+  label,
+  overview,
+  items,
+  onBack,
+}: {
+  label: string;
+  overview?: readonly [string, string];
+  items: readonly (readonly [string, string])[];
+  onBack: () => void;
+}) {
+  const reduced = usePublicReducedMotion();
+  const present = useIsPresent();
+  const element = useRef<HTMLElement>(null);
   useEffect(() => {
-    const close = (event: MouseEvent) => { if (navRef.current && !navRef.current.contains(event.target as Node)) setOpenMenu(null); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
+    if (present) element.current?.querySelector<HTMLElement>("a")?.focus();
+  }, [present]);
+  return (
+    <motion.nav
+      ref={element}
+      id={present ? "navigation-submenu" : undefined}
+      inert={!present}
+      aria-hidden={!present}
+      className="ref-navigation-submenu"
+      aria-label={label + " navigation"}
+      initial={reduced ? false : { opacity: 0, x: 70 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: reduced ? 0 : -35 }}
+      transition={{ duration: reduced ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <button className="ref-menu-back" onClick={onBack}>
+        ← Back to main menu
+      </button>
+      <h2>{label}</h2>
+      {overview && (
+        <Link className="ref-submenu-overview" to={overview[1]}>
+          {overview[0]} <ArrowRight size={18} />
+        </Link>
+      )}
+      {items.map(([name, href]) => (
+        <Link key={href} to={href}>
+          {name}
+        </Link>
+      ))}
+    </motion.nav>
+  );
+}
+export function PublicShell() {
+  const reduced = usePublicReducedMotion();
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [section, setSection] = useState<number | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const ctas = useRef<HTMLElement>(null);
   useEffect(() => {
-    const updateScrollPosition = () => {
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      setAtBottom(maxScroll > 160 && window.scrollY >= maxScroll - 120);
+    const center = () => {
+      if (ctas.current && window.innerWidth < 1280)
+        ctas.current.scrollLeft =
+          (ctas.current.scrollWidth - ctas.current.clientWidth) / 2;
     };
-    updateScrollPosition();
-    window.addEventListener("scroll", updateScrollPosition, { passive: true });
-    window.addEventListener("resize", updateScrollPosition);
-    return () => { window.removeEventListener("scroll", updateScrollPosition); window.removeEventListener("resize", updateScrollPosition); };
-  }, []);
+    center();
+    window.addEventListener("resize", center);
+    return () => window.removeEventListener("resize", center);
+  }, [pathname]);
+  const lastSectionTrigger = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
-    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpenMenu(null); setMobileOpen(false); setSearchOpen(false); } };
-    document.addEventListener("keydown", close);
-    return () => document.removeEventListener("keydown", close);
-  }, []);
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [mobileOpen]);
-
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const value = query.trim(); navigate(value ? `/news-events?search=${encodeURIComponent(value)}` : "/news-events"); };
-
-  return <div className="site-shell">
-    <PublicPageMeta title={pageTitle} description={`Discover ${APP_NAME}, a connected Nursery, Primary and Secondary school.`} />
-    <a className="public-skip-link" href="#public-content">Skip to content</a>
-    <header className="site-header" ref={navRef} onMouseLeave={() => setOpenMenu(null)}>
-      <div className="site-header-inner">
-        <Link to="/" className="site-brand" aria-label={`${APP_NAME} home`}><span className="site-brand-mark">K</span><span><b>{APP_NAME}</b><small>Learning with purpose</small></span></Link>
-        <nav className="site-nav" aria-label="Main navigation">{NAVIGATION.map((item) => { const menuId = `public-menu-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`; return <button key={item.label} id={`${menuId}-trigger`} type="button" className={`site-nav-trigger ${openMenu === item.label || pathname.startsWith(item.href) ? "is-active" : ""}`} aria-haspopup="true" aria-controls={menuId} aria-expanded={openMenu === item.label} onMouseEnter={() => setOpenMenu(item.label)} onFocus={() => setOpenMenu(item.label)} onClick={() => setOpenMenu(openMenu === item.label ? null : item.label)}>{item.label}<ChevronDown aria-hidden="true" /></button>; })}</nav>
-        <div className="site-header-actions"><button className="site-icon-button" type="button" aria-label="Search" onClick={() => { setSearchOpen(!searchOpen); setOpenMenu(null); }}><Search aria-hidden="true" /></button><Link className="site-apply-button" to="/admissions">Apply <ArrowRight aria-hidden="true" /></Link><Link className="site-portal-link" to="/portal">Portal</Link></div>
-        <button className="site-mobile-toggle" type="button" onClick={() => setMobileOpen(!mobileOpen)} aria-expanded={mobileOpen} aria-label={mobileOpen ? "Close navigation" : "Open navigation"}>{mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
+    setMenuOpen(false);
+    setSearchOpen(false);
+    setSection(null);
+    setStage(null);
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  const close = () => {
+    setMenuOpen(false);
+    setSection(null);
+    setStage(null);
+  };
+  const selected = section === null ? undefined : PUBLIC_NAVIGATION[section];
+  const pageTitle =
+    pathname === "/"
+      ? "Home"
+      : pathname.split("/").filter(Boolean).pop()!.replaceAll("-", " ");
+  return (
+    <MotionConfig reducedMotion={reduced ? "always" : "never"}>
+      <div
+        data-motion={reduced ? "reduced" : "full"}
+        className={`public-site site-shell ${
+          pathname === "/" ? "ref-is-home" : "ref-is-inner"
+        }`}
+      >
+        <PublicPageMeta
+          title={pageTitle}
+          description="Discover Eckernforde Schools: Nursery, Primary and Secondary learning, school life and admissions."
+        />
+        <a className="public-skip-link" href="#public-content">
+          Skip to content
+        </a>
+        {reduced && (
+          <button
+            className="ref-motion-choice"
+            onClick={() => setPublicMotionPreference("full")}
+          >
+            Play animations <ArrowRight size={15} aria-hidden="true" />
+          </button>
+        )}
+        <header className="ref-header">
+          <PublicWordmark />
+          <div className="ref-header-tools">
+            <div className="ref-desktop-search">
+              <SearchForm />
+            </div>
+            <button
+              className="ref-mobile-search"
+              aria-label="Search news and events"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search size={19} />
+            </button>
+            <Link className="ref-portal" to="/portal">
+              GO TO PORTAL <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </div>
+        </header>
+        <div className="ref-menu-dock">
+          <button
+            ref={trigger}
+            className="ref-menu-trigger"
+            aria-label="Open navigation"
+            aria-expanded={menuOpen}
+            aria-controls="school-navigation"
+            onClick={() => setMenuOpen(true)}
+          >
+            <Curve>
+              <Menu size={42} strokeWidth={1.2} />
+            </Curve>
+          </button>
+        </div>
+        <AnimatePresence>
+          {menuOpen && (
+            <PublicOverlay
+              key="navigation"
+              label="School navigation"
+              onClose={close}
+              className="ref-navigation-overlay"
+              id="school-navigation"
+              restoreFocus={trigger}
+            >
+              <div
+                className="ref-navigation-top"
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("a[href]")) close();
+                }}
+              >
+                <PublicWordmark />
+                <PublicArrowLink to="/admissions/visit">
+                  Book a visit
+                </PublicArrowLink>
+              </div>
+              <div
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("a[href]")) close();
+                }}
+                className={`ref-navigation-body ${
+                  selected || stage ? "has-submenu" : ""
+                } ${stage ? "has-stage-submenu" : ""}`}
+              >
+                <div
+                  className="ref-navigation-stages"
+                  aria-label="School stages"
+                >
+                  {PUBLIC_BRAND.stages.map((s, i) => (
+                    <div className={`ref-navigation-stage ${stage === s.label ? "is-selected" : ""}`} key={s.label}>
+                      <Link className={`stage-accent--${s.tone}`} to={s.href}>
+                        <small>
+                          {["FIRST STEPS", "FOUNDATIONS", "NEXT CHAPTER"][i]}
+                        </small>
+                        <span>{s.label}</span>
+                      </Link>
+                      <button
+                        aria-label={`Explore ${s.label} navigation`}
+                        aria-expanded={stage === s.label}
+                        aria-controls="navigation-submenu"
+                        onClick={(e) => {
+                          lastSectionTrigger.current = e.currentTarget;
+                          setStage(s.label);
+                          setSection(null);
+                        }}
+                      >
+                        <ArrowRight size={17} />
+                      </button>
+                    </div>
+                  ))}
+                  <Link className="ref-menu-learning" to="/academics">
+                    Explore learning at Eckernforde Schools <ArrowRight size={18} />
+                  </Link>
+                </div>
+                <nav
+                  className="ref-navigation-links"
+                  aria-label="Main navigation"
+                >
+                  {PUBLIC_NAVIGATION.map((item, i) => (
+                    <div key={item.label}>
+                      <button
+                        className={section === i ? "is-selected" : ""}
+                        aria-expanded={section === i}
+                        aria-controls="navigation-submenu"
+                        onClick={(e) => {
+                          lastSectionTrigger.current = e.currentTarget;
+                          setSection(section === i ? null : i);
+                          setStage(null);
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    </div>
+                  ))}
+                  <Link to="/contact">Contact</Link>
+                  <div className="ref-navigation-utilities">
+                    <Link to="/admissions/visit">Contact / visit</Link>
+                    <Link to="/community/families">Families</Link>
+                    <Link to="/portal">GO TO PORTAL</Link>
+                  </div>
+                </nav>
+                <AnimatePresence initial={false}>
+                  {(selected || stage) && (
+                    <NavigationSubmenu
+                      key={selected?.label ?? stage}
+                      label={selected?.label ?? stage!}
+                      overview={
+                        selected && selected.label !== "About us"
+                          ? [selected.label + " overview", selected.href]
+                          : undefined
+                      }
+                      items={
+                        selected?.items ??
+                        PUBLIC_STAGE_NAVIGATION[
+                          stage as keyof typeof PUBLIC_STAGE_NAVIGATION
+                        ]
+                      }
+                      onBack={() => {
+                        setSection(null);
+                        setStage(null);
+                        requestAnimationFrame(() =>
+                          lastSectionTrigger.current?.focus()
+                        );
+                      }}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
+              <button
+                className="ref-menu-close"
+                aria-label="Close navigation"
+                onClick={close}
+              >
+                <Curve>
+                  <X size={40} strokeWidth={1.2} />
+                </Curve>
+              </button>
+            </PublicOverlay>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {searchOpen && (
+            <PublicOverlay
+              key="search"
+              label="Search the public website"
+              onClose={() => setSearchOpen(false)}
+              className="ref-search-overlay"
+            >
+              <button
+                className="ref-close"
+                onClick={() => setSearchOpen(false)}
+                aria-label="Close search"
+              >
+                <X />
+              </button>
+              <h2>Search news and events</h2>
+              <SearchForm onSubmit={() => setSearchOpen(false)} />
+            </PublicOverlay>
+          )}
+        </AnimatePresence>
+        <main id="public-content" tabIndex={-1} className="site-content">
+          <Outlet key={pathname} />
+        </main>
+        <section
+          ref={ctas}
+          className="ref-public-ctas"
+          aria-label="Explore more"
+        >
+          <Link to="/admissions">
+            Admissions <span>↗</span>
+            <div className="ref-cta-photo" aria-hidden="true">
+              <PublicMedia name="admissions-life" image="opening" />
+            </div>
+          </Link>
+          <Link to="/admissions/visit">
+            Visit us <span>↗</span>
+            <div className="ref-cta-photo" aria-hidden="true">
+              <PublicMedia name="visit-learning" image="creative" />
+            </div>
+          </Link>
+          <Link to="/community">
+            Our community <span>↗</span>
+            <div className="ref-cta-photo" aria-hidden="true">
+              <PublicMedia name="family-life" image="community" />
+            </div>
+          </Link>
+        </section>
+        <footer className="ref-footer">
+          <div className="ref-footer-grid">
+            <div className="ref-footer-brand">
+              <PublicWordmark />
+              <SearchForm />
+            </div>
+            <nav className="ref-footer-links" aria-label="Useful links">
+              <h2>Useful links</h2>
+              <Link to="/admissions">Admissions</Link>
+              <Link to="/admissions/visit">Book a visit</Link>
+              <Link to="/news-events/calendar">School events</Link>
+              <Link to="/contact">Contact us</Link>
+              <Link to="/gallery">Gallery</Link>
+              <Link to="/portal">GO TO PORTAL</Link>
+            </nav>
+            <div className="ref-footer-contact">
+              <h2>Get in touch</h2>
+              <div className="ref-footer-contacts">
+                <div>
+                  <p className="ref-kicker">NURSERY · PRIMARY · SECONDARY</p>
+                  <h3>Eckernforde Schools</h3>
+                  <p>
+                    School address and direct contact details
+                    <br />
+                    awaiting confirmation.
+                  </p>
+                  <PublicArrowLink to="/contact">
+                    Contact information
+                  </PublicArrowLink>
+                </div>
+                <div>
+                  <p className="ref-kicker">PROSPECTIVE FAMILIES</p>
+                  <h3>Admissions enquiries</h3>
+                  <p>
+                    Tell us about your family and the learning stage you are
+                    considering.
+                  </p>
+                  <PublicArrowLink to="/admissions">
+                    Make an enquiry
+                  </PublicArrowLink>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="ref-footer-bottom">
+            <span>© {new Date().getFullYear()} Eckernforde Schools</span>
+            <nav aria-label="School policies">
+              <Link to="/about/safeguarding">Safeguarding</Link>
+              <Link to="/community/resources-policies">
+                Resources and policies
+              </Link>
+            </nav>
+            <button
+              className="ref-motion-preference"
+              onClick={() =>
+                setPublicMotionPreference(reduced ? "full" : "reduced")
+              }
+            >
+              {reduced ? "Play animations" : "Reduce motion"}
+            </button>
+            <button
+              className="ref-motion-preference"
+              onClick={() => setPublicMotionPreference("system")}
+            >
+              Use device motion setting
+            </button>
+            <span>Nursery · Primary · Secondary</span>
+          </div>
+        </footer>
       </div>
-      {active && <div id={`public-menu-${active.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="site-mega-menu" role="region" aria-label={`${active.label} navigation`}><div className="site-mega-intro"><div className="site-mega-image"><img src={active.image} alt="" loading="lazy" decoding="async" /></div><p className="site-mega-number">0{NAVIGATION.indexOf(active) + 1}</p><h2>{active.label}</h2><p>{active.intro}</p><Link to={active.href} className="site-mega-featured">{active.featured}<ArrowRight aria-hidden="true" /></Link></div><div className="site-mega-links">{active.items.map((item) => <Link key={item.label} to={item.href}>{item.label}<ArrowRight aria-hidden="true" /></Link>)}</div></div>}
-      {mobileOpen && <div className="site-mobile-menu"><div className="site-mobile-lead"><p className="site-mega-number">Explore</p><p>Find your way around the school.</p></div>{NAVIGATION.map((item) => <details key={item.label}><summary>{item.label}<ChevronDown aria-hidden="true" /></summary><div>{item.items.map((child) => <Link key={child.label} to={child.href}>{child.label}</Link>)}</div></details>)}<div className="site-mobile-actions"><Link to="/admissions">Apply to the school <ArrowRight aria-hidden="true" /></Link><Link to="/portal">Open the portal <ArrowRight aria-hidden="true" /></Link></div></div>}
-    </header>
-    {searchOpen && <div className="site-search-panel"><form onSubmit={submitSearch}><label htmlFor="public-search">Search the school website</label><div><input id="public-search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search news, learning, admissions..." /><button type="submit" aria-label="Submit search"><Search aria-hidden="true" /></button></div></form></div>}
-    {pathname !== "/" && <nav className="site-breadcrumb" aria-label="Breadcrumb"><div><Link to="/"><Home className="h-3.5 w-3.5" aria-hidden="true" /> Home</Link><span aria-hidden="true">/</span><span aria-current="page">{pageTitle}</span></div></nav>}
-    <main id="public-content" tabIndex={-1} className="site-content"><Outlet /></main>
-    <button className={`site-scroll-control ${atBottom ? "is-up" : ""}`} type="button" onClick={() => window.scrollTo({ top: atBottom ? 0 : document.documentElement.scrollHeight, behavior: "smooth" })} aria-label={atBottom ? "Scroll to top" : "Scroll to bottom"} title={atBottom ? "Scroll to top" : "Scroll to bottom"}>{atBottom ? <ArrowUp aria-hidden="true" /> : <ArrowDown aria-hidden="true" />}</button>
-    <footer className="site-footer"><div className="site-footer-top"><div className="site-footer-brand"><span className="site-brand-mark">K</span><h2>{APP_NAME}</h2><p>Learning with purpose, from first questions to future choices.</p><Link to="/contact" className="site-footer-link">Visit and connect <ArrowRight aria-hidden="true" /></Link></div><div><p className="site-footer-label">Explore</p><Link to="/about">About the school</Link><Link to="/academics">Learning</Link><Link to="/school-life">School life</Link><Link to="/news-events">News & events</Link></div><div><p className="site-footer-label">Take the next step</p><Link to="/admissions">Admissions</Link><Link to="/contact">Book a visit</Link><Link to="/portal">School portal</Link><Link to="/contact">Contact us</Link></div><div><p className="site-footer-label">Find us</p><address>{SCHOOL_PROFILE.address}<br />{SCHOOL_PROFILE.phone}<br />{SCHOOL_PROFILE.generalEmail}</address></div></div><div className="site-footer-bottom"><span>© {new Date().getFullYear()} {APP_NAME}</span><span>Nursery · Primary · Secondary</span><span>Privacy · Safeguarding · Accessibility</span></div></footer>
-  </div>;
+    </MotionConfig>
+  );
 }

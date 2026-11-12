@@ -24,14 +24,12 @@ type QrSession = {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-const attendanceClassLabel = (classItem: ClassDetails) =>
-    classItem.subject?.name ? `${classItem.subject.name} — ${classItem.name}` : classItem.name;
-
 const QrAttendancePage = () => {
     const { token: routeToken } = useParams<{ token?: string }>();
     const { data: identity } = useGetIdentity<User>();
     const isTeacherOrAdmin = identity?.role === UserRole.TEACHER
-        || identity?.role === UserRole.ADMIN
+        || identity?.role === UserRole.PRIMARY_HEADMASTER
+        || identity?.role === UserRole.SECONDARY_HEADMASTER
         || identity?.role === UserRole.SUPER_ADMIN;
 
     const [classId, setClassId] = useState("");
@@ -63,7 +61,7 @@ const QrAttendancePage = () => {
     }, [session]);
 
     const generate = async () => {
-        if (!classId) return toast.error("Select a class first.");
+        if (!classId) return toast.error("Select a subject first.");
         setGenerating(true);
         try {
             const res = await fetch(`${BACKEND_BASE_URL}/attendance/qr/generate`, {
@@ -150,8 +148,8 @@ const QrAttendancePage = () => {
                         <Separator />
                         <CardContent className="mt-4 space-y-4">
                             <Select value={classId} onValueChange={setClassId}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select a class" />
+                                <SelectTrigger className="w-full" aria-label="Select a subject">
+                                    <SelectValue placeholder="Select a subject" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map((c) => (

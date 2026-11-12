@@ -50,7 +50,7 @@ const NOTIFICATIONS_PATH = "/notifications?limit=15";
 
 type NotificationsResponse = { data: NotificationItem[]; unreadCount: number };
 
-export function NotificationsBell() {
+export function NotificationsBell({ className }: { className?: string } = {}) {
     const [open, setOpen] = useState(false);
     const queryClient = useQueryClient();
 
@@ -83,7 +83,7 @@ export function NotificationsBell() {
     return (
         <Popover open={open} onOpenChange={setOpenAndRefetch}>
             <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative" aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}>
+                <Button variant="ghost" size="icon" className={cn("relative", className)} aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}>
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
@@ -93,7 +93,7 @@ export function NotificationsBell() {
                 </Button>
             </PopoverTrigger>
 
-            <PopoverContent align="end" className="portal-notifications w-[360px] p-0">
+            <PopoverContent align="end" className="portal-notifications w-[min(360px,calc(100vw-1rem))] p-0">
                 <div className="flex items-center justify-between px-4 py-3">
                     <h3 className="font-semibold">Notifications</h3>
                     {unreadCount > 0 && (

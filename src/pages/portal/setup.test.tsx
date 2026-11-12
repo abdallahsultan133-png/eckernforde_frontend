@@ -16,20 +16,32 @@ vi.mock("@/hooks/use-api-query", () => ({
     isLoading: false, isFetching: false, isError: false, refetch: vi.fn(),
   }),
 }));
-vi.mock("@/components/layout/page-header.tsx", () => ({ PageHeader: ({ title }: { title: string }) => <h1>{title}</h1> }));
+vi.mock("@/components/layout/page-header.tsx", () => ({
+  PageHeader: ({ title, showBackLink = true }: { title: string; showBackLink?: boolean }) => <>
+    {showBackLink && <a href="/portal">Back to Dashboard</a>}
+    <h1>{title}</h1>
+  </>,
+}));
 
 afterEach(cleanup);
+
+it("hides the dashboard link during first-time portal setup", () => {
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={["/portal/setup"]}><PortalSetup /></MemoryRouter></QueryClientProvider>);
+  expect(screen.queryByRole("link", { name: "Back to Dashboard" })).toBeNull();
+});
 
 it("limits an enrolled student to the school stage assigned to them", () => {
   render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={["/portal/setup"]}><PortalSetup /></MemoryRouter></QueryClientProvider>);
   fireEvent.click(screen.getByRole("button", { name: /Primary school/i }));
 
-  for (const label of ["Nursery", "Kindergarten", "Standard I", "Standard II", "Standard III", "Standard IV", "Standard V", "Standard VI", "Standard VII"]) {
+  for (const label of ["KG I", "KG II", "KG III", "Nursery", "Standard I", "Standard II", "Standard III", "Standard IV", "Standard V", "Standard VI"]) {
     expect(screen.getByText(label)).toBeTruthy();
   }
   expect(screen.getByText("Nursery").closest("button")?.hasAttribute("disabled")).toBe(true);
+  expect(screen.getByText("KG I").closest("button")?.hasAttribute("disabled")).toBe(true);
   expect(screen.getByText("Standard I").closest("button")?.hasAttribute("disabled")).toBe(false);
   expect(screen.getByText("Standard II").closest("button")?.hasAttribute("disabled")).toBe(true);
+  expect(screen.queryByText("Standard VII")).toBeNull();
   expect(screen.queryByRole("combobox", { name: "Academic year" })).toBeNull();
 
   fireEvent.click(screen.getByText("Standard I"));

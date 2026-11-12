@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { BACKEND_BASE_URL } from "@/constants";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 import { timeAgo } from "@/lib/time.ts";
 import { cn } from "@/lib/utils.ts";
 import type { User } from "@/types";
@@ -43,7 +44,9 @@ const getInitials = (name = "") => name.trim().split(" ").filter(Boolean).slice(
 
 const AnnouncementsList = () => {
   const { data: identity } = useGetIdentity<User>();
-  const isTeacherOrAdmin = identity?.role === "teacher" || identity?.role === "admin" || identity?.role === "super_admin";
+  const { data: portal } = useHistoricalPortal();
+  const isTeacherOrAdmin = identity?.role === "teacher" || identity?.role === "primary_headmaster" || identity?.role === "secondary_headmaster" || identity?.role === "super_admin";
+  const canManage = isTeacherOrAdmin && !portal?.data.archiveContext;
 
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: AnnouncementItem[] }>("/announcements");
   const items = data?.data ?? [];
@@ -70,7 +73,7 @@ const AnnouncementsList = () => {
         title="Announcements"
         description="Official school and class communication, with important notices kept visible at the top."
         actions={
-          isTeacherOrAdmin && (
+          canManage && (
             <Button asChild>
               <Link to="/announcements/create">
                 <Plus className="mr-1.5 h-4 w-4" />
@@ -92,11 +95,11 @@ const AnnouncementsList = () => {
           icon={Megaphone}
           title="No announcements yet"
           description={
-            isTeacherOrAdmin
+            canManage
               ? "Post an update to reach a class or the whole school."
-              : "Updates from your teachers and school will show up here."
+              : isTeacherOrAdmin ? "No class announcements were saved for this previous-year selection." : "Updates from your teachers and school will show up here."
           }
-          action={isTeacherOrAdmin ? { label: "New announcement", to: "/announcements/create" } : undefined}
+          action={canManage ? { label: "New announcement", to: "/announcements/create" } : undefined}
         />
       ) : (
         <section aria-label="Published announcements" className="divide-y divide-border border-y border-border bg-card">
@@ -129,7 +132,7 @@ const AnnouncementsList = () => {
                   </div>
                 </div>
 
-                {isTeacherOrAdmin && (a.author.id === identity?.id || identity?.role === "admin" || identity?.role === "super_admin") && (
+                {canManage && (a.author.id === identity?.id || identity?.role === "primary_headmaster" || identity?.role === "secondary_headmaster" || identity?.role === "super_admin") && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" aria-label={`Delete announcement: ${a.title}`} disabled={deletingId === a.id}>

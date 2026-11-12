@@ -239,7 +239,7 @@ const EnrollStudents = () => {
                                     onCheckedChange={() => toggleSelected(s.id)}
                                 />
                                 <Avatar className="h-8 w-8">
-                                    {s.image && <AvatarImage src={s.image} />}
+                                    {s.image && <AvatarImage src={s.image} alt={s.name} className="object-cover" />}
                                     <AvatarFallback>{getInitials(s.name)}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
@@ -296,7 +296,7 @@ const EnrollStudents = () => {
             </Card>
 
             <Card className="divide-y">
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/30">
+                <div className="flex items-center justify-between px-4 pt-3 pb-0 bg-muted/30">
                     <p className="text-sm font-medium">Enrolled Students ({students.length})</p>
                 </div>
 
@@ -311,9 +311,9 @@ const EnrollStudents = () => {
                     <p className="p-8 text-center text-sm text-muted-foreground">No students enrolled yet. Use the form above to add the first one.</p>
                 ) : (
                     students.map((s) => (
-                        <div key={s.id} className="flex items-center gap-3 px-4 py-2">
+                        <div key={s.id} className="flex items-center gap-3 px-4 py-0">
                             <Avatar className="h-9 w-9">
-                                {s.image && <AvatarImage src={s.image} />}
+                                {s.image && <AvatarImage src={s.image} alt={s.name} className="object-cover" />}
                                 <AvatarFallback>{getInitials(s.name)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">

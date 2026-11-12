@@ -3,13 +3,12 @@ import {PageContainer} from "@/components/layout/page-container.tsx";
 import {SectionHeader} from "@/components/layout/section-header.tsx";
 import {FilterBar} from "@/components/ui/filter-bar.tsx";
 import {
-    Check, DoorOpen, Loader2, GraduationCap, BookOpen, Users,
-    CheckCircle2, MoreHorizontal, Eye, Pencil, Trash2, School,
+    Check, DoorOpen, Loader2, GraduationCap, Users,
+    MoreHorizontal, Eye, Pencil, Trash2, School,
 } from "lucide-react";
-import type {LucideIcon} from "lucide-react";
 import {Input} from "@/components/ui/input.tsx";
 import {SearchInput} from "@/components/ui/search-input.tsx";
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {CreateButton} from "@/components/refine-ui/buttons/create.tsx";
 import {Button} from "@/components/ui/button.tsx";
@@ -26,18 +25,23 @@ import {
 import {DataTable} from "@/components/refine-ui/data-table/data-table.tsx";
 import {useTable} from "@refinedev/react-table";
 import {ClassDetails, Subject, User, UserRole} from "@/types";
-import {ColumnDef} from "@tanstack/react-table";
+import {ColumnDef, type CellContext} from "@tanstack/react-table";
 import {Badge} from "@/components/ui/badge.tsx";
 import {useGetIdentity, useInvalidate, useList} from "@refinedev/core";
 import {useQueryClient} from "@tanstack/react-query";
-import {Link, useNavigate} from "react-router";
+import {Link, Navigate, useLocation, useNavigate} from "react-router";
 import {toast} from "sonner";
 import {ShowButton} from "@/components/refine-ui/buttons/show.tsx";
 import {DeleteButton} from "@/components/refine-ui/buttons/delete.tsx";
 import {BACKEND_BASE_URL} from "@/constants";
 import {useApiQuery} from "@/hooks/use-api-query.ts";
+import {useHistoricalPortal} from "@/components/layout/historical-portal-banner";
 import {useDebouncedValue} from "@/hooks/use-debounced-value.ts";
 import {cn} from "@/lib/utils.ts";
+import {AdminCatalogSelector, useAdminCatalogSelection} from "@/components/academic/admin-catalog-selector.tsx";
+import {HeadmasterStageSelector, stageLabel, type HeadmasterStage} from "@/components/academic/headmaster-stage-selector.tsx";
+import {useSuperAdminSchoolScope} from "@/components/academic/super-admin-school-scope.tsx";
+import {SchoolCardSelector} from "@/components/academic/school-level-selector.tsx";
 
 const getInitials = (name = "") => {
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -87,20 +91,6 @@ function ClassBanner({ url, name }: { url?: string; name: string }) {
             title={name}
         >
             <School className="h-4 w-4 text-muted-foreground" />
-        </div>
-    );
-}
-
-function SummaryMetric({
-    icon: Icon, label, value, loading,
-}: { icon: LucideIcon; label: string; value: string | number; loading: boolean }) {
-    return (
-        <div className="flex min-w-0 items-center gap-3 bg-card px-4 py-4 sm:px-5">
-            <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground">{label}</p>
-                {loading ? <Skeleton className="mt-1 h-6 w-10" /> : <p className="mt-0.5 text-xl font-semibold leading-tight tracking-tight tabular-nums">{value}</p>}
-            </div>
         </div>
     );
 }
@@ -177,7 +167,7 @@ const JoinClassDialog = () => {
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json?.error ?? "Failed to join class");
-            toast.success(`Joined ${json.data.name}.`);
+            toast.success(`Joined ${json.data.name}${json.data.subjectName ? ` — ${json.data.subjectName}` : ""}.`);
             setOpen(false);
             setInviteCode('');
             invalidate({ resource: "classes", invalidates: ["list"] });
@@ -220,11 +210,44 @@ const JoinClassDialog = () => {
     );
 };
 
-const ClassesList = () => {
+const ClassesList = ({ resultsMode = false }: { resultsMode?: boolean } = {}) => {
     const { data: identity } = useGetIdentity<User>();
-    const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const location = useLocation();
+    const params = new URLSearchParams(location.search);
+    const initialScope = resultsMode ? {
+        schoolLevel: (params.get("schoolLevel") ?? "") as "primary" | "secondary" | "",
+        stage: (params.get("stage") ?? "") as HeadmasterStage | "",
+        yearId: params.get("academicYearId") ?? "",
+    } : undefined;
+    const navigate = useNavigate();
+    const { data: portal } = useHistoricalPortal();
+    const historical = Boolean(portal?.data.archiveContext);
+    const isAdmin = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
+    const headmasterSchoolLevel = identity?.role === UserRole.PRIMARY_HEADMASTER
+        ? "primary"
+        : identity?.role === UserRole.SECONDARY_HEADMASTER
+            ? "secondary"
+            : null;
     const isStudent = identity?.role === UserRole.STUDENT;
+    const isTeacher = identity?.role === UserRole.TEACHER;
+    const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
     const queryClient = useQueryClient();
+    const catalogSelection = useAdminCatalogSelection(isAdmin, headmasterSchoolLevel);
+    const superAdminScope = useSuperAdminSchoolScope(isSuperAdmin, initialScope);
+    const [selectedStage, setSelectedStage] = useState<HeadmasterStage | "">("");
+    const headmasterCatalogueReady = catalogSelection.ready && (!headmasterSchoolLevel || Boolean(selectedStage));
+    const adminCatalogueReady = isSuperAdmin
+        ? Boolean(superAdminScope.schoolLevel && superAdminScope.yearId && superAdminScope.stage)
+        : headmasterCatalogueReady;
+    const validResultsScope = Boolean(initialScope?.schoolLevel && initialScope.stage && initialScope.yearId);
+    const selectedYearName = superAdminScope.years.find((year) => String(year.id) === superAdminScope.yearId)?.name ?? superAdminScope.yearId;
+
+    useEffect(() => {
+        if (isSuperAdmin && !resultsMode && adminCatalogueReady) {
+            const resultParams = new URLSearchParams({ schoolLevel: superAdminScope.schoolLevel, stage: superAdminScope.stage, academicYearId: superAdminScope.yearId });
+            navigate(`/classes/found?${resultParams.toString()}`);
+        }
+    }, [adminCatalogueReady, isSuperAdmin, navigate, resultsMode, superAdminScope.schoolLevel, superAdminScope.stage, superAdminScope.yearId]);
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
@@ -247,7 +270,8 @@ const ClassesList = () => {
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json?.error ?? "Failed to join class");
-            toast.success(`Joined ${className}.`);
+            const joinedName = json.data?.name ?? className;
+            toast.success(`Joined ${joinedName}${json.data?.subjectName ? ` — ${json.data.subjectName}` : ""}.`);
             queryClient.invalidateQueries({ queryKey: ["/classes/enrolled-ids"] });
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to join class");
@@ -256,17 +280,30 @@ const ClassesList = () => {
         }
     }, [queryClient]);
 
+    const catalogFilters = isSuperAdmin && adminCatalogueReady ? [
+        { field: 'schoolLevel', operator: 'eq' as const, value: superAdminScope.schoolLevel },
+        { field: 'academicYearId', operator: 'eq' as const, value: superAdminScope.yearId },
+        { field: 'stage', operator: 'eq' as const, value: superAdminScope.stage },
+    ] : isAdmin && catalogSelection.ready ? [
+        { field: 'schoolLevel', operator: 'eq' as const, value: catalogSelection.schoolLevel },
+        { field: 'academicYearId', operator: 'eq' as const, value: catalogSelection.academicYearId },
+        ...(headmasterSchoolLevel && selectedStage ? [{ field: 'stage', operator: 'eq' as const, value: selectedStage }] : []),
+    ] : [];
+
     const { query: subjectsQuery } = useList<Subject>({
         resource: 'subjects',
-        pagination: { pageSize: 100 }
+        pagination: { pageSize: 100 },
+        filters: catalogFilters,
+        queryOptions: { enabled: !isAdmin || adminCatalogueReady },
     });
 
     const { query: teachersQuery } = useList<User>({
         resource: 'teachers',
-        pagination: { pageSize: 100 }
+        pagination: { pageSize: 100 },
+        queryOptions: { enabled: isAdmin },
     });
 
-    // Unfiltered class fetch that powers the summary cards. Separate from the
+    // Unfiltered class fetch that powers the summary. Separate from the
     // table query so the overview reflects *all* your classes, not the current
     // filtered/paged working set. `total` is exact; the per-status / per-subject
     // tallies are computed from up to 100 rows (same convention this page
@@ -274,6 +311,8 @@ const ClassesList = () => {
     const { query: summaryQuery } = useList<ClassDetails>({
         resource: 'classes',
         pagination: { pageSize: 100 },
+        filters: catalogFilters,
+        queryOptions: { enabled: !isAdmin || adminCatalogueReady },
     });
 
     const subjects = subjectsQuery?.data?.data || [];
@@ -288,14 +327,14 @@ const ClassesList = () => {
     const subjectFilters = selectedSubject === 'all' ? [] : [
         { field: 'subject', operator: 'eq' as const, value: selectedSubject}
     ];
-    const teacherFilters = selectedTeacher === 'all' ? [] : [
+    const teacherFilters = isStudent || isTeacher || headmasterSchoolLevel || selectedTeacher === 'all' ? [] : [
         { field: 'teacher', operator: 'eq' as const, value: selectedTeacher}
     ];
     const searchFilters = debouncedSearchQuery ? [
         { field: isStudent ? 'subject' : 'name', operator: 'contains' as const, value: debouncedSearchQuery }
     ] : [];
 
-    const hasActiveFilters = !!searchQuery || selectedSubject !== 'all' || selectedTeacher !== 'all';
+    const hasActiveFilters = !!searchQuery || selectedSubject !== 'all' || (!isStudent && !isTeacher && selectedTeacher !== 'all');
     const clearFilters = () => {
         setSearchQuery('');
         setSelectedSubject('all');
@@ -308,7 +347,7 @@ const ClassesList = () => {
             accessorKey: 'name',
             size: 300,
             header: () => <p className="column-title ml-1">Class</p>,
-            cell: ({ row }) => {
+            cell: ({ row }: CellContext<ClassDetails, unknown>) => {
                 const c = row.original;
                 const secondary = c.courseCode || c.courseName || c.subject?.name;
                 return (
@@ -341,12 +380,12 @@ const ClassesList = () => {
                     : <span className="text-muted-foreground">—</span>;
             },
         },
-        {
+        ...(!isStudent ? [{
             id: 'teacher',
             accessorKey: 'teacher.name',
             size: 190,
             header: () => <p className="column-title">Teacher</p>,
-            cell: ({ row }) => {
+            cell: ({ row }: CellContext<ClassDetails, unknown>) => {
                 const t = row.original.teacher;
                 if (!t?.name) return <span className="text-muted-foreground">—</span>;
                 return (
@@ -359,7 +398,7 @@ const ClassesList = () => {
                     </div>
                 );
             },
-        },
+        }] : []),
         {
             id: 'capacity',
             accessorKey: 'capacity',
@@ -388,7 +427,7 @@ const ClassesList = () => {
             header: () => <span className="sr-only">Actions</span>,
             cell: ({ row }) => {
                 const c = row.original;
-                const canEdit = isAdmin || identity?.id === c.teacher?.id;
+                const canEdit = !historical && (isAdmin || identity?.id === c.teacher?.id);
 
                 if (isStudent) {
                     const isEnrolled = enrolledIds.has(c.id);
@@ -423,12 +462,12 @@ const ClassesList = () => {
                         classId={c.id}
                         canEdit={canEdit}
                         canManage={canEdit}
-                        canDelete={isAdmin}
+                        canDelete={isAdmin && !historical}
                     />
                 );
             }
         }
-    ], [isAdmin, isStudent, identity?.id, enrolledIds, joiningId, handleJoinRow]);
+    ], [isAdmin, isStudent, historical, identity?.id, enrolledIds, joiningId, handleJoinRow]);
 
     const classTable = useTable<ClassDetails>({
         columns: classColumns,
@@ -436,8 +475,9 @@ const ClassesList = () => {
             resource: 'classes',
             pagination: { pageSize: 10, mode: 'server' },
             filters: {
-                permanent: [...subjectFilters, ...teacherFilters, ...searchFilters]
+                permanent: [...catalogFilters, ...subjectFilters, ...teacherFilters, ...searchFilters]
             },
+            queryOptions: { enabled: !isAdmin || (adminCatalogueReady && (!isSuperAdmin || resultsMode)) },
             sorters: {
                 initial: [
                     { field: 'id', order: 'desc' },
@@ -450,20 +490,132 @@ const ClassesList = () => {
     const filteredTotal = tableQuery.data?.total ?? 0;
     const showEmpty = !tableQuery.isLoading && filteredTotal === 0;
 
+    if (resultsMode && (!isSuperAdmin || !validResultsScope)) return <Navigate to="/classes" replace />;
+
+    if (isAdmin && identity?.role !== UserRole.SUPER_ADMIN && !headmasterSchoolLevel && selectedTeacher === 'all') {
+        return (
+            <PageContainer>
+                <PageHeader breadcrumb title="Classes" description="Choose a teacher first, then choose the academic year to open that teacher's classes." />
+                <div className="max-w-xl space-y-3">
+                    <label htmlFor="classes-teacher" className="text-sm font-semibold">1. Teacher</label>
+                    {teachersQuery.isLoading ? <Skeleton className="h-11 w-full" /> : teachersQuery.isError ? (
+                        <ErrorState description="Unable to load teachers." onRetry={teachersQuery.refetch} />
+                    ) : (
+                        <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                            <SelectTrigger id="classes-teacher" className="h-11 w-full"><SelectValue placeholder="Choose a teacher" /></SelectTrigger>
+                            <SelectContent>
+                                {teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.name}>{teacher.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    {!teachersQuery.isLoading && !teachersQuery.isError && teachers.length === 0 && <p className="text-sm text-muted-foreground">No teachers are available for this school.</p>}
+                </div>
+            </PageContainer>
+        );
+    }
+
+    if (isSuperAdmin && (!resultsMode || !adminCatalogueReady)) {
+        return (
+            <PageContainer>
+                <PageHeader breadcrumb title="Classes" description="Choose a school, class or form, then an academic year to open its class directory." />
+                <div className="flex flex-col gap-4">
+                    <SchoolCardSelector
+                        value={superAdminScope.schoolLevel}
+                        onChange={(level) => { superAdminScope.setSchoolLevel(level); superAdminScope.setYearId(""); superAdminScope.setStage(""); }}
+                    />
+                    {superAdminScope.schoolLevel && <HeadmasterStageSelector
+                        role={superAdminScope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+                        value={superAdminScope.stage}
+                        onChange={(stage) => { superAdminScope.setStage(stage); superAdminScope.setYearId(""); }}
+                        title={superAdminScope.schoolLevel === "primary" ? "2. Choose a class" : "2. Choose a form"}
+                        description="Choose the class or form whose class directory you want to open."
+                    />}
+                    {superAdminScope.schoolLevel && superAdminScope.stage && <div className="max-w-xl space-y-2">
+                        <label htmlFor="super-admin-classes-year" className="text-sm font-semibold">3. Academic year</label>
+                        {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
+                            <ErrorState description="Unable to load academic years." onRetry={superAdminScope.retryYears} />
+                        ) : (
+                            <Select value={superAdminScope.yearId} onValueChange={superAdminScope.setYearId}>
+                                <SelectTrigger id="super-admin-classes-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+                                <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+                            </Select>
+                        )}
+                    </div>}
+                </div>
+            </PageContainer>
+        );
+    }
+
+    if (isAdmin && !isSuperAdmin && !headmasterCatalogueReady) {
+        return (
+            <PageContainer>
+                <PageHeader breadcrumb title="Classes" description={headmasterSchoolLevel ? `Choose a class or form and academic year to open the ${headmasterSchoolLevel} class directory.` : "Choose a school level and academic year to open the class directory."} />
+                {headmasterSchoolLevel && identity?.role && (
+                    <HeadmasterStageSelector
+                        role={identity.role}
+                        value={selectedStage}
+                        onChange={setSelectedStage}
+                        title="Choose a class or form"
+                        description="Select the class or form whose classes you want to view."
+                    />
+                )}
+                <AdminCatalogSelector
+                    schoolLevel={catalogSelection.schoolLevel}
+                    academicYearId={catalogSelection.academicYearId}
+                    academicYears={catalogSelection.academicYears}
+                    yearsLoading={catalogSelection.yearsLoading}
+                    yearsError={catalogSelection.yearsError}
+                    onSchoolLevelChange={catalogSelection.selectSchoolLevel}
+                    onAcademicYearChange={catalogSelection.selectAcademicYear}
+                    onRetryYears={catalogSelection.retryYears}
+                    showSchoolLevel={!headmasterSchoolLevel}
+                />
+            </PageContainer>
+        );
+    }
+
     return (
         <PageContainer>
             <PageHeader
                 breadcrumb
-                title={isStudent ? "Class & Subjects" : "Classes"}
-                description={isStudent ? "Open your learning spaces or join a class using a teacher-provided code." : "Manage class rosters, teaching responsibilities, subjects, and academic workspaces."}
+                title={resultsMode ? `${stageLabel(superAdminScope.stage) || "Class or form selected"} Classes` : isStudent ? "Class & Subjects" : "Classes"}
+                description={resultsMode ? `${stageLabel(superAdminScope.stage)} · ${superAdminScope.schoolLevel} · ${selectedYearName}` : isStudent ? "Open your learning spaces or join a class using a teacher-provided code." : "Manage class rosters, teaching responsibilities, subjects, and academic workspaces."}
+                actions={isAdmin && !isSuperAdmin && catalogSelection.ready
+                        ? <Button variant="outline" size="sm" onClick={() => { setSelectedStage(""); catalogSelection.resetSelection(); }}>Change catalogue</Button>
+                        : resultsMode ? <Button variant="outline" size="sm" asChild><Link to="/classes">Change selection</Link></Button> : undefined}
             />
 
-            {/* Overview */}
-            <section className={cn("grid grid-cols-2 divide-x divide-y divide-border overflow-hidden border border-border", isStudent ? "lg:grid-cols-2" : "lg:grid-cols-3")} aria-label="Class summary">
-                {!isStudent && <SummaryMetric icon={GraduationCap} label="Total classes" value={totalClasses} loading={summaryLoading} />}
-                <SummaryMetric icon={CheckCircle2} label="Active classes" value={activeClasses} loading={summaryLoading} />
-                <SummaryMetric icon={BookOpen} label="Subjects covered" value={subjectsCovered} loading={summaryLoading} />
-            </section>
+            {isSuperAdmin && !resultsMode && <div className="flex flex-col gap-4">
+                <SchoolCardSelector
+                    value={superAdminScope.schoolLevel}
+                    onChange={(level) => { superAdminScope.setSchoolLevel(level); superAdminScope.setYearId(""); superAdminScope.setStage(""); }}
+                />
+                {superAdminScope.schoolLevel && <HeadmasterStageSelector
+                    role={superAdminScope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+                    value={superAdminScope.stage}
+                    onChange={(stage) => { superAdminScope.setStage(stage); superAdminScope.setYearId(""); }}
+                    title={superAdminScope.schoolLevel === "primary" ? "2. Choose a class" : "2. Choose a form"}
+                    description="Choose the class or form whose class directory you want to open."
+                />}
+                {superAdminScope.schoolLevel && superAdminScope.stage && <div className="max-w-xl space-y-2">
+                    <label htmlFor="super-admin-classes-year" className="text-sm font-semibold">3. Academic year</label>
+                    {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
+                        <ErrorState description="Unable to load academic years." onRetry={superAdminScope.retryYears} />
+                    ) : (
+                    <Select value={superAdminScope.yearId} onValueChange={superAdminScope.setYearId}>
+                            <SelectTrigger id="super-admin-classes-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+                            <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+                        </Select>
+                    )}
+                </div>}
+            </div>}
+
+            <p className="text-sm text-muted-foreground">
+                {!isStudent && !isTeacher && <><span>Total classes: <span className="font-semibold text-foreground">{summaryLoading ? "..." : totalClasses}</span></span>{" || "}</>}
+                <span>Active classes: <span className="font-semibold text-foreground">{summaryLoading ? "..." : activeClasses}</span></span>
+                {" || "}
+                <span>Subjects covered: <span className="font-semibold text-foreground">{summaryLoading ? "..." : subjectsCovered}</span></span>
+            </p>
 
             <section aria-labelledby="class-directory-title" className="space-y-4">
                 <SectionHeader
@@ -480,7 +632,7 @@ const ClassesList = () => {
                     />}
                     active={hasActiveFilters}
                     onClear={clearFilters}
-                    trailing={isStudent ? <JoinClassDialog /> : <CreateButton resource="classes" />}
+                    trailing={isStudent ? <JoinClassDialog /> : historical ? undefined : <CreateButton resource="classes" />}
                 >
 
                     {!isStudent && <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -495,7 +647,7 @@ const ClassesList = () => {
                         </SelectContent>
                     </Select>}
 
-                    <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                    {!isStudent && !isTeacher && !headmasterSchoolLevel && <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
                         <SelectTrigger className="h-10 w-full sm:w-[180px]" aria-label="Filter by teacher">
                             <SelectValue placeholder="All teachers" />
                         </SelectTrigger>
@@ -505,7 +657,7 @@ const ClassesList = () => {
                                 <SelectItem key={teacher.id} value={teacher.name}>{teacher.name}</SelectItem>
                             ))}
                         </SelectContent>
-                    </Select>
+                    </Select>}
 
                 </FilterBar>
 
@@ -545,9 +697,9 @@ const ClassesList = () => {
                         description={
                             isStudent
                                 ? "There are no classes in the catalog yet. Check back soon, or join one with an invite code."
-                                : "Create your first class to start managing subjects, teachers, and enrollment."
+                                : historical ? "No classes were saved for this previous-year selection." : "Create your first class to start managing subjects, teachers, and enrollment."
                         }
-                        action={isStudent ? undefined : { label: "Create Class", to: "/classes/create" }}
+                        action={isStudent || historical ? undefined : { label: "Create Class", to: "/classes/create" }}
                     />
                 )
             ) : (
@@ -559,6 +711,10 @@ const ClassesList = () => {
             )}
         </PageContainer>
     )
+}
+
+export function ClassesFound() {
+    return <ClassesList resultsMode />;
 }
 
 export default ClassesList

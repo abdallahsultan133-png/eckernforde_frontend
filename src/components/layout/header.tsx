@@ -14,7 +14,7 @@ import { AccountMenu } from "@/components/layout/account-menu.tsx";
 import { cn } from "@/lib/utils.ts";
 import { portalPage } from "@/lib/portal-page";
 import { ROLE_LABEL_SHORT } from "@/lib/roles";
-import { loadSearchHistory, rememberSearch } from "@/lib/search-history";
+import { clearSearchHistory, loadSearchHistory, rememberSearch } from "@/lib/search-history";
 import { usePortalSearch, type PortalSearchResult } from "@/hooks/use-portal-search.ts";
 import { UserRole, type User } from "@/types";
 import { useRef, useState } from "react";
@@ -37,24 +37,27 @@ import {
   FileText,
   Building2,
   BarChart3,
-  Users,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 
-type QuickAction = { label: string; href: string; icon: LucideIcon };
+type QuickAction = {
+            label: string;
+            href: string;
+            icon: LucideIcon;
+        };
 
 function quickActionsForRole(role?: UserRole): QuickAction[] {
   if (role === UserRole.SUPER_ADMIN) {
     return [
-      { label: "Accounts & Roles", href: "/users", icon: Users },
       { label: "Audit Log", href: "/admin/audit-logs", icon: FileText },
       { label: "Departments", href: "/admin/departments", icon: Building2 },
+      { label: "Publish Results", href: "/admin/publish-results", icon: BarChart3 },
       { label: "Academic Insights", href: "/insights", icon: BarChart3 },
     ];
   }
-  if (role === UserRole.ADMIN) {
+  if (role === UserRole.PRIMARY_HEADMASTER || role === UserRole.SECONDARY_HEADMASTER) {
     return [
-      { label: "Manage Users", href: "/users", icon: Users },
       { label: "Create Class", href: "/classes/create", icon: School },
       { label: "Add Subject", href: "/subjects/create", icon: BookOpen },
       { label: "Send Announcement", href: "/announcements/create", icon: Megaphone },
@@ -71,7 +74,7 @@ function quickActionsForRole(role?: UserRole): QuickAction[] {
   if (role === UserRole.STUDENT) {
     return [
       { label: "View Homework", href: "/homework", icon: FileText },
-      { label: "View Report", href: "/grades/term-results", icon: BarChart3 },
+      { label: "View Report", href: "/reports", icon: BarChart3 },
     ];
   }
   return [];
@@ -107,6 +110,12 @@ function DesktopHeader() {
     setSearchOpen(false);
     setSearchTerm("");
     query.setSearch("");
+  };
+
+  const deleteSearchHistory = () => {
+    if (!window.confirm("Delete your recent portal searches?")) return;
+    clearSearchHistory();
+    setSearchHistory([]);
   };
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -176,6 +185,7 @@ function DesktopHeader() {
             results={portalResults}
             onSelect={setSearchTerm}
             onSelectResult={chooseResult}
+            onClearHistory={deleteSearchHistory}
             offset="desktop"
           />
         </div>
@@ -204,12 +214,12 @@ function MobileMenuButton() {
         <Button
             variant="ghost"
             size="icon"
-            className="ml-1 h-11 w-11 shrink-0 text-muted-foreground"
+            className="ml-1 h-14 w-14 shrink-0 text-muted-foreground"
             aria-label={openMobile ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={openMobile}
             onClick={() => setOpenMobile(!openMobile)}
         >
-            {openMobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {openMobile ? <X className="size-8" strokeWidth={2.5} /> : <Menu className="size-8" strokeWidth={2.5} />}
         </Button>
     );
 }
@@ -234,6 +244,12 @@ function MobileHeader() {
       setSearchOpen(false);
       setSearchTerm("");
       query.setSearch("");
+    };
+
+    const deleteSearchHistory = () => {
+      if (!window.confirm("Delete your recent portal searches?")) return;
+      clearSearchHistory();
+      setSearchHistory([]);
     };
 
     const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -318,6 +334,7 @@ function MobileHeader() {
                     results={portalResults}
                     onSelect={setSearchTerm}
                     onSelectResult={chooseResult}
+                    onClearHistory={deleteSearchHistory}
                     offset="mobile"
                   />
                 </div>
@@ -332,6 +349,7 @@ function MobileHeader() {
                   <SearchButton className="h-12 w-12" onClick={openSearch} />
                   <QuickActionMenu mobile />
                   <ThemeToggle className="h-12 w-12" />
+                  <NotificationsBell className="h-12 w-12" />
                   <UserDropdown />
                 </div>
               </>
@@ -348,6 +366,7 @@ function PortalSearchDropdown({
   results,
   onSelect,
   onSelectResult,
+  onClearHistory,
   offset,
 }: {
   history: string[];
@@ -355,13 +374,14 @@ function PortalSearchDropdown({
   results: PortalSearchResult[];
   onSelect: (term: string) => void;
   onSelectResult: (result: PortalSearchResult) => void;
+  onClearHistory: () => void;
   offset: "desktop" | "mobile";
 }) {
   const normalizedQuery = query.trim().toLowerCase();
   const recentSearches = history.filter((term) => !normalizedQuery || term.toLowerCase().includes(normalizedQuery));
   const hasQuery = normalizedQuery.length > 0;
 
-  if (!hasQuery && recentSearches.length === 0) return null;
+  if ((hasQuery && results.length === 0) || (!hasQuery && recentSearches.length === 0)) return null;
 
   return (
     <div className={cn(
@@ -392,9 +412,6 @@ function PortalSearchDropdown({
           })}
         </>
       )}
-      {hasQuery && results.length === 0 && (
-        <p className="px-3 py-3 text-sm text-muted-foreground">No matching portal results.</p>
-      )}
       {!hasQuery && recentSearches.length > 0 && (
         <>
           <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent searches</p>
@@ -411,6 +428,17 @@ function PortalSearchDropdown({
               <span className="truncate">{term}</span>
             </button>
           ))}
+          <div className="mt-1 border-t border-border pt-1">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={onClearHistory}
+            >
+              <Trash2 className="h-3.5 w-3.5 shrink-0" />
+              Delete search history
+            </button>
+          </div>
         </>
       )}
     </div>

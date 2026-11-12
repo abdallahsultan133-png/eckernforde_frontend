@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router";
 import { useGetIdentity, useLogout } from "@refinedev/core";
-import { BookOpen, LogOut, Settings, UserRound } from "lucide-react";
+import { BookOpen, BookOpenCheck, Globe2, LogOut, Settings, UserRound } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -14,6 +14,8 @@ import {
 import { UserAvatar } from "@/components/layout/user-avatar.tsx";
 import { cn } from "@/lib/utils.ts";
 import { UserRole, type User } from "@/types";
+import { BACKEND_BASE_URL } from "@/constants";
+import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 
 type AccountMenuProps = {
   /** The trigger element (avatar button, full account row, …). */
@@ -40,6 +42,15 @@ export function AccountMenu({
 }: AccountMenuProps) {
   const { data: user } = useGetIdentity<User>();
   const { mutate: logout, isPending } = useLogout();
+  const { data: historicalPortal } = useHistoricalPortal();
+  const historical = !!historicalPortal?.data.archiveContext;
+
+  const handleLogout = async () => {
+    if (historical) {
+      await fetch(`${BACKEND_BASE_URL}/portal-context/teacher-history/close`, { method: "POST", credentials: "include" }).catch(() => undefined);
+    }
+    logout();
+  };
 
   return (
     <DropdownMenu>
@@ -64,7 +75,7 @@ export function AccountMenu({
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {user?.role === UserRole.TEACHER && <DropdownMenuItem asChild>
+        {user?.role === UserRole.TEACHER && !historical && <DropdownMenuItem asChild>
           <Link
             to="/portal/setup?change=1"
             onClick={onNavigate}
@@ -72,6 +83,16 @@ export function AccountMenu({
           >
             <BookOpen className="h-4 w-4" />
             Change form or class
+          </Link>
+        </DropdownMenuItem>}
+        {user?.role === UserRole.TEACHER && <DropdownMenuItem asChild>
+          <Link
+            to="/portal/teacher-history"
+            onClick={onNavigate}
+            className="flex cursor-pointer items-center gap-2"
+          >
+            <BookOpenCheck className="h-4 w-4" />
+            Previous teaching years
           </Link>
         </DropdownMenuItem>}
         {user?.role === UserRole.STUDENT && <DropdownMenuItem asChild>
@@ -96,9 +117,15 @@ export function AccountMenu({
             Settings
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/" onClick={onNavigate} className="flex cursor-pointer items-center gap-2">
+            <Globe2 className="h-4 w-4" />
+            School website
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => logout()}
+          onClick={() => void handleLogout()}
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="h-4 w-4 text-destructive" />

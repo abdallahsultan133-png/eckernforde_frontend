@@ -13,13 +13,15 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { BACKEND_BASE_URL } from "@/constants";
-import type { Department } from "@/types";
+import type { Department, Subject } from "@/types";
 
 const SubjectsCreate = () => {
     const navigate = useNavigate();
     const invalidate = useInvalidate();
     const { query: deptQuery } = useList<Department>({ resource: "departments", pagination: { pageSize: 100 } });
+    const { query: subjectQuery } = useList<Subject>({ resource: "subjects", pagination: { pageSize: 100 } });
     const departments = deptQuery?.data?.data ?? [];
+    const subjects = subjectQuery?.data?.data ?? [];
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
@@ -30,6 +32,11 @@ const SubjectsCreate = () => {
         e.preventDefault();
         if (!name.trim()) return toast.error("Name is required.");
         if (!departmentId) return toast.error("Department is required.");
+
+        const normalizedName = name.trim().toLocaleLowerCase();
+        if (subjects.some((subject) => subject.name.trim().toLocaleLowerCase() === normalizedName)) {
+            return toast.error("A subject with this name already exists.");
+        }
 
         setSubmitting(true);
         try {

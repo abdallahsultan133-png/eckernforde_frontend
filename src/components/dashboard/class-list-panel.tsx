@@ -1,6 +1,7 @@
 import { GraduationCap } from "lucide-react";
 import { ActionQueue } from "@/components/dashboard/action-queue";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type ClassRow = {
   id: number;
@@ -38,8 +39,9 @@ export function ClassListPanel({
   max = 6,
 }: ClassListPanelProps) {
   const scope = variant === "mine" ? "&mine=1" : "";
+  const { withYear } = useAdminDashboardYear();
   const { data, isLoading, isError, refetch } = useApiQuery<{ data: ClassRow[] }>(
-    `/classes?limit=${Math.max(max, 12)}${scope}`,
+    withYear(`/classes?limit=${Math.max(max, 12)}${scope}`),
   );
   const classes = data?.data ?? [];
   const displayClasses = variant === "mine"

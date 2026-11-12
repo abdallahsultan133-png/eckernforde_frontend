@@ -1,11 +1,9 @@
-import { Link, useParams } from "react-router";
-import { ArrowLeft, BarChart3, ClipboardList, Users } from "lucide-react";
+import { useParams } from "react-router";
+import { BarChart3, ClipboardList } from "lucide-react";
 
 import { Breadcrumb } from "@/components/layout/breadcrumb.tsx";
 import { PageContainer } from "@/components/layout/page-container.tsx";
 import { PageHeader } from "@/components/layout/page-header.tsx";
-import { SectionHeader } from "@/components/layout/section-header.tsx";
-import { Button } from "@/components/ui/button.tsx";
 import { EmptyState } from "@/components/ui/empty-state.tsx";
 import { ErrorState } from "@/components/ui/error-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -51,9 +49,9 @@ export default function AssignmentReport() {
   return <PageContainer className="space-y-6">
     <PageHeader
       breadcrumb
+      showBackLink={false}
       title="Student marks report"
       description={`${report.subject.name} · ${report.class.name}`}
-      actions={<Button variant="outline" size="sm" asChild><Link to={`/homework/${report.selectedAssignment.id}`}><ArrowLeft className="mr-1.5 h-4 w-4" />Back to homework</Link></Button>}
     />
 
     <section className="rounded-lg border bg-background p-5 sm:p-6">
@@ -65,36 +63,30 @@ export default function AssignmentReport() {
         </div>
         <BarChart3 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
       </div>
-      <dl className="mt-5 grid gap-3 border-t pt-4 sm:grid-cols-4">
-        <div><dt className="text-xs text-muted-foreground">Students</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.studentCount}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">Homework</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.assignmentCount}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">Graded marks</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.gradedMarks}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">Class average</dt><dd className="mt-1 text-lg font-semibold tabular-nums">{report.summary.classAveragePercent === null ? "Not recorded" : `${report.summary.classAveragePercent}%`}</dd></div>
-      </dl>
     </section>
 
     <section className="rounded-lg border bg-background">
-      <div className="p-5 sm:p-6"><SectionHeader title="Homework and student marks" description="Scores are shown against each homework task's maximum. A dash means no submission has been recorded." /></div>
-      {report.assignments.length === 0 || report.students.length === 0 ? <div className="border-t p-6"><EmptyState icon={ClipboardList} title="No marks to report yet" description="Students and homework marks will appear here once the class has enrolled students and posted work." /></div> : <div className="overflow-x-auto border-t">
-        <table className="w-full min-w-[760px] border-collapse text-sm">
+      {report.assignments.length === 0 || report.students.length === 0 ? <div className="border-t p-6"><EmptyState icon={ClipboardList} title="No marks to report yet" description="Students and homework marks will appear here once the class has enrolled students and posted work." /></div> : <div className="border-t">
+        <table className="w-full table-fixed border-collapse text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
-              <th scope="col" className="sticky left-0 z-10 min-w-52 border-b bg-muted/40 px-4 py-3 font-medium">Student</th>
-              {report.assignments.map((assignment) => <th scope="col" key={assignment.id} className="min-w-32 border-b px-4 py-3 font-medium"><span className="block max-w-32 truncate" title={assignment.title}>{assignment.title}</span><span className="mt-1 block text-xs font-normal text-muted-foreground">/{assignment.maxScore} marks</span></th>)}
-              <th scope="col" className="min-w-28 border-b px-4 py-3 text-right font-medium">Average</th>
+              <th scope="col" className="w-[58%] border-b px-3 py-3 font-medium sm:px-4">Student</th>
+              <th scope="col" className="w-[42%] border-b px-3 py-3 pr-6 text-left font-medium sm:px-4 sm:pr-8">Marks</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {report.students.map((student) => <tr key={student.id} className="hover:bg-muted/20">
-              <th scope="row" className="sticky left-0 z-10 bg-background px-4 py-3 text-left font-medium"><span className="block truncate">{student.name}</span><span className="block truncate text-xs font-normal text-muted-foreground">{student.email}</span></th>
-              {report.assignments.map((assignment, index) => { const mark = student.marks[index]; return <td key={assignment.id} className="px-4 py-3 align-middle"><StatusBadge tone={markTone(mark)}>{displayMark(mark, assignment)}</StatusBadge></td>; })}
-              <td className="px-4 py-3 text-right font-medium tabular-nums">{student.averagePercent === null ? "—" : `${student.averagePercent}%`}</td>
+              <th scope="row" className="align-top px-3 py-3 text-left font-medium sm:px-4"><span className="block break-words">{student.name}</span><span className="mt-1 block break-words text-xs font-normal text-muted-foreground">{student.email}</span></th>
+              <td className="px-3 py-2 pr-6 align-top text-left sm:px-4 sm:pr-8">
+                <div className="flex flex-wrap justify-start gap-1.5">
+                  {report.assignments.map((assignment, index) => { const mark = student.marks[index]; return <StatusBadge key={assignment.id} tone={markTone(mark)}>{displayMark(mark, assignment)}</StatusBadge>; })}
+                </div>
+              </td>
             </tr>)}
           </tbody>
         </table>
       </div>}
     </section>
 
-    <p className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="h-3.5 w-3.5" aria-hidden="true" />Only students enrolled in this class are included. Homework marks do not alter formal term-result divisions.</p>
   </PageContainer>;
 }

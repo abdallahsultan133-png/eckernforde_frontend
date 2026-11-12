@@ -43,13 +43,14 @@ function renderGuardedRoute(roles: UserRole[]) {
 const seesSecret = () => screen.queryByText("secret content") !== null;
 const redirected = () => screen.queryByText("unauthorized screen") !== null;
 
-const ADMIN_ONLY = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
-const STAFF = [UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
+const ADMIN_ONLY = [UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN];
+const STAFF = [UserRole.TEACHER, UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN];
 const ALL_ROLES = [
   UserRole.STUDENT,
   UserRole.TEACHER,
   UserRole.PARENT,
-  UserRole.ADMIN,
+  UserRole.PRIMARY_HEADMASTER,
+  UserRole.SECONDARY_HEADMASTER,
   UserRole.SUPER_ADMIN,
 ];
 
@@ -63,7 +64,7 @@ describe("RequireRole", () => {
   });
 
   it("renders children when the user's role is in the allowed list", () => {
-    signedInAs(UserRole.ADMIN);
+    signedInAs(UserRole.SECONDARY_HEADMASTER);
     renderGuardedRoute(ADMIN_ONLY);
 
     expect(seesSecret()).toBe(true);
@@ -91,14 +92,14 @@ describe("RequireRole", () => {
 
   it("treats roles as a flat allowlist — a super_admin is not implicitly an admin", () => {
     signedInAs(UserRole.SUPER_ADMIN);
-    renderGuardedRoute([UserRole.ADMIN]);
+    renderGuardedRoute([UserRole.PRIMARY_HEADMASTER]);
 
     expect(seesSecret()).toBe(false);
     expect(redirected()).toBe(true);
   });
 
   it("admits every listed role on a multi-role (staff) route and rejects the rest", () => {
-    for (const role of [UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN]) {
+    for (const role of [UserRole.TEACHER, UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN]) {
       cleanup();
       signedInAs(role);
       renderGuardedRoute(STAFF);
@@ -125,10 +126,10 @@ describe("RequireRole", () => {
     for (const role of ALL_ROLES) {
       cleanup();
       signedInAs(role);
-      renderGuardedRoute([UserRole.ADMIN]);
+      renderGuardedRoute([UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN]);
       if (seesSecret()) admitted.push(role);
     }
 
-    expect(admitted).toEqual([UserRole.ADMIN]);
+    expect(admitted).toEqual([UserRole.PRIMARY_HEADMASTER, UserRole.SECONDARY_HEADMASTER, UserRole.SUPER_ADMIN]);
   });
 });

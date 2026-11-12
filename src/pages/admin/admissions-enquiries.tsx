@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Inbox, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useGetIdentity } from "@refinedev/core";
 import { BACKEND_BASE_URL } from "@/constants";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -11,14 +12,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApiQuery } from "@/hooks/use-api-query";
+import { UserRole, type User } from "@/types";
+import { HeadmasterStageSelector, type HeadmasterStage } from "@/components/academic/headmaster-stage-selector.tsx";
+import { SchoolCardSelector } from "@/components/academic/school-level-selector.tsx";
+import { useSuperAdminSchoolScope } from "@/components/academic/super-admin-school-scope.tsx";
 
 type Enquiry = { id: number; fullName: string; email: string; phone: string | null; childStage: string; message: string | null; consent: boolean; status: "new" | "in_progress" | "closed"; createdAt: string };
 const stageLabel: Record<string, string> = { nursery: "Nursery", kindergarten: "Kindergarten", primary: "Primary", secondary: "Secondary", not_sure: "Not sure" };
 
 export default function AdmissionsEnquiries() {
-  const { data, isLoading, isError, refetch } = useApiQuery<{ data: Enquiry[] }>("/admissions/enquiries");
+  const { data: identity } = useGetIdentity<User>();
+  const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
+  const scope = useSuperAdminSchoolScope(isSuperAdmin);
+  const selectionReady = Boolean(scope.schoolLevel && scope.stage);
+  const { data, isLoading, isError, refetch } = useApiQuery<{ data: Enquiry[] }>(
+    !isSuperAdmin || selectionReady ? "/admissions/enquiries" : null,
+  );
   const [savingId, setSavingId] = useState<number | null>(null);
-  const enquiries = data?.data ?? [];
+  const enquiries = useMemo(() => {
+    const rows = data?.data ?? [];
+    if (!isSuperAdmin || !scope.stage) return rows;
+    const requestedStage = scope.stage === "nursery"
+      ? "nursery"
+      : scope.stage.startsWith("kindergarten_")
+        ? "kindergarten"
+        : scope.stage.startsWith("standard_")
+          ? "primary"
+          : "secondary";
+    // The enquiry form stores broad age bands, not exact class, form, or school year.
+    // Keep uncertain-stage enquiries visible to the super admin for manual routing.
+    return rows.filter((row) => row.childStage === requestedStage || row.childStage === "not_sure");
+  }, [data, isSuperAdmin, scope.stage]);
 
   const updateStatus = async (id: number, status: Enquiry["status"]) => {
     setSavingId(id);
@@ -35,7 +59,25 @@ export default function AdmissionsEnquiries() {
 
   return <PageContainer>
     <PageHeader breadcrumb title="Admissions enquiries" description="Review family enquiries submitted through the public admissions page." metadata="Restricted to authorised admissions staff" />
-    {isLoading ? <div className="space-y-2 rounded-lg border p-4" aria-label="Loading enquiries" aria-busy="true">{Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-12 w-full" />)}</div>
+    {isSuperAdmin && <>
+      <div className="space-y-4">
+        <SchoolCardSelector
+          value={scope.schoolLevel}
+          onChange={(schoolLevel) => { scope.setSchoolLevel(schoolLevel); scope.setStage(""); scope.setYearId(""); }}
+        />
+        {scope.schoolLevel && <HeadmasterStageSelector
+          role={scope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+          value={scope.stage as HeadmasterStage | ""}
+          onChange={(stage) => { scope.setStage(stage); scope.setYearId(""); }}
+          title={scope.schoolLevel === "primary" ? "2. Choose a class" : "2. Choose a form"}
+          description="Select the intended entry stage for the enquiries you want to review."
+        />}
+      </div>
+      {selectionReady && <p className="text-sm text-muted-foreground">
+        Enquiries record a broad entry stage, not an exact class/form or academic year. Uncertain-stage enquiries remain visible for manual routing.
+      </p>}
+    </>}
+    {isSuperAdmin && !selectionReady ? null : isLoading ? <div className="space-y-2 rounded-lg border p-4" aria-label="Loading enquiries" aria-busy="true">{Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-12 w-full" />)}</div>
       : isError ? <ErrorState title="Unable to load enquiries" description="Check your connection and permissions, then retry." onRetry={refetch} />
       : enquiries.length === 0 ? <EmptyState icon={Inbox} title="No admissions enquiries" description="New public enquiries will appear here." />
       : <div className="overflow-x-auto rounded-lg border"><Table><TableHeader><TableRow><TableHead>Received</TableHead><TableHead>Family contact</TableHead><TableHead>Stage</TableHead><TableHead>Message</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{enquiries.map((enquiry) => <TableRow key={enquiry.id}>

@@ -2,6 +2,7 @@ import { History } from "lucide-react";
 import { ActionQueue } from "@/components/dashboard/action-queue";
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { timeAgo } from "@/lib/time";
+import { useAdminDashboardYear } from "./admin-dashboard-year";
 
 type AuditRow = { id: number; action: string; resource: string; resourceId: string | null; details: string | null; createdAt: string; user: { id: string; name: string; email: string } | null };
 
@@ -20,7 +21,8 @@ function humanizeAction(action: string, resource: string): string {
 }
 
 export function SystemActivity({ max = 7 }: { max?: number }) {
-  const { data, isLoading, isError, refetch } = useApiQuery<{ data: AuditRow[] }>("/audit-logs?limit=10");
+  const { withYear } = useAdminDashboardYear();
+  const { data, isLoading, isError, refetch } = useApiQuery<{ data: AuditRow[] }>(withYear("/audit-logs?limit=10"));
   const rows = data?.data ?? [];
   return <ActionQueue title="System activity" icon={History} isLoading={isLoading} isError={isError} onRetry={refetch} maxItems={max} emptyIcon={History} emptyTitle="No recent activity" emptyDescription="Administrative changes across the school will be logged here." viewAll={{ label: "Full audit log", href: "/admin/audit-logs" }} items={rows.map((row) => ({ id: row.id, title: row.details || humanizeAction(row.action, row.resource), meta: `${row.user?.name ?? "System"} - ${timeAgo(row.createdAt)}` }))} />;
 }

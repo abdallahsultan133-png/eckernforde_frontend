@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { APP_NAME } from "@/constants";
+import { PUBLIC_BRAND } from "./public-brand";
 
 /**
  * Public routes do not use Refine resource titles. Keep their document title
@@ -8,7 +8,7 @@ import { APP_NAME } from "@/constants";
  */
 export function PublicPageMeta({ title, description }: { title: string; description: string }) {
   useEffect(() => {
-    const pageTitle = `${title} | ${APP_NAME}`;
+    const pageTitle = `${title} | ${PUBLIC_BRAND.name}`;
     const configuredSiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
     const publicOrigin = (() => {
       if (!configuredSiteUrl) return undefined;

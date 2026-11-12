@@ -2,6 +2,7 @@ const pages: [string, string, string][] = [
   ["/portal/history", "Academic history", "Previous school years and published records"],
   ["/portal/setup", "Choose school context", "Select the level you are working in"],
   ["/portal", "Dashboard", "Your school day"],
+  ["/reports", "Reports", "Published academic reports"],
   ["/parent/homework", "Homework", "Review your children's learning tasks and submissions"],
   ["/parent/homework/view", "Homework", "Review your children's learning tasks and submissions"],
   ["/parent/attendance", "Attendance", "Review your children's attendance records"],
@@ -12,7 +13,7 @@ const pages: [string, string, string][] = [
   ["/grades/report-card", "Report cards", "Published academic reports"],
   ["/grades/term-results/record", "Record results", "Midterm and terminal examinations"],
   ["/grades/term-results", "Term results", "Academic progress and divisions"],
-  ["/grades/exams", "Examinations", "Assessment schedules and records"],
+  ["/portal/exams", "Examinations", "Assessment schedules and records"],
   ["/grades", "Homework Grade Book", "Homework assessment and feedback"],
   ["/attendance/report", "Attendance reports", "Attendance history and summaries"],
   ["/attendance/qr", "Attendance QR", "Create a secure class attendance session"],
@@ -26,10 +27,11 @@ const pages: [string, string, string][] = [
   ["/notifications", "Notifications", "Updates that need your attention"],
   ["/announcements", "Announcements", "News from your school community"],
   ["/messages", "Messages", "School conversations"],
-  ["/guardians", "Parents & guardians", "Family portal accounts and child relationships"],
   ["/teachers", "Teachers", "Teaching accounts and access"],
+  ["/users", "Manage users", "Manage school accounts and access"],
+  ["/students/selected", "Selected Students", "Students in the selected class or form"],
   ["/students", "Students", "Student accounts and academic records"],
-  ["/users", "Users & access", "School accounts and permissions"],
+  ["/guardians", "Parents & guardians", "Family portal accounts and child relationships"],
   ["/profile", "My profile", "Your account and personal information"],
   ["/profile#security", "Settings", "Account preferences and security"],
   ["/admin/audit-logs", "Audit log", "Recorded administrative changes"],
@@ -37,6 +39,7 @@ const pages: [string, string, string][] = [
   ["/admin/academic-calendar", "Academic calendar", "School years and terms"],
   ["/admin/publish-results", "Publish results", "Review and release term results"],
   ["/admin/admissions", "Admissions enquiries", "Prospective school families"],
+  ["/admin/password-recovery", "Password Recovery", "Account recovery requests"],
   ["/admin/publications", "Publications", "Manage school news"],
   ["/admin/public-events", "Public events", "Manage school events"],
   ["/admin/report-card-template", "Report card template", "Configure published academic reports"],
@@ -53,7 +56,7 @@ export const PORTAL_PAGES = pages.map(([path, title, description]) => ({
 }));
 
 export function portalPage(pathname: string) {
-  if (/^\/students\/[^/]+/.test(pathname)) {
+  if (pathname !== "/students/selected" && /^\/students\/[^/]+/.test(pathname)) {
     return { title: "Student profile", description: "A connected academic record" };
   }
   const page = [...pages]

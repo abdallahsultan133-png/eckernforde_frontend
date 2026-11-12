@@ -38,12 +38,12 @@ export function RecentResults({ max = 6 }: { max?: number }) {
       emptyIcon={Award}
       emptyTitle="No results yet"
       emptyDescription="Grades and feedback from your teachers will show up here."
-      viewAll={{ label: "All grades", href: "/grades" }}
+      viewAll={{ label: "View report", href: "/reports" }}
       items={results.map((n) => ({
         id: n.id,
         title: n.message,
         meta: timeAgo(n.createdAt),
-        href: n.link ?? "/grades",
+        href: n.link ?? "/reports",
         badge: n.read ? undefined : { label: "New", tone: "info" as const },
       }))}
     />

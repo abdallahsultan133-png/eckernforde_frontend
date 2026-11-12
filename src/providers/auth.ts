@@ -51,10 +51,14 @@ export const authProvider: AuthProvider = {
 
             if (!response.ok) {
                 if (response.status === 401) {
+                    const authFailure = await response.clone().json().catch(() => ({})) as { code?: string };
+                    const isMissingOrInvalidCredential = authFailure.code === "INVALID_EMAIL_OR_PASSWORD" || authFailure.code === "INVALID_PASSWORD";
                     return {
                         success: false,
                         error: {
-                            message: "The email address or password is incorrect.",
+                            message: isMissingOrInvalidCredential
+                                ? "The email/password sign-in was rejected. If this account was created with Google, use Forgot password once to create an email password, then sign in here."
+                                : "The email address or password is incorrect.",
                             name: "Invalid credentials",
                         },
                     };
@@ -107,7 +111,7 @@ export const authProvider: AuthProvider = {
             return {
                 success: false,
                 error: {
-                    message: "We couldn't reach the sign-in service. Check your connection and try again.",
+                    message: "We couldn't complete email/password sign-in. If this account was created with Google, use Forgot password once to create an email password, then try again.",
                     name: "Network error",
                 },
             };
@@ -175,13 +179,12 @@ export const authProvider: AuthProvider = {
     // enumeration), so the success copy is deliberately non-committal.
     forgotPassword: async ({ email }: { email: string }) => {
         try {
-            const response = await fetch(`${API_URL}/auth/request-password-reset`, {
+            const response = await fetch(`${API_URL}/password-reset-requests`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify({
                     email,
-                    redirectTo: `${window.location.origin}/reset-password`,
                 }),
             });
 

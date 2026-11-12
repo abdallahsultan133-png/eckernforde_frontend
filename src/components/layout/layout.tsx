@@ -1,11 +1,13 @@
 "use client";
 
 import { Header } from "@/components/layout/header";
+import { Breadcrumb, PortalBreadcrumbProvider } from "@/components/layout/breadcrumb";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar.tsx";
 import { cn } from "@/lib/utils.ts";
 import type { CSSProperties, PropsWithChildren } from "react";
 import { useLocation } from "react-router";
 import { Sidebar } from "./sidebar.tsx";
+import { HistoricalPortalBanner } from "./historical-portal-banner.tsx";
 
 // Desktop starts expanded, but a user's explicit collapse/expand choice is
 // persisted by the shadcn SidebarProvider in the `sidebar_state` cookie — honour
@@ -19,6 +21,7 @@ function getDefaultSidebarOpen() {
 export function Layout({ children }: PropsWithChildren) {
   const { pathname } = useLocation();
   return (
+      <PortalBreadcrumbProvider>
       <SidebarProvider
         defaultOpen={getDefaultSidebarOpen()}
         className="portal-shell"
@@ -36,6 +39,7 @@ export function Layout({ children }: PropsWithChildren) {
         <SidebarInset id="main-content" tabIndex={-1} className="portal-main outline-none">
           <div className="print:hidden">
               <Header />
+              <HistoricalPortalBanner />
           </div>
 
           <div
@@ -57,6 +61,9 @@ export function Layout({ children }: PropsWithChildren) {
                   "print:p-0"
               )}
           >
+            <div className="mb-5">
+              <Breadcrumb global />
+            </div>
             {/* Re-keyed on the route so every navigation replays the entrance
                 fade — replaces the old hardcoded per-page class list in App.css. */}
             <div key={pathname} className="animate-page min-w-0">
@@ -66,6 +73,7 @@ export function Layout({ children }: PropsWithChildren) {
 
         </SidebarInset>
       </SidebarProvider>
+      </PortalBreadcrumbProvider>
   );
 }
 Layout.displayName = "Layout";

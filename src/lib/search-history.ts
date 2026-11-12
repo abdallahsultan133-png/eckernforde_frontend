@@ -35,3 +35,11 @@ export function rememberSearch(term: string): string[] {
 
   return history;
 }
+
+export function clearSearchHistory(): void {
+  try {
+    window.localStorage.removeItem(SEARCH_HISTORY_KEY);
+  } catch {
+    // The history is already unavailable when browser storage cannot be accessed.
+  }
+}

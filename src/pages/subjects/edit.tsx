@@ -69,7 +69,7 @@ const SubjectsEdit = () => {
     // Defense in depth: the Edit button is already hidden for non-owners in
     // the list, but a teacher could still navigate here directly by URL.
     // Only the creating teacher (or an admin) may actually use this form.
-    const isAdmin = identity?.role === UserRole.ADMIN || identity?.role === UserRole.SUPER_ADMIN;
+    const isAdmin = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
     const canEdit = isAdmin || (identity?.role === UserRole.TEACHER && identity?.id === subject?.createdBy);
     if (subject && !canEdit) {
         return <Navigate to="/unauthorized" replace />;
@@ -77,7 +77,7 @@ const SubjectsEdit = () => {
 
     return (
         <PageContainer className="max-w-3xl">
-            <PageHeader breadcrumb title="Edit subject" description="Update this learning area's curriculum details." />
+            <PageHeader breadcrumb showBackLink={false} title="Edit subject" description="Update this learning area's curriculum details." />
             <form onSubmit={handleSubmit} className="overflow-hidden rounded-lg border bg-background">
                 <div className="p-5 sm:p-6">
                     <SectionHeader title="Subject details" description="Changes apply wherever this subject is used." />

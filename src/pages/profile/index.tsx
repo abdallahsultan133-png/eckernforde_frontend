@@ -36,6 +36,37 @@ type StudentProfile = {
   bio: string | null;
 };
 
+type NotificationPreferences = { inApp: boolean; email: boolean };
+
+const defaultNotificationPreferences: NotificationPreferences = { inApp: true, email: true };
+
+const notificationDescriptions: Record<UserRole, { inApp: string; email: string }> = {
+  [UserRole.STUDENT]: {
+    inApp: "Homework, grading, result publication, exam and school announcement alerts.",
+    email: "Homework, announcements, grading and exam reminder emails.",
+  },
+  [UserRole.PARENT]: {
+    inApp: "Homework, published results and class announcements for linked children.",
+    email: "Homework, class announcements and exam reminders for linked children.",
+  },
+  [UserRole.TEACHER]: {
+    inApp: "New student submissions and school updates for your classes.",
+    email: "New submission and class announcement emails.",
+  },
+  [UserRole.PRIMARY_HEADMASTER]: {
+    inApp: "Results awaiting publication and primary school activity alerts.",
+    email: "Result review and primary school update emails.",
+  },
+  [UserRole.SECONDARY_HEADMASTER]: {
+    inApp: "Results awaiting publication and secondary school activity alerts.",
+    email: "Result review and secondary school update emails.",
+  },
+  [UserRole.SUPER_ADMIN]: {
+    inApp: "Platform administration, result publication and account alerts.",
+    email: "Password recovery and platform administration emails.",
+  },
+};
+
 const emptyProfile: StudentProfile = {
   registrationNumber: "",
   dateOfBirth: "",
@@ -55,6 +86,9 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState<StudentProfile>(emptyProfile);
   const [saving, setSaving] = useState(false);
   const { data: meData, isLoading: profileLoading } = useApiQuery<{ data: { profile: StudentProfile | null } }>("/profile/me");
+  const { data: preferenceData, isLoading: preferencesLoading, isError: preferencesError, refetch: refetchPreferences } = useApiQuery<{ data: NotificationPreferences }>("/profile/me/preferences");
+  const notificationPreferences = preferenceData?.data ?? defaultNotificationPreferences;
+  const [savingPreference, setSavingPreference] = useState<keyof NotificationPreferences | null>(null);
   const profileCompletion = isStudent
     ? Math.round(Object.values(profile).filter((value) => String(value ?? "").trim().length > 0).length / Object.values(profile).length * 100)
     : 100;
@@ -93,9 +127,33 @@ const ProfilePage = () => {
     }
   };
 
+  const handlePreferenceChange = async (key: keyof NotificationPreferences, enabled: boolean) => {
+    setSavingPreference(key);
+    try {
+      const response = await fetch(`${BACKEND_BASE_URL}/profile/me/preferences`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: enabled }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error ?? "Unable to save this preference.");
+      queryClient.setQueryData(["/profile/me/preferences"], result);
+      toast.success("Notification preference saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save this preference.");
+    } finally {
+      setSavingPreference(null);
+    }
+  };
+
   return (
     <PageContainer className="profile-page max-w-6xl">
-      <PageHeader breadcrumb title="Profile & Settings" description="Manage your portal identity, security and personal preferences." />
+      <PageHeader
+        breadcrumb
+        title="Profile & Settings"
+        description="Manage your portal identity, security and personal preferences."
+      />
 
       <section className="profile-overview overflow-hidden border-y border-border bg-card sm:rounded-lg sm:border" aria-labelledby="account-overview-heading">
         <div className="grid gap-4 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-center">
@@ -135,14 +193,17 @@ const ProfilePage = () => {
             </CardHeader>
             <Separator />
             <CardContent className="space-y-1 p-2">
-              <a href={isStudent ? "#profile-details" : "#account-details"} className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <UserRound className="h-4 w-4 text-muted-foreground" /> {isStudent ? "Personal details" : "Account details"}
-              </a>
+              {isStudent && <a href="#profile-details" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <UserRound className="h-4 w-4 text-muted-foreground" /> Personal details
+              </a>}
               <a href="#security" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <LockKeyhole className="h-4 w-4 text-muted-foreground" /> Password & security
               </a>
               <a href="#appearance" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Moon className="h-4 w-4 text-muted-foreground" /> Appearance
+              </a>
+              <a href="#notifications" className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Mail className="h-4 w-4 text-muted-foreground" /> Notifications
               </a>
             </CardContent>
           </Card>
@@ -164,7 +225,7 @@ const ProfilePage = () => {
         </aside>
 
         <main className="min-w-0 space-y-4">
-          {isStudent ? (
+          {isStudent && (
             <Card id="profile-details" className="scroll-mt-6">
               <CardHeader>
                 <CardTitle>Personal details</CardTitle>
@@ -228,35 +289,6 @@ const ProfilePage = () => {
                 )}
               </CardContent>
             </Card>
-          ) : (
-            <Card id="account-details" className="scroll-mt-6">
-              <CardHeader>
-                <CardTitle>Account details</CardTitle>
-                <CardDescription>Your identity and role in the school portal.</CardDescription>
-              </CardHeader>
-              <Separator />
-              <CardContent className="mt-4 space-y-4">
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border bg-muted/20 p-4">
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Full name</dt>
-                    <dd className="mt-1 text-sm font-medium">{identity?.name ?? "Not available"}</dd>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-4">
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Email address</dt>
-                    <dd className="mt-1 break-words text-sm font-medium">{identity?.email ?? "Not available"}</dd>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-4">
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Portal role</dt>
-                    <dd className="mt-1 text-sm font-medium">{identity?.role ? ROLE_LABEL[identity.role] : "Portal user"}</dd>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-4">
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Account ID</dt>
-                    <dd className="mt-1 truncate font-mono text-xs text-muted-foreground">{identity?.id ?? "Not available"}</dd>
-                  </div>
-                </dl>
-                <p className="flex items-start gap-2 border-t pt-4 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Account identity is managed by the school. Contact the school office if your name or email needs to be corrected.</p>
-              </CardContent>
-            </Card>
           )}
 
           <section id="security" className="scroll-mt-6"><ChangePasswordCard /></section>
@@ -278,6 +310,39 @@ const ProfilePage = () => {
                 </div>
                 <Switch aria-labelledby="dark-mode-label" checked={theme === "dark"} onCheckedChange={(enabled) => setTheme(enabled ? "dark" : "light")} />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card id="notifications" className="scroll-mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Notifications</CardTitle>
+              <CardDescription>Choose how Eckernforde Schools sends updates relevant to your account.</CardDescription>
+            </CardHeader>
+            <Separator />
+            <CardContent className="mt-4 p-0">
+              {preferencesError ? (
+                <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+                  <p className="text-sm text-destructive">Unable to load notification preferences.</p>
+                  <Button variant="outline" size="sm" onClick={() => void refetchPreferences()}>Retry</Button>
+                </div>
+              ) : (Object.keys(defaultNotificationPreferences) as Array<keyof NotificationPreferences>).map((key, index) => (
+                <div key={key} className={`flex items-center justify-between gap-4 px-4 py-3 sm:px-6 ${index > 0 ? "border-t" : ""}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="h-4 w-4" /></span>
+                    <div>
+                      <p id={`notification-${key}-label`} className="text-sm font-medium">{key === "inApp" ? "In-app notifications" : "Email notifications"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{notificationDescriptions[identity?.role ?? UserRole.STUDENT][key]}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    aria-labelledby={`notification-${key}-label`}
+                    checked={notificationPreferences[key]}
+                    disabled={preferencesLoading || savingPreference !== null}
+                    onCheckedChange={(enabled) => void handlePreferenceChange(key, enabled)}
+                  />
+                </div>
+              ))}
+              {savingPreference && <p className="px-6 pb-3 text-xs text-muted-foreground" role="status">Saving preference…</p>}
             </CardContent>
           </Card>
 
