@@ -28,7 +28,7 @@ export function AuthLayout({ eyebrow, title, description, children, footer, sign
           <p className="auth-kicker">Learn. Grow. Achieve.</p>
           <h1>A connected school day, in one secure place.</h1>
           <p>
-            ACADEMIX brings learning, teaching, family communication, attendance and academic progress together for every stage of school life.
+            Eckernforde Schools brings learning, teaching, family communication, attendance and academic progress together for every stage of school life.
           </p>
           <div className="auth-values" aria-label="Portal features">
             <span>Nursery to Secondary</span>

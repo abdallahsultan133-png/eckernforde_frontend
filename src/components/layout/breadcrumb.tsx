@@ -8,6 +8,7 @@ import {
   BreadcrumbSeparator as ShadcnBreadcrumbSeparator,
 } from "@/components/ui/breadcrumb.tsx";
 import { portalPage } from "@/lib/portal-page.ts";
+import { stageLabel } from "@/components/academic/headmaster-stage-selector.tsx";
 import { Home } from "lucide-react";
 import { createContext, useContext, type PropsWithChildren } from "react";
 import { Link, useLocation } from "react-router";
@@ -24,6 +25,7 @@ const sidebarDestinations: Array<[string, string]> = [
   ["/admin/academic-calendar", "Academic Calendar"],
   ["/admin/audit-logs", "Audit Log"],
   ["/admin/admissions", "Admissions Enquiries"],
+  ["/admin/password-recovery", "Password Recovery"],
   ["/admin/publications", "Publications"],
   ["/admin/public-events", "Public Events"],
   ["/parent/homework", "Homework"],
@@ -86,6 +88,30 @@ export function Breadcrumb({ global = false }: { global?: boolean }) {
     ? `?${new URLSearchParams({ childId: homeworkSearch.get("childId")!, academicYearId: homeworkSearch.get("academicYearId")! }).toString()}`
     : "";
   const homeworkHref = hasParentHomeworkContext ? `/parent/homework/view${parentHomeworkQuery}` : "/homework";
+  const breadcrumbSearch = new URLSearchParams(search);
+  const isPasswordRecovery = pathname === "/admin/password-recovery";
+  const isSelectedStudents = pathname === "/students/selected";
+  const foundRoute = pathname.match(/^\/(classes|subjects|students|teachers|guardians)\/found$/);
+  const foundStageLabel = stageLabel(breadcrumbSearch.get("stage") ?? "");
+  const foundDirectory = foundRoute ? {
+    href: `/${foundRoute[1]}`,
+    parent: foundRoute[1] === "guardians" ? "Parents" : foundRoute[1][0].toUpperCase() + foundRoute[1].slice(1),
+    page: foundRoute[1] === "classes" ? `${foundStageLabel || "Class or form selected"} Classes`
+      : foundRoute[1] === "subjects" ? `${foundStageLabel || "Class or form selected"} Subjects`
+        : foundRoute[1] === "students" ? `${foundStageLabel || "Class or form selected"} Students`
+        : foundRoute[1] === "guardians" ? "Parents found" : "Teachers found",
+  } : null;
+  const isStudentReport = pathname === "/grades/term-results" && breadcrumbSearch.get("reportSource") === "student-directory";
+  const studentProfileTermResults = pathname === "/grades/term-results"
+    && Boolean(breadcrumbSearch.get("studentId"))
+    && !isStudentReport;
+  const selectedStudentsParams = new URLSearchParams();
+  for (const key of ["schoolLevel", "stage", "academicYearId", "page"] as const) {
+    const value = breadcrumbSearch.get(key);
+    if (value) selectedStudentsParams.set(key, value);
+  }
+  const selectedStudentsHref = `/students/selected?${selectedStudentsParams.toString()}`;
+  const selectedStudentsLabel = `${stageLabel(breadcrumbSearch.get("stage") ?? "")} Students`;
 
   return (
     <ShadcnBreadcrumb>
@@ -96,7 +122,25 @@ export function Breadcrumb({ global = false }: { global?: boolean }) {
           </Link>
         </ShadcnBreadcrumbItem>
         <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
-        {isHomeworkCreate ? <>
+        {foundDirectory ? <>
+          <ShadcnBreadcrumbItem><Link to={foundDirectory.href}>{foundDirectory.parent}</Link></ShadcnBreadcrumbItem>
+          <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
+          <ShadcnBreadcrumbPage>{foundDirectory.page}</ShadcnBreadcrumbPage>
+        </> : isPasswordRecovery ? <ShadcnBreadcrumbPage>Password Recovery</ShadcnBreadcrumbPage> : studentProfileTermResults ? <>
+          <ShadcnBreadcrumbItem><Link to={`/students/${encodeURIComponent(breadcrumbSearch.get("studentId")!)}`}>Student profile</Link></ShadcnBreadcrumbItem>
+          <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
+          <ShadcnBreadcrumbPage>Term results</ShadcnBreadcrumbPage>
+        </> : isStudentReport ? <>
+          <ShadcnBreadcrumbItem><Link to="/students">Students</Link></ShadcnBreadcrumbItem>
+          <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
+          <ShadcnBreadcrumbItem><Link to={selectedStudentsHref}>{selectedStudentsLabel}</Link></ShadcnBreadcrumbItem>
+          <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
+          <ShadcnBreadcrumbPage>Report</ShadcnBreadcrumbPage>
+        </> : isSelectedStudents ? <>
+          <ShadcnBreadcrumbItem><Link to="/students">Students</Link></ShadcnBreadcrumbItem>
+          <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
+          <ShadcnBreadcrumbPage>{selectedStudentsLabel}</ShadcnBreadcrumbPage>
+        </> : isHomeworkCreate ? <>
           <ShadcnBreadcrumbItem><Link to={homeworkHref}>Homework</Link></ShadcnBreadcrumbItem>
           <ShadcnBreadcrumbSeparator>{">"}</ShadcnBreadcrumbSeparator>
           <ShadcnBreadcrumbPage>Create</ShadcnBreadcrumbPage>

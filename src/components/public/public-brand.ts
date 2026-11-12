@@ -1,7 +1,7 @@
 export const PUBLIC_BRAND = {
-  name: "ACADEMIX",
+  name: "ECKERNFORDE SCHOOLS",
   tagline: "Nursery · Primary · Secondary",
-  mark: "A",
+  mark: "E",
   stages: [
     { label: "Nursery", href: "/academics/early-years", tone: "nursery" },
     { label: "Primary", href: "/academics/primary", tone: "primary" },

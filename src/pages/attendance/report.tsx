@@ -18,6 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useApiQuery } from "@/hooks/use-api-query.ts";
 import { UserRole, type ClassDetails, type User } from "@/types";
 import { portalSchoolName, type PortalSchoolBand } from "@/lib/school-brand";
+import { SchoolCardSelector } from "@/components/academic/school-level-selector.tsx";
+import { HeadmasterStageSelector, type HeadmasterStage } from "@/components/academic/headmaster-stage-selector.tsx";
+import { useSuperAdminSchoolScope } from "@/components/academic/super-admin-school-scope.tsx";
 
 type ReportRow = {
   studentId: string;
@@ -90,6 +93,13 @@ const attendanceClassLabel = (classItem: ClassDetails) =>
 
 const AttendanceReport = () => {
   const { data: identity } = useGetIdentity<User>();
+  const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
+  const superAdminScope = useSuperAdminSchoolScope(isSuperAdmin);
+  const {
+    setSchoolLevel: setScopeSchoolLevel,
+    setStage: setScopeStage,
+    setYearId: setScopeYearId,
+  } = superAdminScope;
   const isStudent = identity?.role === UserRole.STUDENT;
   const isSchoolStaff = isStudent || identity?.role === UserRole.TEACHER;
   const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary"; stage?: string } | null; archiveContext?: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
@@ -97,12 +107,31 @@ const AttendanceReport = () => {
 
   const [searchParams] = useSearchParams();
   const [classId, setClassId] = useState<string>(() => isStudent ? "all" : (searchParams.get("classId") ?? ""));
+  const scopeSeed = searchParams.get("schoolLevel");
+  const stageSeed = searchParams.get("stage");
+  const yearSeed = searchParams.get("academicYearId");
+  useEffect(() => {
+    if (!isSuperAdmin || !scopeSeed || !stageSeed || !yearSeed) return;
+    if (scopeSeed === "primary" || scopeSeed === "secondary") setScopeSchoolLevel(scopeSeed);
+    setScopeStage(stageSeed as HeadmasterStage);
+    setScopeYearId(yearSeed);
+  }, [isSuperAdmin, scopeSeed, stageSeed, yearSeed, setScopeSchoolLevel, setScopeStage, setScopeYearId]);
+  const superAdminScopeReady = Boolean(superAdminScope.schoolLevel && superAdminScope.stage && superAdminScope.yearId);
+  const { data: scopedClassesData } = useApiQuery<{ data: ClassDetails[] }>(
+    isSuperAdmin && superAdminScopeReady
+      ? `/classes?limit=100&schoolLevel=${superAdminScope.schoolLevel}&academicYearId=${superAdminScope.yearId}&stage=${superAdminScope.stage}`
+      : null,
+  );
 
   const { query: classesQuery } = useList<ClassDetails>({
     resource: "classes",
     pagination: { pageSize: 100 },
+    queryOptions: { enabled: !isSuperAdmin },
   });
-  const allClasses = useMemo(() => classesQuery?.data?.data ?? [], [classesQuery?.data?.data]);
+  const allClasses = useMemo(
+    () => isSuperAdmin ? scopedClassesData?.data ?? [] : classesQuery?.data?.data ?? [],
+    [isSuperAdmin, scopedClassesData?.data, classesQuery?.data?.data],
+  );
 
   // A student can only view their own attendance, and only for a class they're
   // actually enrolled in — so the picker only offers those.
@@ -111,11 +140,12 @@ const AttendanceReport = () => {
   const classes = isStudent ? allClasses.filter((c) => enrolledIds.includes(c.id)) : allClasses;
 
   useEffect(() => {
-    if (!classId && classes.length > 0) setClassId(String(classes[0].id));
-  }, [classes, classId]);
+    if (isSuperAdmin && !superAdminScopeReady && !scopeSeed) setClassId("");
+    else if (!classId && classes.length > 0) setClassId(String(classes[0].id));
+  }, [classes, classId, isSuperAdmin, scopeSeed, superAdminScopeReady]);
 
   const { data, isLoading, isError, refetch } = useApiQuery<AttendanceReportResponse>(
-    classId && classId !== "all" ? `/attendance/class/${classId}/report` : null,
+    classId && classId !== "all" && (!isSuperAdmin || superAdminScopeReady) ? `/attendance/class/${classId}/report` : null,
   );
   const { data: studentHistoryData, isLoading: studentHistoryLoading } = useApiQuery<{ data: AttendanceHistoryRow[] }>(
     isStudent && classId === "all" && identity?.id ? `/attendance/student/${encodeURIComponent(identity.id)}?limit=2000` : null,
@@ -224,7 +254,7 @@ const AttendanceReport = () => {
         }
         actions={
           <>
-            <Select value={classId} onValueChange={setClassId}>
+            <Select value={classId} onValueChange={setClassId} disabled={isSuperAdmin && !superAdminScopeReady}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select a class" />
               </SelectTrigger>
@@ -263,6 +293,40 @@ const AttendanceReport = () => {
           </>
         }
       />
+
+      {isSuperAdmin && !scopeSeed && <div className="space-y-4 print:hidden">
+        <SchoolCardSelector
+          value={superAdminScope.schoolLevel}
+          onChange={(schoolLevel) => {
+            superAdminScope.setSchoolLevel(schoolLevel);
+            superAdminScope.setStage("");
+            superAdminScope.setYearId("");
+            setClassId("");
+          }}
+        />
+        {superAdminScope.schoolLevel && <HeadmasterStageSelector
+          role={superAdminScope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
+          value={superAdminScope.stage}
+          onChange={(stage) => {
+            superAdminScope.setStage(stage);
+            superAdminScope.setYearId("");
+            setClassId("");
+          }}
+          title={superAdminScope.schoolLevel === "primary" ? "2. Choose a class" : "2. Choose a form"}
+          description="Choose the class or form whose attendance report you want to view."
+        />}
+        {superAdminScope.schoolLevel && superAdminScope.stage && <div className="max-w-xl space-y-2">
+          <label htmlFor="super-admin-attendance-report-year" className="text-sm font-semibold">3. Academic year</label>
+          {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
+            <button type="button" onClick={() => void superAdminScope.retryYears()} className="text-sm text-destructive underline underline-offset-4">Unable to load academic years. Try again.</button>
+          ) : (
+            <Select value={superAdminScope.yearId} onValueChange={(yearId) => { superAdminScope.setYearId(yearId); setClassId(""); }}>
+              <SelectTrigger id="super-admin-attendance-report-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+              <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
+        </div>}
+      </div>}
 
       <div className="hidden print:block">
         <h1 className="text-xl font-bold">Attendance Report</h1>

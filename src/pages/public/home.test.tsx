@@ -60,7 +60,15 @@ describe("PublicHome", () => {
     expect(screen.getByRole("link", { name: /explore nursery/i }).getAttribute("href")).toBe("/academics/early-years");
     expect(screen.getByRole("link", { name: /explore primary/i }).getAttribute("href")).toBe("/academics/primary");
     expect(screen.getByRole("link", { name: /explore secondary/i }).getAttribute("href")).toBe("/academics/secondary");
-    expect(screen.getByRole("link", { name: /plan a school visit/i }).getAttribute("href")).toBe("/admissions/visit");
+    const visitLink = screen.getByRole("link", { name: /plan a school visit/i });
+    expect(visitLink.getAttribute("href")).toBe("/admissions/visit");
+    const visitVideo = visitLink.querySelector("video");
+    expect(visitVideo?.getAttribute("src")).toBe(
+      "/videos/eckernforde-visit-preview.mp4"
+    );
+    expect(visitVideo?.muted).toBe(true);
+    expect(visitVideo?.loop).toBe(true);
+    expect(visitVideo?.playsInline).toBe(true);
   });
 
   it("uses approved public news and event queries without fabricated feed items", () => {

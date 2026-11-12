@@ -316,7 +316,7 @@ const ProfilePage = () => {
           <Card id="notifications" className="scroll-mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Notifications</CardTitle>
-              <CardDescription>Choose how ACADEMIX sends updates relevant to your account.</CardDescription>
+              <CardDescription>Choose how Eckernforde Schools sends updates relevant to your account.</CardDescription>
             </CardHeader>
             <Separator />
             <CardContent className="mt-4 p-0">

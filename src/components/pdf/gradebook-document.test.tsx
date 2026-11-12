@@ -42,7 +42,7 @@ it("renders the student All homework PDF with each question and the student's re
     ],
     subjectSummaries: [{ classId: 11, subjectName: "Mathematics", assignmentCount: 2, gradedAssignmentCount: 2, assignmentAvg: 70, examAvg: 60, letterGrade: "B" }],
   });
-  const text = collectText(document).join(" ");
+  const text = collectText(document).join(" ").replace(/\s+/g, " ").trim();
 
   expect(text).toContain("Homework 1: Algebra");
   expect(text).toContain("Solve equations");

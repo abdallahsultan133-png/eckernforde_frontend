@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {Input} from "@/components/ui/input.tsx";
 import {SearchInput} from "@/components/ui/search-input.tsx";
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 import {CreateButton} from "@/components/refine-ui/buttons/create.tsx";
 import {Button} from "@/components/ui/button.tsx";
@@ -29,7 +29,7 @@ import {ColumnDef, type CellContext} from "@tanstack/react-table";
 import {Badge} from "@/components/ui/badge.tsx";
 import {useGetIdentity, useInvalidate, useList} from "@refinedev/core";
 import {useQueryClient} from "@tanstack/react-query";
-import {Link, useNavigate} from "react-router";
+import {Link, Navigate, useLocation, useNavigate} from "react-router";
 import {toast} from "sonner";
 import {ShowButton} from "@/components/refine-ui/buttons/show.tsx";
 import {DeleteButton} from "@/components/refine-ui/buttons/delete.tsx";
@@ -39,7 +39,7 @@ import {useHistoricalPortal} from "@/components/layout/historical-portal-banner"
 import {useDebouncedValue} from "@/hooks/use-debounced-value.ts";
 import {cn} from "@/lib/utils.ts";
 import {AdminCatalogSelector, useAdminCatalogSelection} from "@/components/academic/admin-catalog-selector.tsx";
-import {HeadmasterStageSelector, type HeadmasterStage} from "@/components/academic/headmaster-stage-selector.tsx";
+import {HeadmasterStageSelector, stageLabel, type HeadmasterStage} from "@/components/academic/headmaster-stage-selector.tsx";
 import {useSuperAdminSchoolScope} from "@/components/academic/super-admin-school-scope.tsx";
 import {SchoolCardSelector} from "@/components/academic/school-level-selector.tsx";
 
@@ -210,8 +210,16 @@ const JoinClassDialog = () => {
     );
 };
 
-const ClassesList = () => {
+const ClassesList = ({ resultsMode = false }: { resultsMode?: boolean } = {}) => {
     const { data: identity } = useGetIdentity<User>();
+    const location = useLocation();
+    const params = new URLSearchParams(location.search);
+    const initialScope = resultsMode ? {
+        schoolLevel: (params.get("schoolLevel") ?? "") as "primary" | "secondary" | "",
+        stage: (params.get("stage") ?? "") as HeadmasterStage | "",
+        yearId: params.get("academicYearId") ?? "",
+    } : undefined;
+    const navigate = useNavigate();
     const { data: portal } = useHistoricalPortal();
     const historical = Boolean(portal?.data.archiveContext);
     const isAdmin = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER || identity?.role === UserRole.SUPER_ADMIN;
@@ -225,12 +233,21 @@ const ClassesList = () => {
     const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
     const queryClient = useQueryClient();
     const catalogSelection = useAdminCatalogSelection(isAdmin, headmasterSchoolLevel);
-    const superAdminScope = useSuperAdminSchoolScope(isSuperAdmin);
+    const superAdminScope = useSuperAdminSchoolScope(isSuperAdmin, initialScope);
     const [selectedStage, setSelectedStage] = useState<HeadmasterStage | "">("");
     const headmasterCatalogueReady = catalogSelection.ready && (!headmasterSchoolLevel || Boolean(selectedStage));
     const adminCatalogueReady = isSuperAdmin
         ? Boolean(superAdminScope.schoolLevel && superAdminScope.yearId && superAdminScope.stage)
         : headmasterCatalogueReady;
+    const validResultsScope = Boolean(initialScope?.schoolLevel && initialScope.stage && initialScope.yearId);
+    const selectedYearName = superAdminScope.years.find((year) => String(year.id) === superAdminScope.yearId)?.name ?? superAdminScope.yearId;
+
+    useEffect(() => {
+        if (isSuperAdmin && !resultsMode && adminCatalogueReady) {
+            const resultParams = new URLSearchParams({ schoolLevel: superAdminScope.schoolLevel, stage: superAdminScope.stage, academicYearId: superAdminScope.yearId });
+            navigate(`/classes/found?${resultParams.toString()}`);
+        }
+    }, [adminCatalogueReady, isSuperAdmin, navigate, resultsMode, superAdminScope.schoolLevel, superAdminScope.stage, superAdminScope.yearId]);
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
@@ -460,7 +477,7 @@ const ClassesList = () => {
             filters: {
                 permanent: [...catalogFilters, ...subjectFilters, ...teacherFilters, ...searchFilters]
             },
-            queryOptions: { enabled: !isAdmin || adminCatalogueReady },
+            queryOptions: { enabled: !isAdmin || (adminCatalogueReady && (!isSuperAdmin || resultsMode)) },
             sorters: {
                 initial: [
                     { field: 'id', order: 'desc' },
@@ -472,6 +489,8 @@ const ClassesList = () => {
     const tableQuery = classTable.refineCore.tableQuery;
     const filteredTotal = tableQuery.data?.total ?? 0;
     const showEmpty = !tableQuery.isLoading && filteredTotal === 0;
+
+    if (resultsMode && (!isSuperAdmin || !validResultsScope)) return <Navigate to="/classes" replace />;
 
     if (isAdmin && identity?.role !== UserRole.SUPER_ADMIN && !headmasterSchoolLevel && selectedTeacher === 'all') {
         return (
@@ -495,7 +514,7 @@ const ClassesList = () => {
         );
     }
 
-    if (isSuperAdmin && !adminCatalogueReady) {
+    if (isSuperAdmin && (!resultsMode || !adminCatalogueReady)) {
         return (
             <PageContainer>
                 <PageHeader breadcrumb title="Classes" description="Choose a school, class or form, then an academic year to open its class directory." />
@@ -559,14 +578,14 @@ const ClassesList = () => {
         <PageContainer>
             <PageHeader
                 breadcrumb
-                title={isStudent ? "Class & Subjects" : "Classes"}
-                description={isStudent ? "Open your learning spaces or join a class using a teacher-provided code." : "Manage class rosters, teaching responsibilities, subjects, and academic workspaces."}
+                title={resultsMode ? `${stageLabel(superAdminScope.stage) || "Class or form selected"} Classes` : isStudent ? "Class & Subjects" : "Classes"}
+                description={resultsMode ? `${stageLabel(superAdminScope.stage)} · ${superAdminScope.schoolLevel} · ${selectedYearName}` : isStudent ? "Open your learning spaces or join a class using a teacher-provided code." : "Manage class rosters, teaching responsibilities, subjects, and academic workspaces."}
                 actions={isAdmin && !isSuperAdmin && catalogSelection.ready
                         ? <Button variant="outline" size="sm" onClick={() => { setSelectedStage(""); catalogSelection.resetSelection(); }}>Change catalogue</Button>
-                        : undefined}
+                        : resultsMode ? <Button variant="outline" size="sm" asChild><Link to="/classes">Change selection</Link></Button> : undefined}
             />
 
-            {isSuperAdmin && <div className="flex flex-col gap-4">
+            {isSuperAdmin && !resultsMode && <div className="flex flex-col gap-4">
                 <SchoolCardSelector
                     value={superAdminScope.schoolLevel}
                     onChange={(level) => { superAdminScope.setSchoolLevel(level); superAdminScope.setYearId(""); superAdminScope.setStage(""); }}
@@ -692,6 +711,10 @@ const ClassesList = () => {
             )}
         </PageContainer>
     )
+}
+
+export function ClassesFound() {
+    return <ClassesList resultsMode />;
 }
 
 export default ClassesList

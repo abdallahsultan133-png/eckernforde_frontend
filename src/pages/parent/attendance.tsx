@@ -67,6 +67,7 @@ export default function ParentAttendance() {
       row.attendanceRate = attendanceRate(row);
       grouped.set(subjectName, row);
     }
+    
     const rows = [...grouped.values()];
     return classId === "all" ? rows.sort((a, b) => a.subjectName.localeCompare(b.subjectName)) : rows.filter((row) => row.subjectName === (selectedClass?.subject?.name ?? selectedClass?.name));
   }, [classes, visibleRecords, studentId, child?.name, child?.email, classId, selectedClass?.name, selectedClass?.subject?.name]);
@@ -96,6 +97,7 @@ export default function ParentAttendance() {
             documentProps={{
               className: classId === "all" ? "All Subjects" : selectedClass?.name,
               studentReport: true,
+              studentAccountReport: true,
               allSubjectsReport: classId === "all",
               studentName: child?.name,
               studentClassName: [...new Set(classes.map((item) => item.name))].join(" / "),
@@ -116,7 +118,16 @@ export default function ParentAttendance() {
       : summaries.length === 0 ? <EmptyState icon={ClipboardCheck} title="No attendance recorded" description={`There are no enrolled subjects or attendance records for ${child.name} in ${year.name}.`} />
       : <>
         <div className="overflow-x-auto border-y border-border bg-card sm:rounded-lg sm:border">
-          <Table><TableHeader><TableRow><TableHead>Subject</TableHead><TableHead className="text-center">Present</TableHead><TableHead className="text-center">Absent</TableHead><TableHead className="text-center">Late</TableHead><TableHead className="text-center">Excused</TableHead><TableHead className="min-w-36">Attendance Rate</TableHead></TableRow></TableHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Subject</TableHead>
+                <TableHead className="text-center">Present</TableHead>
+                <TableHead className="text-center">Absent</TableHead>
+                <TableHead className="text-center">Late</TableHead>
+                <TableHead className="text-center">Excused</TableHead>
+                <TableHead className="min-w-36">Attendance Rate</TableHead>
+              </TableRow></TableHeader>
             <TableBody>{summaries.map((row) => <TableRow key={row.subjectName}><TableCell className="font-medium">{row.subjectName}</TableCell><TableCell className="text-center">{row.presentCount}</TableCell><TableCell className="text-center">{row.absentCount}</TableCell><TableCell className="text-center">{row.lateCount}</TableCell><TableCell className="text-center">{row.excusedCount}</TableCell><TableCell><div className="flex items-center gap-2"><Progress value={row.attendanceRate ?? 0} className="h-2 min-w-0 flex-1" /><span className="w-12 text-right text-xs font-medium tabular-nums">{row.attendanceRate === null ? "—" : `${row.attendanceRate}%`}</span></div></TableCell></TableRow>)}</TableBody>
           </Table>
         </div>

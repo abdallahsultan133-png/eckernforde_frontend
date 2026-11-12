@@ -47,15 +47,19 @@ const AcademicArchive = lazy(() => import("@/pages/portal/academic-archive.tsx")
 const TeacherAcademicHistory = lazy(() => import("@/pages/portal/teacher-academic-history.tsx"));
 const ActivityPage = lazy(() => import("@/pages/activity.tsx"));
 const SubjectsList = lazy(() => import("@/pages/subjects/list.tsx"));
+const SubjectsFound = lazy(() => import("@/pages/subjects/list.tsx").then((module) => ({ default: module.SubjectsFound })));
 const SubjectsCreate = lazy(() => import("@/pages/subjects/create.tsx"));
 const SubjectsEdit = lazy(() => import("@/pages/subjects/edit.tsx"));
 const ClassesList = lazy(() => import("@/pages/classes/list.tsx"));
+const ClassesFound = lazy(() => import("@/pages/classes/list.tsx").then((module) => ({ default: module.ClassesFound })));
 const ClassesCreate = lazy(() => import("@/pages/classes/create.tsx"));
 const ClassesEdit = lazy(() => import("@/pages/classes/edit.tsx"));
 const ClassesShow = lazy(() => import("@/pages/classes/show.tsx"));
 const DepartmentsPage = lazy(() => import("@/pages/admin/departments.tsx"));
 const AcademicCalendarAdmin = lazy(() => import("@/pages/admin/academic-calendar.tsx"));
 const AdmissionsEnquiries = lazy(() => import("@/pages/admin/admissions-enquiries.tsx"));
+const PasswordRecovery = lazy(() => import("@/pages/admin/password-recovery.tsx"));
+const SelectedStudents = lazy(() => import("@/pages/admin/selected-students.tsx"));
 const Publications = lazy(() => import("@/pages/admin/publications.tsx"));
 const PublicEvents = lazy(() => import("@/pages/admin/public-events.tsx"));
 const TermResultsPublishing = lazy(() => import("@/pages/admin/term-results-publishing.tsx"));
@@ -70,6 +74,7 @@ const AssignmentReport = lazy(() => import("@/pages/assignments/report.tsx"));
 const AnnouncementsList = lazy(() => import("@/pages/announcements/list.tsx"));
 const AnnouncementsCreate = lazy(() => import("@/pages/announcements/create.tsx"));
 const UsersList = lazy(() => import("@/pages/users/list.tsx"));
+const UsersFound = lazy(() => import("@/pages/users/list.tsx").then((module) => ({ default: module.UsersFound })));
 const Gradebook = lazy(() => import("@/pages/grades/gradebook.tsx"));
 const ExamsPage = lazy(() => import("@/pages/grades/exams.tsx"));
 const ReportCard = lazy(() => import("@/pages/grades/report-card.tsx"));
@@ -258,12 +263,14 @@ function App() {
 
                           <Route path="subjects">
                               <Route index element={<SubjectsList />} />
+                              <Route path="found" element={<RequireRole roles={[UserRole.SUPER_ADMIN]}><SubjectsFound /></RequireRole>} />
                               <Route path="create" element={<RequireRole roles={STAFF_ROLES}><SubjectsCreate /></RequireRole>} />
                               <Route path="edit/:id" element={<RequireRole roles={STAFF_ROLES}><SubjectsEdit /></RequireRole>} />
                           </Route>
 
                           <Route path="classes">
                               <Route index element={<ClassesList />} />
+                              <Route path="found" element={<RequireRole roles={[UserRole.SUPER_ADMIN]}><ClassesFound /></RequireRole>} />
                               <Route path="create" element={<RequireRole roles={STAFF_ROLES}><ClassesCreate /></RequireRole>} />
                               <Route path="show/:id" element={<ClassesShow />} />
                               <Route path="edit/:id" element={<RequireRole roles={STAFF_ROLES}><ClassesEdit /></RequireRole>} />
@@ -299,8 +306,12 @@ function App() {
 
                           <Route path="users" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
                           <Route path="students" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
+                          <Route path="students/selected" element={<RequireRole roles={ADMIN_ROLES}><SelectedStudents /></RequireRole>} />
+                          <Route path="students/found" element={<RequireRole roles={[UserRole.SUPER_ADMIN]}><UsersFound /></RequireRole>} />
                           <Route path="teachers" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
                           <Route path="guardians" element={<RequireRole roles={ADMIN_ROLES}><UsersList /></RequireRole>} />
+                          <Route path="teachers/found" element={<RequireRole roles={[UserRole.SUPER_ADMIN]}><UsersFound /></RequireRole>} />
+                          <Route path="guardians/found" element={<RequireRole roles={[UserRole.SUPER_ADMIN]}><UsersFound /></RequireRole>} />
 
                           <Route path="grades">
                               <Route index element={<Gradebook />} />
@@ -325,6 +336,7 @@ function App() {
                           <Route path="admin/departments" element={<RequireRole roles={ADMIN_ROLES}><DepartmentsPage /></RequireRole>} />
                           <Route path="admin/academic-calendar" element={<RequireRole roles={ADMIN_ROLES}><AcademicCalendarAdmin /></RequireRole>} />
                           <Route path="admin/admissions" element={<RequireRole roles={ADMIN_ROLES}><AdmissionsEnquiries /></RequireRole>} />
+                          <Route path="admin/password-recovery" element={<RequireRole roles={[UserRole.SUPER_ADMIN]}><PasswordRecovery /></RequireRole>} />
                           <Route path="admin/publications" element={<RequireRole roles={ADMIN_ROLES}><Publications /></RequireRole>} />
                           <Route path="admin/public-events" element={<RequireRole roles={ADMIN_ROLES}><PublicEvents /></RequireRole>} />
                           <Route path="admin/publish-results" element={<RequireRole roles={ADMIN_ROLES}><TermResultsPublishing /></RequireRole>} />

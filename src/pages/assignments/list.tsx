@@ -23,7 +23,7 @@ import { UserRole, type User } from "@/types";
 import { ParentAcademicSelector } from "@/pages/parent/academic-selector";
 import { HeadmasterStageSelector, type HeadmasterStage, stageLabel } from "@/components/academic/headmaster-stage-selector.tsx";
 import { useSuperAdminSchoolScope } from "@/components/academic/super-admin-school-scope.tsx";
-import { SchoolLevelSelector } from "@/components/academic/school-level-selector.tsx";
+import { SchoolCardSelector } from "@/components/academic/school-level-selector.tsx";
 
 type AssignmentItem = {
   id: number;
@@ -265,23 +265,11 @@ const AssignmentsList = () => {
 
       {headmasterLike && (
         <div className="space-y-4">
-          {isSuperAdmin && <SchoolLevelSelector
-            label="School name"
+          {isSuperAdmin && <SchoolCardSelector
             value={superAdminScope.schoolLevel}
-            onChange={(schoolLevel) => { superAdminScope.setSchoolLevel(schoolLevel); superAdminScope.setYearId(""); superAdminScope.setStage(""); setSelectedSubjectId(""); }}
+            onChange={(schoolLevel) => { superAdminScope.setSchoolLevel(schoolLevel); superAdminScope.setStage(""); superAdminScope.setYearId(""); setSelectedSubjectId(""); }}
           />}
-          {isSuperAdmin && superAdminScope.schoolLevel && <div className="max-w-xl space-y-2">
-            <label htmlFor="super-admin-homework-year" className="text-sm font-semibold">Academic year</label>
-            {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
-              <ErrorState description="Unable to load academic years." onRetry={superAdminScope.retryYears} />
-            ) : (
-              <Select value={superAdminScope.yearId} onValueChange={(yearId) => { superAdminScope.setYearId(yearId); superAdminScope.setStage(""); setSelectedSubjectId(""); }}>
-                <SelectTrigger id="super-admin-homework-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
-                <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
-              </Select>
-            )}
-          </div>}
-          {(headmasterLevel || (isSuperAdmin && superAdminScope.schoolLevel && superAdminScope.yearId)) && <HeadmasterStageSelector
+          {(headmasterLevel || (isSuperAdmin && superAdminScope.schoolLevel)) && <HeadmasterStageSelector
             role={headmasterLevel
               ? identity!.role
               : superAdminScope.schoolLevel === "primary" ? UserRole.PRIMARY_HEADMASTER : UserRole.SECONDARY_HEADMASTER}
@@ -289,11 +277,23 @@ const AssignmentsList = () => {
             onChange={(stage) => {
               if (headmasterLevel) setSelectedStage(stage);
               else superAdminScope.setStage(stage);
+              if (isSuperAdmin) superAdminScope.setYearId("");
               setSelectedSubjectId("");
             }}
-            title="Choose a class or form"
+            title={isSuperAdmin ? superAdminScope.schoolLevel === "primary" ? "2. Choose a class" : "2. Choose a form" : "Choose a class or form"}
             description="Choose a class or form first, then select one of its subjects to view homework."
           />}
+          {isSuperAdmin && superAdminScope.schoolLevel && superAdminScope.stage && <div className="max-w-xl space-y-2">
+            <label htmlFor="super-admin-homework-year" className="text-sm font-semibold">3. Academic year</label>
+            {superAdminScope.yearsLoading ? <Skeleton className="h-11 w-full" /> : superAdminScope.yearsError ? (
+              <ErrorState description="Unable to load academic years." onRetry={superAdminScope.retryYears} />
+            ) : (
+              <Select value={superAdminScope.yearId} onValueChange={(yearId) => { superAdminScope.setYearId(yearId); setSelectedSubjectId(""); }}>
+                <SelectTrigger id="super-admin-homework-year" className="h-11 w-full"><SelectValue placeholder="Choose an academic year" /></SelectTrigger>
+                <SelectContent>{superAdminScope.years.map((year) => <SelectItem key={year.id} value={String(year.id)}>{year.name}{year.active ? " · Current" : ""}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+          </div>}
           {activeStage && (
             <div className="max-w-xl space-y-2">
               <label htmlFor="headmaster-homework-subject" className="text-sm font-medium">Subject in {stageLabel(activeStage)}</label>

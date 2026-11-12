@@ -138,7 +138,7 @@ const ReportCard = () => {
             <DeferredPdfDownload
               fileName={pdfFileName}
               load={loadReportCardPdf}
-              documentProps={{ studentName, schoolName: portalReportSchoolName, registrationNumber, template, termResults: formalPdfTerms, academicYearName: terms[0]?.academicYear.name, attendance: attendanceSummary }}
+              documentProps={{ studentName, schoolName: portalReportSchoolName, schoolBand: reportSchoolBand, registrationNumber, template, termResults: formalPdfTerms, academicYearName: terms[0]?.academicYear.name, attendance: attendanceSummary }}
               onDownload={() => narrateDownload(pdfFileName)}
             />
           )

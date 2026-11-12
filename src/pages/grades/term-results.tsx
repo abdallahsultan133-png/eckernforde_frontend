@@ -75,9 +75,12 @@ export default function TermResults() {
   const [searchParams] = useSearchParams();
   const historyYearId = searchParams.get("academicYearId");
   const requestedStudentId = searchParams.get("studentId") ?? searchParams.get("childId") ?? "";
+  const isStudentReportsFlow = searchParams.get("reportSource") === "student-directory";
   const { narrateDownload } = useDownload();
   const { data: identity } = useGetIdentity<User>();
   const isParent = identity?.role === UserRole.PARENT;
+  const isSuperAdmin = identity?.role === UserRole.SUPER_ADMIN;
+  const isHeadmaster = identity?.role === UserRole.PRIMARY_HEADMASTER || identity?.role === UserRole.SECONDARY_HEADMASTER;
   const { data: childrenData, isLoading: childrenLoading, isError: childrenError, refetch: refetchChildren } = useApiQuery<{ data: Child[] }>(isParent ? "/profile/my-children" : null);
   const children = useMemo(() => childrenData?.data ?? [], [childrenData?.data]);
   const { data: termsData, isLoading: termsLoading, isError: termsError, refetch: refetchTerms } = useApiQuery<{ data: Term[] }>(`/grades/academic-terms${historyYearId ? `?academicYearId=${encodeURIComponent(historyYearId)}` : ""}`);
@@ -132,8 +135,10 @@ export default function TermResults() {
   }, [attendanceData?.data, reportClassIds]);
   const reportFileName = `report-card-${reportStudentName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
   const reportDownloadReady = canDownloadReport && !(showCombinedResults ? (midtermLoading || annualLoading) : isLoading) && formalTerms.length > 0;
-  const reportDownload = reportDownloadReady ? <DeferredPdfDownload fileName={reportFileName} load={loadFormalReportCardPdf} documentProps={{ studentName: reportStudentName, schoolName: portalReportSchoolName, registrationNumber: reportRegistrationNumber, template: templateData?.data, termResults: formalTerms, academicYearName: (showCombinedResults ? combinedTerms[0] : selected)?.academicYear.name, attendance: attendanceSummary }} onDownload={() => narrateDownload(reportFileName)} /> : null;
-  const pageTitle = isParent || isStudent || isTeacher ? "Report" : historyYearId ? "Previous Report" : "Term Results";
+  const reportDownload = reportDownloadReady ? <DeferredPdfDownload fileName={reportFileName} load={loadFormalReportCardPdf} documentProps={{ studentName: reportStudentName, schoolName: portalReportSchoolName, schoolBand: reportSchoolBand, registrationNumber: reportRegistrationNumber, template: templateData?.data, termResults: formalTerms, academicYearName: (showCombinedResults ? combinedTerms[0] : selected)?.academicYear.name, attendance: attendanceSummary }} onDownload={() => narrateDownload(reportFileName)} /> : null;
+  const pageTitle = isSuperAdmin && requestedStudentId
+    ? "Term Results"
+    : isParent || isStudent || isTeacher || (isStaffViewer && Boolean(requestedStudentId)) ? "Report" : historyYearId ? "Previous Report" : "Term Results";
   const pageDescription = isParent
     ? "Published results for the selected child and academic year."
       : isStaffViewer
@@ -145,7 +150,7 @@ export default function TermResults() {
         : "Approved Midterm and Annual subject results.";
 
   return <div className="space-y-6">
-    <PageHeader className="print:hidden" breadcrumb title={pageTitle} description={pageDescription} backTo={isStaffViewer && requestedStudentId ? `/students/${encodeURIComponent(requestedStudentId)}` : undefined} backLabel="Back to Student Profile" actions={<div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />Print report</Button>{reportDownload}</div>} />
+    <PageHeader className="print:hidden" breadcrumb showBackLink={!isStudentReportsFlow && !(isSuperAdmin && requestedStudentId) && !(isHeadmaster && requestedStudentId) && !(isTeacher && requestedStudentId)} title={pageTitle} description={pageDescription} backTo={!isStudentReportsFlow && !isSuperAdmin && !isHeadmaster && isStaffViewer && requestedStudentId ? `/students/${encodeURIComponent(requestedStudentId)}` : undefined} backLabel="Back to Student Profile" actions={<div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" aria-hidden="true" />Print report</Button>{reportDownload}</div>} />
     {termsLoading || childrenLoading ? <Skeleton className="h-10 w-64" /> : termsError || childrenError ? <ErrorState title="Can't load academic terms" description="Try again shortly." onRetry={() => { refetchTerms(); refetchChildren(); }} /> : isParent && children.length === 0 ? <EmptyState icon={FileText} title="No linked children" description="Ask the school administrator to link your parent account to a student profile." /> : isStaffViewer && !resultStudentId ? <EmptyState icon={FileText} title="Choose a student" description="Open a student's name from a class roster to view their published term results." /> : terms.length === 0 ? <EmptyState icon={FileText} title="No academic terms yet" description="Results will appear after the school creates an academic year and term." /> : <>
       <div className="flex flex-wrap items-center gap-3">
         {isParent && <Select value={studentId} onValueChange={setStudentId}><SelectTrigger className="w-full sm:w-[240px]"><SelectValue placeholder="Choose child" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.name}</SelectItem>)}</SelectContent></Select>}
@@ -174,14 +179,14 @@ function CombinedTermResults({ template, studentName, registrationNumber, academ
   hasError: boolean;
   onRetry: () => void;
 }) {
+  const { data: identity } = useGetIdentity<User>();
+  const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
+  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
   if (hasError) return <ErrorState title="Can't load term results" description="Results may not be published yet, or you may not have access." onRetry={onRetry} />;
   const showMidterm = midtermLoading || (midterm?.data.length ?? 0) > 0;
   const showAnnual = annualLoading || (annual?.data.length ?? 0) > 0;
   if (!showMidterm && !showAnnual) return <EmptyState icon={FileText} title="No results published" description="Your school has not published Midterm or Annual results yet." />;
   const accent = template?.accentColor ?? "#0f4c5c";
-  const { data: identity } = useGetIdentity<User>();
-  const isSchoolStaff = identity?.role === UserRole.STUDENT || identity?.role === UserRole.TEACHER;
-  const { data: portal } = useApiQuery<{ data: { context: { schoolBand: "primary" | "secondary" } | null } }>(isSchoolStaff ? "/portal-context" : null);
   const schoolBand = isSchoolStaff ? portal?.data.context?.schoolBand : schoolBandFromResults([...(midterm?.data ?? []), ...(annual?.data ?? [])], Boolean(midterm?.division?.division || annual?.division?.division));
   const schoolName = portalSchoolName(schoolBand).toUpperCase();
   const schoolLogo = template?.logoUrl || (schoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : "/eckernforde-cambridge-badge.png");

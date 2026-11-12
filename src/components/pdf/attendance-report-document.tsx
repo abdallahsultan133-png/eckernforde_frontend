@@ -1,6 +1,8 @@
 import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import secondaryBadge from "@/assets/eckernforde-cambridge-badge.png";
 
+const primaryBadge = "/eckernforde-english-medium-primary-badge.png";
+
 type ReportRow = {
     studentId: string;
     name: string;
@@ -39,6 +41,7 @@ const rateColor = (rate: number | null) => {
 
 const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#0f172a" },
+    watermark: { position: "absolute", top: 145, left: 78, width: 435, height: 580, objectFit: "contain", opacity: 0.3 },
     header: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -59,9 +62,9 @@ const styles = StyleSheet.create({
     table: { borderTop: "1 solid #e2e8f0", borderLeft: "1 solid #e2e8f0" },
     tableRow: { flexDirection: "row" },
     tableHeaderRow: { flexDirection: "row", backgroundColor: "#0f172a" },
-    th: { padding: 6, fontSize: 8, fontWeight: 700, color: "#ffffff", borderRight: "1 solid #1e293b" },
+    th: { padding: 6, fontSize: 8, lineHeight: 1.25, fontWeight: 700, color: "#ffffff", borderRight: "1 solid #1e293b" },
     studentTh: { fontSize: 9 },
-    td: { padding: 6, fontSize: 9, borderRight: "1 solid #e2e8f0", borderBottom: "1 solid #e2e8f0" },
+    td: { padding: 6, fontSize: 9, lineHeight: 1.25, borderRight: "1 solid #e2e8f0", borderBottom: "1 solid #e2e8f0" },
     colStudent: { width: "34%" },
     colNum: { width: "13%", textAlign: "center" },
     footer: {
@@ -76,23 +79,31 @@ const styles = StyleSheet.create({
         paddingTop: 8,
     },
     summary: { flexDirection: "column", marginBottom: 16, gap: 5 },
-    studentDetails: { marginBottom: 12, gap: 4 },
-    studentDetail: { fontSize: 10, color: "#0f172a", fontWeight: 700 },
+    studentDetails: { marginBottom: 12 },
+    studentDetail: { fontSize: 10, lineHeight: 1.2, color: "#0f172a", fontWeight: 700, marginBottom: 1 },
     summaryRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
+    studentSummaryStart: { marginTop: 0 },
+    studentSummaryNext: { marginTop: 3 },
     summaryItem: { flexDirection: "row", alignItems: "center" },
     summaryLabel: { fontSize: 9, color: "#0f172a", fontWeight: 700 },
     summaryValue: { fontSize: 9, color: "#0f172a" },
     studentSummaryLabel: { fontSize: 10, color: "#0f172a", fontWeight: 700 },
-    studentSummaryValue: { fontSize: 10, color: "#0f172a" },
+    studentSummaryValue: { fontSize: 10, color: "#0f172a", fontWeight: 700 },
     summarySeparator: { marginHorizontal: 6, fontSize: 9, color: "#64748b" },
     studentSummarySeparator: { marginHorizontal: 6, fontSize: 10, color: "#64748b" },
-    studentDate: { marginTop: 4, fontSize: 9, textAlign: "center", textDecoration: "underline" },
-    attendanceRate: { marginTop: 16, padding: 12, border: "1 solid #cbd5e1", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    studentDate: { marginTop: 0, fontSize: 9, textAlign: "center", textDecoration: "underline" },
+    attendanceRate: { marginTop: 16, padding: 12, border: "1 solid #cbd5e1", flexDirection: "row",
+        justifyContent: "space-between", alignItems: "center" },
     attendanceRateLabel: { fontSize: 10, color: "#475569", fontWeight: 700 },
     attendanceRateValue: { fontSize: 20, fontWeight: 700 },
 });
 
-export function AttendanceReportDocument({ className, rows, studentReport = false, studentAccountReport = false, allSubjectsReport = false, studentName, studentClassName, subjectName, reportDescription, schoolName = "School Portal", schoolBand, firstDate, lastDate }: AttendanceReportDocumentProps) {
+export function AttendanceReportDocument(
+    { className, rows, studentReport = false, studentAccountReport = false,
+        allSubjectsReport = false,
+        studentName, studentClassName, subjectName, reportDescription,
+        schoolName = "School Portal", schoolBand, firstDate, lastDate }: AttendanceReportDocumentProps) {
+
     const generatedAt = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
     const totals = rows.reduce((summary, row) => ({
         present: summary.present + Number(row.presentCount || 0),
@@ -100,7 +111,8 @@ export function AttendanceReportDocument({ className, rows, studentReport = fals
         late: summary.late + Number(row.lateCount || 0),
         excused: summary.excused + Number(row.excusedCount || 0),
     }), { present: 0, absent: 0, late: 0, excused: 0 });
-    const badge = schoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : secondaryBadge;
+
+    const badge = schoolBand === "primary" ? primaryBadge : secondaryBadge;
     const displaySchoolName = schoolName.trim().toUpperCase();
     const formatDate = (value?: string | null) => value
         ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
@@ -120,9 +132,9 @@ export function AttendanceReportDocument({ className, rows, studentReport = fals
                     <View style={styles.studentBrand}>
                         <Image src={badge} style={{ width: 76, height: 76, objectFit: "contain", marginBottom: 6 }} />
                         <View style={{ alignItems: "center" }}>
-                          <Text style={[styles.brand, { textAlign: "center" }]}>{displaySchoolName}</Text>
-                          <Text style={styles.reportSubheading}>ATTENDANCE REPORT</Text>
-                          {studentAccountReport && attendancePeriod && <Text style={styles.studentDate}>Attendance recorded: {attendancePeriod}</Text>}
+                            <Text style={[styles.brand, { textAlign: "center" }]}>{displaySchoolName}</Text>
+                            <Text style={styles.reportSubheading}>ATTENDANCE REPORT</Text>
+                            {studentReport && attendancePeriod && <Text style={styles.studentDate}>Attendance recorded: {attendancePeriod}</Text>}
                         </View>
                     </View>
                     <View style={{ alignItems: "center" }}>
@@ -132,18 +144,19 @@ export function AttendanceReportDocument({ className, rows, studentReport = fals
                         </>}
                     </View>
                 </View>
+                <Image src={badge} style={styles.watermark} fixed />
 
                 {studentReport && <View style={styles.studentDetails}>
                     <Text style={styles.studentDetail}>Student Name: {studentName ?? rows[0]?.name ?? "Student"}</Text>
                     {studentAccountReport && <>
                         <Text style={styles.studentDetail}>{schoolBand === "secondary" ? "Form" : "Class"}: {studentClassName ?? className}</Text>
                         <Text style={styles.studentDetail}>Subjects: {allSubjectsReport ? "All Subjects" : (subjectName ?? "Not specified")}</Text>
-                        <View style={styles.summaryRow}>
+                        <View style={[styles.summaryRow, styles.studentSummaryStart]}>
                             <View style={styles.summaryItem}><Text style={styles.studentSummaryLabel}>Total present: </Text><Text style={styles.studentSummaryValue}>{totals.present}</Text></View>
                             <Text style={styles.studentSummarySeparator}>||</Text>
                             <View style={styles.summaryItem}><Text style={styles.studentSummaryLabel}>Total absent: </Text><Text style={styles.studentSummaryValue}>{totals.absent}</Text></View>
                         </View>
-                        <View style={styles.summaryRow}>
+                        <View style={[styles.summaryRow, styles.studentSummaryNext]}>
                             <View style={styles.summaryItem}><Text style={styles.studentSummaryLabel}>Total late: </Text><Text style={styles.studentSummaryValue}>{totals.late}</Text></View>
                             <Text style={styles.studentSummarySeparator}>||</Text>
                             <View style={styles.summaryItem}><Text style={styles.studentSummaryLabel}>Total excused: </Text><Text style={styles.studentSummaryValue}>{totals.excused}</Text></View>
@@ -152,21 +165,20 @@ export function AttendanceReportDocument({ className, rows, studentReport = fals
                     {!studentAccountReport && <>
                         <Text style={styles.studentDetail}>Subject: {allSubjectsReport ? "All Subjects" : (subjectName ?? "Not specified")}</Text>
                         <Text style={styles.studentDetail}>{schoolBand === "secondary" ? "Form" : "Class"}: {studentClassName ?? className}</Text>
-                        {attendancePeriod && <Text style={styles.reportPeriod}>Attendance recorded: {attendancePeriod}</Text>}
                     </>}
                 </View>}
 
                 {!studentAccountReport && <View style={styles.summary}>
-                        <View style={styles.summaryRow}>
-                            <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total present: </Text><Text style={styles.summaryValue}>{totals.present}</Text></View>
-                            <Text style={styles.summarySeparator}>|</Text>
-                            <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total absent: </Text><Text style={styles.summaryValue}>{totals.absent}</Text></View>
-                        </View>
-                        <View style={styles.summaryRow}>
-                            <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total late: </Text><Text style={styles.summaryValue}>{totals.late}</Text></View>
-                            <Text style={styles.summarySeparator}>|</Text>
-                            <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total excused: </Text><Text style={styles.summaryValue}>{totals.excused}</Text></View>
-                        </View>
+                    <View style={styles.summaryRow}>
+                        <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total present: </Text><Text style={styles.summaryValue}>{totals.present}</Text></View>
+                        <Text style={styles.summarySeparator}>|</Text>
+                        <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total absent: </Text><Text style={styles.summaryValue}>{totals.absent}</Text></View>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total late: </Text><Text style={styles.summaryValue}>{totals.late}</Text></View>
+                        <Text style={styles.summarySeparator}>|</Text>
+                        <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Total excused: </Text><Text style={styles.summaryValue}>{totals.excused}</Text></View>
+                    </View>
                 </View>}
 
                 <View style={styles.table}>

@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils.ts";
 import { UserRole, type User, type ClassDetails } from "@/types";
 import { letterForScore } from "@/lib/grading/grade-bands";
 import { BACKEND_BASE_URL } from "@/constants";
-import { portalSchoolName, type PortalSchoolBand } from "@/lib/school-brand";
+import { portalSchoolName, schoolBandFromResults, type PortalSchoolBand } from "@/lib/school-brand";
 import { useHistoricalPortal } from "@/components/layout/historical-portal-banner";
 import { ParentAcademicSelector } from "@/pages/parent/academic-selector";
 
@@ -176,14 +176,17 @@ const Gradebook = () => {
     }
   }, [classes, classId, isStudentView]);
 
-  const allSubjectsSelected = isStudent && classId === "all";
+  const allSubjectsSelected = isStudentView && classId === "all";
   const classIsReady = classes.some((course) => String(course.id) === classId);
   const gradebookPath = classIsReady
     ? `/grades/gradebook/${classId}${isParent ? parentContextQuery : ""}`
     : null;
   const { data: singleGradebookData, isLoading: singleLoading, isError: singleIsError, error: singleGradebookError, refetch: refetchSingle } = useApiQuery<GradebookResponse>(gradebookPath);
+  const allSubjectsPath = allSubjectsSelected
+    ? `/grades/gradebook/all-subjects${isParent ? parentContextQuery : ""}`
+    : null;
   const { data: allSubjectsData, isLoading: allSubjectsLoading, isError: allSubjectsIsError, error: allSubjectsError, refetch: refetchAllSubjects } = useApiQuery<AllSubjectsGradebookResponse>(
-    allSubjectsSelected ? "/grades/gradebook/all-subjects" : null,
+    allSubjectsPath,
   );
   const subjectSummaries = useMemo(() => allSubjectsData?.data ?? [], [allSubjectsData?.data]);
   const gradebookData = useMemo<GradebookResponse | undefined>(() => {
@@ -196,8 +199,8 @@ const Gradebook = () => {
     })));
     return {
       data: subjectSummaries.length ? [{
-        studentId: allSubjectsData.student.id,
-        name: allSubjectsData.student.name,
+        studentId: isParent ? selectedChild?.id ?? allSubjectsData.student.id : allSubjectsData.student.id,
+        name: isParent ? selectedChild?.name ?? allSubjectsData.student.name : allSubjectsData.student.name,
         email: allSubjectsData.student.email ?? "",
         assignmentAvg: allSubjectsData.overallAverage,
         examAvg: null,
@@ -210,7 +213,7 @@ const Gradebook = () => {
       assignments,
       submissions: subjectSummaries.flatMap((subject) => subject.submissions),
     };
-  }, [allSubjectsData, allSubjectsSelected, singleGradebookData, subjectSummaries]);
+  }, [allSubjectsData, allSubjectsSelected, isParent, selectedChild?.id, selectedChild?.name, singleGradebookData, subjectSummaries]);
   const loading = allSubjectsSelected ? allSubjectsLoading : singleLoading;
   const isError = allSubjectsSelected ? allSubjectsIsError : singleIsError;
   const gradebookError = allSubjectsSelected ? allSubjectsError : singleGradebookError;
@@ -251,7 +254,13 @@ const Gradebook = () => {
     : selectedClass?.schoolLevel === "primary" || selectedClass?.schoolLevel === "nursery"
       ? "primary"
       : null;
-  const schoolBand: PortalSchoolBand = roleSchoolBand ?? (isSchoolStaff ? portal?.data.context?.schoolBand : classSchoolBand);
+  const parentSchoolBand = schoolBandFromResults((selectedChild?.enrolledClasses ?? []).map((course) => ({
+    schoolLevel: course.schoolLevel,
+    class: { name: course.name },
+  })));
+  const schoolBand: PortalSchoolBand = roleSchoolBand ?? (isSchoolStaff
+    ? portal?.data.context?.schoolBand
+    : isParent ? classSchoolBand ?? parentSchoolBand : classSchoolBand);
   const schoolName = portalSchoolName(schoolBand);
   const schoolLogo = schoolBand === "primary" ? "/eckernforde-english-medium-primary-badge.png" : "/eckernforde-cambridge-badge.png";
   const allSubjectClassNames = [...new Set(subjectSummaries.map((subject) => subject.className).filter(Boolean))];
@@ -355,7 +364,7 @@ const Gradebook = () => {
             }}>
               <SelectTrigger className="w-[200px]" aria-label="Select a subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
               <SelectContent>
-                {isStudent && <SelectItem value="all">All Subjects</SelectItem>}
+                {isStudentView && <SelectItem value="all">All Subjects</SelectItem>}
                 {classes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.subject?.name ?? c.name}</SelectItem>)}
               </SelectContent>
             </Select>

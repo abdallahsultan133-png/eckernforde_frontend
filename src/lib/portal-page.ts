@@ -28,6 +28,8 @@ const pages: [string, string, string][] = [
   ["/announcements", "Announcements", "News from your school community"],
   ["/messages", "Messages", "School conversations"],
   ["/teachers", "Teachers", "Teaching accounts and access"],
+  ["/users", "Manage users", "Manage school accounts and access"],
+  ["/students/selected", "Selected Students", "Students in the selected class or form"],
   ["/students", "Students", "Student accounts and academic records"],
   ["/guardians", "Parents & guardians", "Family portal accounts and child relationships"],
   ["/profile", "My profile", "Your account and personal information"],
@@ -37,6 +39,7 @@ const pages: [string, string, string][] = [
   ["/admin/academic-calendar", "Academic calendar", "School years and terms"],
   ["/admin/publish-results", "Publish results", "Review and release term results"],
   ["/admin/admissions", "Admissions enquiries", "Prospective school families"],
+  ["/admin/password-recovery", "Password Recovery", "Account recovery requests"],
   ["/admin/publications", "Publications", "Manage school news"],
   ["/admin/public-events", "Public events", "Manage school events"],
   ["/admin/report-card-template", "Report card template", "Configure published academic reports"],
@@ -53,7 +56,7 @@ export const PORTAL_PAGES = pages.map(([path, title, description]) => ({
 }));
 
 export function portalPage(pathname: string) {
-  if (/^\/students\/[^/]+/.test(pathname)) {
+  if (pathname !== "/students/selected" && /^\/students\/[^/]+/.test(pathname)) {
     return { title: "Student profile", description: "A connected academic record" };
   }
   const page = [...pages]

@@ -93,6 +93,7 @@ export function pageBackLink(pathname: string): PageBackLink | null {
     "/admin/publications",
     "/admin/public-events",
     "/admin/report-card-template",
+    "/admin/password-recovery",
   ].includes(path)) {
     return null;
   }

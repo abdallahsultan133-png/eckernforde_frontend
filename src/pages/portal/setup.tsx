@@ -58,7 +58,9 @@ export default function PortalSetup() {
   if (isError) return <ErrorState title="Unable to prepare your portal" description="Please retry in a moment." onRetry={refetch} />;
   if (!isEligible || (context && !context.setupRequired && !changing)) return <Navigate to="/portal" replace />;
   if (!context?.academicYear || context.configurationRequired) {
-    return <EmptyState icon={GraduationCap} title="Academic year setup is needed" description="An administrator needs to configure the current academic year before the portal can be opened." />;
+    return <EmptyState
+        icon={GraduationCap} title="Academic year setup is needed"
+        description="An administrator needs to configure the current academic year before the portal can be opened." />;
   }
 
   const academicYear = context.academicYear;
@@ -98,7 +100,7 @@ export default function PortalSetup() {
   };
 
   return <div className="mx-auto max-w-3xl space-y-6">
-    <PageHeader breadcrumb showBackLink={!changing} title="Set up your portal" description="Choose your school level, form or class, and academic year." />
+    <PageHeader breadcrumb showBackLink={false} title="Set up your portal" description="Choose your school level, form or class, and academic year." />
     <Card>
       <CardHeader>
         <CardTitle>{identity?.role === UserRole.TEACHER ? "Where are you teaching?" : "Where are you studying?"}</CardTitle>

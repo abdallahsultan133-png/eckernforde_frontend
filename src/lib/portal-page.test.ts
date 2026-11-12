@@ -13,6 +13,7 @@ describe("portal page context", () => {
   it("recognizes administrative and family pages outside Refine resources", () => {
     expect(portalPage("/admin/publish-results").title).toBe("Publish results");
     expect(portalPage("/parent").title).toBe("Family records");
+    expect(portalPage("/users").title).toBe("Manage users");
   });
   it("distinguishes the student directory from an individual record", () => {
     expect(portalPage("/students").title).toBe("Students");

@@ -30,6 +30,7 @@ import {
   UserRound,
   Globe2,
   Inbox,
+  KeyRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -153,6 +154,7 @@ const NAV: NavGroup[] = [
       { label: "AI Assistant", to: "/ai-assistant", icon: Sparkles, roles: ADMIN_ROLES },
       { label: "Audit Log", to: "/admin/audit-logs", icon: ScrollText, roles: ADMIN_ROLES },
       { label: "Admissions Enquiries", to: "/admin/admissions", icon: Inbox, roles: ADMIN_ROLES },
+      { label: "Password Recovery", to: "/admin/password-recovery", icon: KeyRound, roles: [UserRole.SUPER_ADMIN] },
       { label: "Publish Results", to: "/admin/publish-results", icon: BarChart3, roles: ADMIN_ROLES },
       { label: "Publications", to: "/admin/publications", icon: Globe2, roles: ADMIN_ROLES },
       { label: "Public Events", to: "/admin/public-events", icon: CalendarDays, roles: ADMIN_ROLES },
@@ -397,6 +399,7 @@ function NavItemRow({
 
 // ── Brand ────────────────────────────────────────────────────────────────────
 function BrandHeader() {
+  const { pathname } = useLocation();
   const { title } = useRefineOptions();
   const { data: identity } = useGetIdentity<User>();
   const isAdmin = Boolean(identity?.role && ADMIN_ROLES.includes(identity.role));
@@ -415,10 +418,12 @@ function BrandHeader() {
   // Do not briefly flash the generic Eckernforde Schools label while the
   // student's portal context is loading; resolve the exact school name as
   // soon as the context identifies the primary/secondary campus.
-  const schoolName = schoolBand ? portalSchoolName(schoolBand) : "School Portal";
+  const schoolName = usesAcademyBrand
+    ? "Eckernforde Schools"
+    : schoolBand ? portalSchoolName(schoolBand) : "School Portal";
   const schoolTagline = schoolBand ? portalSchoolTagline(schoolBand) : usesAcademyBrand ? "School Portal" : APP_TAGLINE;
-  const schoolDisplayName = schoolName;
-  const schoolDisplayTagline = schoolTagline;
+  const schoolDisplayName = pathname === "/admin/password-recovery" ? "Password Recovery" : schoolName;
+  const schoolDisplayTagline = pathname === "/admin/password-recovery" ? "Account access requests" : schoolTagline;
   const schoolLogo = isSchoolStaff && schoolBand === "secondary"
     ? "/eckernforde-cambridge-badge.png"
     : isSchoolStaff && schoolBand === "primary"
@@ -438,7 +443,7 @@ function BrandHeader() {
           <div className="flex min-w-0 flex-1 items-center gap-1.5 px-1.5 py-1">
             {mark}
             <div className="min-w-0 flex-1 leading-none">
-              <p className="max-w-[15rem] whitespace-normal break-words text-[11px] font-bold leading-[1.05] tracking-tight text-sidebar-foreground">
+              <p className="max-w-[15rem] whitespace-normal break-words text-xs font-bold leading-[1.05] tracking-tight text-sidebar-foreground">
                 {schoolDisplayName}
               </p>
               <p className="mt-0.5 whitespace-normal text-[10px] font-semibold leading-tight text-muted-foreground">{schoolDisplayTagline}</p>

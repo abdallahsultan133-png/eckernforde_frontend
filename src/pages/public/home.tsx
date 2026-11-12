@@ -5,7 +5,7 @@ export default function PublicHome() {
     <div className="reference-home">
       <ReferenceOpening />
       <ReferenceIdentity />
-      <ReferenceCampus />
+      <ReferenceCampus visitVideo />
       <ReferenceMosaic />
       <ReferenceStages />
     </div>

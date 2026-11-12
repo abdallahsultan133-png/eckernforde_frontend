@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 
@@ -12,7 +19,7 @@ function renderShell(initialEntry = "/") {
           <Route path="*" element={<div>Public page content</div>} />
         </Route>
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -28,20 +35,37 @@ describe("PublicShell", () => {
     const { container } = renderShell();
 
     expect(container.querySelector(".public-site.site-shell")).not.toBeNull();
+    expect(container.querySelector(".ref-monogram")?.textContent?.trim()).toBe(
+      "E"
+    );
     const portalLinks = screen.getAllByRole("link", { name: /go to portal/i });
     expect(portalLinks.length).toBeGreaterThan(0);
-    expect(portalLinks.every((link) => link.getAttribute("href") === "/portal")).toBe(true);
+    expect(
+      portalLinks.every((link) => link.getAttribute("href") === "/portal")
+    ).toBe(true);
   });
 
   it("prioritizes the three school stages in the mobile menu", async () => {
     renderShell();
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "School navigation" });
-    expect(dialog.querySelector(".stage-accent--nursery")?.getAttribute("href")).toBe("/academics/early-years");
-    expect(dialog.querySelector(".stage-accent--primary")?.getAttribute("href")).toBe("/academics/primary");
-    expect(dialog.querySelector(".stage-accent--secondary")?.getAttribute("href")).toBe("/academics/secondary");
-    expect(within(dialog).getByRole("link", { name: /contact \/ visit/i }).getAttribute("href")).toBe("/admissions/visit");
+    const dialog = await screen.findByRole("dialog", {
+      name: "School navigation",
+    });
+    expect(
+      dialog.querySelector(".stage-accent--nursery")?.getAttribute("href")
+    ).toBe("/academics/early-years");
+    expect(
+      dialog.querySelector(".stage-accent--primary")?.getAttribute("href")
+    ).toBe("/academics/primary");
+    expect(
+      dialog.querySelector(".stage-accent--secondary")?.getAttribute("href")
+    ).toBe("/academics/secondary");
+    expect(
+      within(dialog)
+        .getByRole("link", { name: /contact \/ visit/i })
+        .getAttribute("href")
+    ).toBe("/admissions/visit");
   });
 
   it("closes the mobile menu with Escape and returns focus to its toggle", async () => {
@@ -52,20 +76,70 @@ describe("PublicShell", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
 
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "School navigation" })).toBeNull());
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByRole("dialog", { name: "School navigation" })
+        ).toBeNull(),
+      { timeout: 3000 }
+    );
     await waitFor(() => expect(document.activeElement).toBe(toggle));
   });
 
-  it("opens a desktop menu from the keyboard and exposes its overview route", async () => {
+  it("opens the About us submenu with the nine reference destinations", async () => {
     renderShell();
-    const exploreTrigger = screen.getByRole("button", { name: "Open navigation" });
+    const exploreTrigger = screen.getByRole("button", {
+      name: "Open navigation",
+    });
     exploreTrigger.focus();
     fireEvent.click(exploreTrigger);
     fireEvent.click(await screen.findByRole("button", { name: "About us" }));
 
-    const overviewLink = await screen.findByRole("link", {
-      name: /about us overview/i,
+    const dialog = await screen.findByRole("dialog", {
+      name: "School navigation",
     });
-    expect(overviewLink.getAttribute("href")).toBe("/about");
+    const submenu = dialog.querySelector(".ref-navigation-submenu");
+    expect(submenu).not.toBeNull();
+    const links = within(submenu as HTMLElement).getAllByRole("link");
+    expect(links.map((link) => link.textContent?.trim())).toEqual([
+      "Our story",
+      "Mission and values",
+      "A welcome from school leadership",
+      "Leadership and governance",
+      "Accreditations and memberships",
+      "Campus and facilities",
+      "Community spaces",
+      "Careers at Eckernforde",
+      "Safeguarding",
+    ]);
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/about/our-story",
+      "/about/mission-values",
+      "/about/directors-welcome",
+      "/about/leadership",
+      "/about/accreditation-memberships",
+      "/about/campus-facilities",
+      "/about/community-spaces",
+      "/about/work-for-us",
+      "/about/safeguarding",
+    ]);
+  });
+  it("closes navigation after an About us destination is selected", async () => {
+    renderShell("/about");
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    fireEvent.click(await screen.findByRole("button", { name: "About us" }));
+    fireEvent.click(
+      await screen.findByRole("link", { name: "Our story" })
+    );
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByRole("dialog", { name: "School navigation" })
+        ).toBeNull(),
+      { timeout: 3000 }
+    );
+    await waitFor(() =>
+      expect(document.body.style.overflow).not.toBe("hidden")
+    );
   });
 });

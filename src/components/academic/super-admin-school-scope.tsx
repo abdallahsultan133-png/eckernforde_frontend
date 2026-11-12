@@ -7,12 +7,16 @@ import { useApiQuery } from "@/hooks/use-api-query.ts";
 
 type AcademicYear = { id: number; name: string; active: boolean };
 
-export function useSuperAdminSchoolScope(enabled: boolean) {
+export function useSuperAdminSchoolScope(enabled: boolean, initial?: {
+  schoolLevel?: SchoolLevel | "";
+  stage?: HeadmasterStage | "";
+  yearId?: string;
+}) {
   const yearsQuery = useApiQuery<{ data: AcademicYear[] }>(enabled ? "/grades/academic-years" : null);
   const years = yearsQuery.data?.data ?? [];
-  const [schoolLevel, setSchoolLevel] = useState<SchoolLevel | "">("");
-  const [stage, setStage] = useState<HeadmasterStage | "">("");
-  const [yearId, setYearId] = useState("");
+  const [schoolLevel, setSchoolLevel] = useState<SchoolLevel | "">(initial?.schoolLevel ?? "");
+  const [stage, setStage] = useState<HeadmasterStage | "">(initial?.stage ?? "");
+  const [yearId, setYearId] = useState(initial?.yearId ?? "");
   const reset = () => { setSchoolLevel(""); setStage(""); setYearId(""); };
   return { schoolLevel, setSchoolLevel, stage, setStage, yearId, setYearId, years, yearsLoading: yearsQuery.isLoading, yearsError: yearsQuery.isError, retryYears: yearsQuery.refetch, reset };
 }

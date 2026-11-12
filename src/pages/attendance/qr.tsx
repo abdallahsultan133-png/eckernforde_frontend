@@ -24,9 +24,6 @@ type QrSession = {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-const attendanceClassLabel = (classItem: ClassDetails) =>
-    classItem.subject?.name ? `${classItem.subject.name} — ${classItem.name}` : classItem.name;
-
 const QrAttendancePage = () => {
     const { token: routeToken } = useParams<{ token?: string }>();
     const { data: identity } = useGetIdentity<User>();

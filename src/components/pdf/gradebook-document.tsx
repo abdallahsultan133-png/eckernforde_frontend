@@ -41,6 +41,7 @@ const letterColor = (letter: string | null) => {
 
 const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#0f172a" },
+    watermark: { position: "absolute", top: 145, left: 78, width: 435, height: 580, objectFit: "contain", opacity: 0.3 },
     header: {
         flexDirection: "column",
         justifyContent: "center",
@@ -154,6 +155,7 @@ export function GradebookDocument({ className, subjectName, schoolName = "Eckern
                     <Text style={styles.reportSubheading}>HOMEWORK REPORT</Text>
                     <Text style={styles.classSubjectHeading}>CLASS: {displayClassName.toUpperCase()}{displaySubjectName ? `  |  SUBJECT: ${displaySubjectName.toUpperCase()}` : ""}</Text>
                 </View>
+                <Image src={schoolLogo} style={styles.watermark} fixed />
 
                 {(studentHomeworkSummary || studentHomeworkDetails) && <View style={styles.summary}>
                     <View style={styles.summaryRow}><Text style={styles.summaryLabel}>STUDENT: </Text><Text style={styles.summaryValue}>{studentName ?? rows[0]?.name ?? "Student"}</Text></View>
@@ -227,8 +229,9 @@ export function GradebookDocument({ className, subjectName, schoolName = "Eckern
 
                 {reportMode === "full" && questions.map((item, index) => {
                     const results = submissionsByAssignment.get(item.id);
+                    const questionHeading = `${allSubjectsReport && item.subjectName ? `${item.subjectName} - ` : ""}Homework ${item.subjectAssignmentIndex ?? index + 1}: ${item.title}`;
                     return <View key={item.id} wrap={false} style={styles.questions}>
-                        <Text style={styles.questionsTitle}>{allSubjectsReport && item.subjectName ? `${item.subjectName} - ` : ""}Homework {item.subjectAssignmentIndex ?? index + 1}: {item.title}</Text>
+                        <Text style={styles.questionsTitle}>{questionHeading}</Text>
                         <Text style={styles.question}>{item.question}{item.dueAt ? ` (Due ${new Date(item.dueAt).toLocaleDateString()})` : ""}</Text>
                         <View style={[styles.table, { marginTop: 8 }]}>
                             <View style={styles.tableHeaderRow}>

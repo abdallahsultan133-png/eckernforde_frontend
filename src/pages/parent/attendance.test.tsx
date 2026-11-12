@@ -18,6 +18,11 @@ vi.mock("@/hooks/use-api-query", () => ({
 }));
 
 vi.mock("@/hooks/use-download", () => ({ useDownload: () => ({ narrateDownload: vi.fn() }) }));
+vi.mock("@/components/pdf/deferred-pdf-download", () => ({
+  DeferredPdfDownload: ({ documentProps }: { documentProps: Record<string, unknown> }) => (
+    <div data-testid="attendance-pdf-props">{JSON.stringify(documentProps)}</div>
+  ),
+}));
 
 afterEach(cleanup);
 
@@ -33,4 +38,8 @@ it("shows the subject instead of the class in a parent's attendance record", () 
   expect(screen.getAllByText("Mathematics").length).toBeGreaterThan(0);
   expect(screen.getByRole("columnheader", { name: "Attendance Rate" })).toBeTruthy();
   expect(screen.getByText("100%")).toBeTruthy();
+  expect(JSON.parse(screen.getByTestId("attendance-pdf-props").textContent ?? "{}")).toMatchObject({
+    studentAccountReport: true,
+    studentReport: true,
+  });
 });

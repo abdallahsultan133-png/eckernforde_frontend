@@ -24,8 +24,8 @@
 .public-site .ref-campus-context{position:absolute;left:10.4%;bottom:35%;font-size:13px;opacity:.9}
 .public-site .ref-campus-marker{position:absolute;bottom:13%;left:26%;display:flex;align-items:center;flex-direction:column;gap:12px;background:none;border:0;color:#fff}
 .public-site .ref-campus-marker--outdoor{left:49%;bottom:17%}.public-site .ref-campus-marker span{background:var(--ref-blue);border-radius:30px;padding:8px 16px;transition:translate .3s;font-family:var(--ref-display);font-size:22px}.public-site .ref-campus-marker--learning span{background:#006532}.public-site .ref-campus-marker:hover span{translate:0 5px}.public-site .ref-campus-marker svg{color:#cddbe0}
-.public-site .ref-campus-tour{position:absolute;bottom:40px;right:50px;display:flex;align-items:center;flex-direction:column;gap:20px;font-size:11px;max-width:180px;text-align:center}
-.public-site .ref-campus-tour>span{display:grid;place-items:center;width:150px;height:150px;border:2px dotted white;border-radius:50%;background:#041c2d50;transition:transform .4s}.public-site .ref-campus-tour:hover>span{transform:scale(1.15)}
+.public-site .ref-campus-tour{--ref-campus-tour-size:150px;position:absolute;bottom:40px;right:50px;width:var(--ref-campus-tour-size);display:flex;align-items:center;flex-direction:column;gap:20px;font-size:11px;text-align:center}
+.public-site .ref-campus-tour>span{position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;width:150px;height:150px;border:2px dotted white;border-radius:50%;background:#041c2d50;transform-origin:bottom right;transition:transform .4s}.public-site .ref-campus-tour-video{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;border-radius:50%;opacity:.78}.public-site .ref-campus-tour>span>svg{position:relative;z-index:1;filter:drop-shadow(0 1px 5px #041c2d)}
 .public-site .ref-campus-overlay{display:grid;place-items:center;padding:70px 0}.public-site .ref-campus-dialog{position:relative;width:90vw;max-width:1600px;background:white;color:#303030;display:grid;grid-template-columns:7fr 5fr;min-height:600px;max-height:calc(100dvh - 140px);border-radius:4px;overflow:hidden;animation:public-menu-enter .35s ease-out}
 .public-site .ref-campus-dialog-copy{padding:65px 70px;overflow:auto}.public-site .ref-campus-dialog-copy h2{font-size:54px;text-align:left;color:var(--ref-blue);margin:25px 0 30px}.public-site .ref-campus-dialog-copy>p{font-size:19px}.public-site .ref-campus-dialog-copy>.ref-kicker{font-size:11px}
 .public-site .ref-campus-dialog-facts{display:flex;gap:30px;border-block:1px solid #ddd;margin:35px 0;padding:25px 0;font-size:14px}.public-site .ref-campus-dialog-facts span{display:flex;align-items:center;gap:18px}.public-site .ref-campus-dialog-facts strong{font:48px var(--ref-display)}
@@ -56,7 +56,7 @@
 @media(max-width:1023px){
  .public-site .ref-opening-intro{opacity:1!important;font-size:16px!important}
  .public-site .ref-opening{height:200svh}.public-site .ref-opening h1{font-size:100px}.public-site .ref-opening-intro{top:auto;bottom:470px;width:48vw;padding:30px;font-size:22px}.public-site .ref-identity{margin-top:0;height:700px;padding:90px 0}.public-site .ref-identity-gallery{gap:25px}.public-site .ref-identity-gallery>.ref-media{height:300px}
- .public-site .ref-campus-top{padding-top:80px}.public-site .ref-campus h2{font-size:90px}.public-site .ref-campus-tour>span{width:120px;height:120px}.public-site .ref-campus-tour{right:30px;bottom:30px}
+ .public-site .ref-campus-top{padding-top:80px}.public-site .ref-campus h2{font-size:90px}.public-site .ref-campus-tour>span{width:120px;height:120px}.public-site .ref-campus-tour{--ref-campus-tour-size:120px;right:30px;bottom:30px}
  .public-site .ref-glance{padding-top:100px}.public-site .ref-mosaic-canvas{height:2500px}.public-site .ref-mosaic-intro{left:6.5%;width:23%}.public-site .ref-mosaic-intro h2{font-size:48px}.public-site .ref-mosaic-intro>p{font-size:20px}.public-site .ref-stat{width:210px}.public-site .ref-stat strong{font-size:80px}.public-site .ref-stat-green{left:40%}.public-site .ref-mosaic-news,.public-site .ref-mosaic-event{height:400px}.public-site .ref-mosaic-caption h3{font-size:30px}.public-site .ref-mosaic-film{width:23%;height:270px}.public-site .ref-mosaic-film-two{top:2150px;left:68%}.public-site .ref-mosaic-photo-three{top:2000px}.public-site .ref-stat-red{top:1800px;width:230px}.public-site .ref-community-ending{top:2240px;padding-bottom:0}
  .public-site .ref-stages>article{min-height:480px}.public-site .ref-stage-copy{left:25px;right:25px;top:50px}.public-site .ref-stage-copy h3{font-size:40px}.public-site .ref-stage-more{max-height:270px;opacity:1}.public-site .ref-stage-more .ref-pill{font-size:13px;gap:10px;padding:12px 15px}
  .public-site .ref-campus-dialog-copy{padding:40px 35px}.public-site .ref-campus-dialog-copy h2{font-size:42px}.public-site .ref-campus-dialog-facts{flex-direction:column;gap:15px}
@@ -67,7 +67,7 @@
  .public-site .ref-identity{height:auto;min-height:600px;margin:0;padding:60px 0 50px}.public-site .ref-identity-gallery{left:0;transform:none;width:100%;grid-template-columns:repeat(2,1fr);gap:20px;top:90px;bottom:0;overflow:hidden}.public-site .ref-identity-gallery>.ref-media{height:160px}.public-site .ref-identity-gallery .ref-placeholder-label{border:0}.public-site .ref-identity-gallery .ref-placeholder-label span{font-size:17px}.public-site .ref-identity-gallery .ref-placeholder-label small{display:none}
  .public-site .ref-identity-panel{width:75%;min-height:488px;padding:35px 30px}.public-site .ref-identity-panel h2{font-size:38px;white-space:normal;margin-bottom:22px}.public-site .ref-identity-panel p{font-size:17px;line-height:1.43}.public-site .ref-identity-panel .ref-pill{margin-top:25px;font-size:12px;gap:12px;padding:12px 16px;min-height:50px;white-space:nowrap}
  .public-site .ref-campus{min-height:100svh;min-height:max(800px,100svh)}.public-site .ref-campus-top{padding-top:50px}.public-site .ref-campus h2{font-size:60px;max-width:360px;margin:auto}.public-site .ref-campus-facts{margin:65px 30px 0;max-width:none}.public-site .ref-campus-facts p{font-size:14px;gap:14px}.public-site .ref-campus-facts strong{font-size:38px;min-width:25px}.public-site .ref-campus-context{left:30px;bottom:38%;font-size:11px}.public-site .ref-campus-background>.ref-placeholder-label{inset:49% 10% 25%;opacity:.35}.public-site .ref-campus-background>.ref-placeholder-label span{font-size:40px}
- .public-site .ref-campus-marker{left:5%;bottom:20%;gap:8px}.public-site .ref-campus-marker--outdoor{left:auto;right:5%;bottom:27%}.public-site .ref-campus-marker span{font-size:17px;padding:7px 12px}.public-site .ref-campus-marker svg{width:40px}.public-site .ref-campus-tour{right:25px;bottom:45px;max-width:130px;font-size:10px}.public-site .ref-campus-tour>span{width:90px;height:90px}
+ .public-site .ref-campus-marker{left:5%;bottom:20%;gap:8px}.public-site .ref-campus-marker--outdoor{left:auto;right:5%;bottom:27%}.public-site .ref-campus-marker span{font-size:17px;padding:7px 12px}.public-site .ref-campus-marker svg{width:40px}.public-site .ref-campus-tour{--ref-campus-tour-size:90px;right:25px;bottom:45px;max-width:130px;font-size:10px}.public-site .ref-campus-tour>span{width:90px;height:90px}
  .public-site .ref-campus-overlay{padding:25px 0}.public-site .ref-campus-dialog{display:flex;flex-direction:column;max-height:calc(100dvh - 50px);min-height:0;overflow:auto}.public-site .ref-campus-dialog-image{order:0;height:260px;flex:none}.public-site .ref-campus-dialog-copy{order:1;overflow:visible;padding:35px 30px}.public-site .ref-campus-dialog-copy h2{font-size:36px;margin:20px 0}.public-site .ref-campus-dialog-copy>p{font-size:17px}.public-site .ref-campus-dialog-image>div:last-child{padding:12px;bottom:10px;font-size:12px}.public-site .ref-campus-dialog-image a{margin-top:10px}.public-site .ref-campus-dialog-image>.ref-media .ref-placeholder-label{inset:10% 35% 10% 5%}.public-site .ref-campus-dialog-image>.ref-media .ref-placeholder-label span{font-size:24px}
  /* Preserve staggered mobile composition without clipping text or focusable controls. */
  .public-site .ref-glance{padding:50px 0 0}.public-site .ref-mosaic-canvas{width:100%;height:auto;min-height:0;display:flex;flex-direction:column;gap:38px;padding:0 25px;will-change:auto}
@@ -98,7 +98,9 @@
 .public-site .ref-campus-choices button[aria-pressed=true]{background:var(--ref-blue);color:white}
 .public-site .ref-campus-marker svg{transition:scale .3s}
 .public-site .ref-campus-marker:is(:hover,:focus-visible) svg{scale:1.1}
-.public-site .ref-campus-tour:is(:hover,:focus-visible)>span{transform:scale(1.15)}
+.public-site .ref-campus-tour>b{width:max-content;text-align:center;transition:font-size .3s ease,transform .3s ease}
+.public-site .ref-campus-tour:is(:hover,:focus-visible,:active)>span{transform:scale(1.9)}
+.public-site .ref-campus-tour:is(:hover,:focus-visible,:active)>b{position:absolute;top:125%;left:5%;z-index:2;width:max-content;max-width:none;white-space:nowrap;pointer-events:none;color:#fff;text-shadow:0 1px 5px #041c2d;font-size:clamp(13px,1.15vw,18px);transform:translate(-50%,-100%) scale(1.08);transform-origin:center}
 .public-site .ref-glance{height:3115px;padding:0;overflow:clip}
 .public-site .ref-glance-pin{padding:150px 0;position:sticky;top:0;height:100svh;overflow:clip}
 .public-site .ref-mosaic-canvas{will-change:auto;margin-left:100px}
@@ -179,3 +181,106 @@
 .public-site .ref-glance-moving .ref-mosaic-canvas{will-change:transform}
 .public-site .ref-opening{z-index:2;background:transparent}
 .public-site .ref-identity{z-index:1}
+
+/* Task 1: visual refinement only; the startup, scroll transforms, sticky pin
+   and accessible static canvas above remain authoritative. */
+.public-site .ref-opening h1{font-size:var(--ref-type-display);letter-spacing:-.025em;line-height:1.02}
+.public-site .ref-opening-image:after{background:linear-gradient(#041c2d75,transparent 66%)}
+.public-site .ref-opening-intro{font-family:var(--public-font-body);font-size:clamp(22px,1.8vw,30px);line-height:1.4}
+.public-site .ref-opening-startup>.ref-media{border-radius:2px}
+.public-site .ref-identity-panel h2{font-size:56px;letter-spacing:-.025em;line-height:1.06}
+.public-site .ref-identity-panel h2{font-size:clamp(36px,4.7vw,54px);max-width:100%;white-space:normal;text-wrap:balance}
+.public-site .ref-identity-panel p{max-width:36ch;line-height:1.5}
+.public-site .ref-identity-panel .ref-pill{font-size:16px;padding-inline:24px}
+.public-site .ref-identity-gallery .is-placeholder .ref-placeholder-label{border:0;opacity:.75}
+.public-site .ref-identity-gallery>.ref-media:nth-child(odd).is-placeholder{background:linear-gradient(160deg,#526f68,#1b3a43)}
+.public-site .ref-quote-panel h3{font-size:42px}
+.public-site .ref-quote-panel p{font-size:18px;line-height:1.5}
+.public-site .ref-campus h2{letter-spacing:-.025em;line-height:1.04;padding-inline:25px}
+.public-site .ref-campus-background.is-placeholder{background:radial-gradient(ellipse at 85% 25%,#7ba0a140,transparent 60%),linear-gradient(160deg,#245d75,#234d60 60%,#183e41)}
+.public-site .ref-campus-background>.ref-placeholder-label{opacity:.32;border:0}
+.public-site .ref-campus-facts p{line-height:1.5;padding-block:14px}
+.public-site .ref-campus-context{line-height:1.6;max-width:30ch}
+.public-site .ref-campus-marker span{box-shadow:0 4px 15px #041c2d30;font-size:24px;line-height:1.2}
+.public-site .ref-campus-marker:is(:hover,:focus-visible) span{translate:0 5px}
+.public-site .ref-campus-choices button{min-height:40px;padding:9px 15px;font-size:13px;line-height:1.25}
+.public-site .ref-campus-dialog-copy h2{font-size:clamp(40px,3.75vw,60px);line-height:1.05}
+.public-site .ref-campus-dialog-copy>p{line-height:1.55}
+.public-site .ref-campus-dialog-facts{gap:22px;line-height:1.5}
+.public-site .ref-campus-dialog-facts strong{color:#71818a;font-size:36px}
+.public-site .ref-mosaic-intro h2{font-size:62px;line-height:1.05;max-width:13ch}
+.public-site .ref-mosaic-intro>p{max-width:30ch;line-height:1.45}
+.public-site .ref-stat{gap:16px}
+.public-site .ref-stat span{line-height:1.45;max-width:20ch}
+.public-site .ref-stat-pending strong{font-size:64px;opacity:.75}
+.public-site .ref-mosaic-photo figcaption{font-size:13px;line-height:1.45}
+.public-site .ref-mosaic-photo .ref-placeholder-label{border:0;inset:12% 8%}
+.public-site :is(.ref-mosaic-news,.ref-mosaic-event)>.ref-media .ref-placeholder-label{border:0;opacity:.65}
+.public-site .ref-mosaic-caption h3{font-size:38px;line-height:1.08;max-width:26ch;overflow-wrap:anywhere}
+.public-site .ref-mosaic-caption .ref-kicker{font-size:12px}
+.public-site .ref-mosaic-caption :is(p,button){line-height:1.45}
+.public-site .ref-mosaic-film .ref-placeholder-label{border:0;opacity:.65}
+.public-site .ref-mosaic-connect{min-height:90px;font-size:13px;line-height:1.4;gap:20px}
+.public-site .ref-mosaic-connect svg{flex:none}
+.public-site .ref-community-ending>p{font-size:34px;line-height:1.2}
+.public-site .ref-stages>article+article{border-left:1px solid #ffffff26}
+.public-site .ref-stage-copy{max-width:400px}
+.public-site .ref-stage-copy h3{font-size:54px;line-height:1.05}
+.public-site .ref-stage-more p{font-size:18px;line-height:1.5;max-width:28ch}
+.public-site .ref-stages .ref-placeholder-label{border:0;opacity:.42}
+.public-site .ref-stages>article:first-child>.ref-media.is-placeholder{background:linear-gradient(155deg,#577b73,#183c43)}
+.public-site .ref-stages>article:nth-child(2)>.ref-media.is-placeholder{background:linear-gradient(155deg,#59724d,#15393a)}
+.public-site .ref-stages>article:nth-child(3)>.ref-media.is-placeholder{background:linear-gradient(155deg,#557d8c,#102f42)}
+@media(min-width:768px) and (max-width:1023px){
+ .public-site .ref-opening h1{font-size:100px}
+ .public-site .ref-mosaic-intro h2{font-size:50px}
+ .public-site .ref-opening-image img{object-position:58% center}
+ .public-site .ref-stat-blue{left:13%}
+ .public-site .ref-stage-copy{left:25px;right:25px}
+ .public-site .ref-stage-copy h3{font-size:44px}
+ .public-site .ref-stage-more p{font-size:16px}
+ .public-site .ref-stage-more .ref-pill{font-size:12px;gap:8px;padding-inline:14px}
+ .public-site .ref-campus-dialog-copy{padding:40px 30px}
+ .public-site .ref-campus-dialog-actions .ref-pill{font-size:14px;padding:12px 18px;gap:12px}
+}
+@media(max-width:767px){
+ .public-site .ref-opening h1{font-size:clamp(62px,17.5vw,75px);top:150px;letter-spacing:-.03em;padding-inline:12px;line-height:1.02}
+ .public-site .ref-opening-image img{object-position:63% center}
+ .public-site .ref-mobile-intro{padding:55px 35px 0;font-size:18px;line-height:1.5}
+ .public-site .ref-identity-panel{width:78%;padding:40px 25px;min-height:488px}
+ .public-site .ref-identity-panel h2{font-size:clamp(36px,9.75vw,42px);white-space:normal}
+ .public-site .ref-identity-panel p{font-size:17px;line-height:1.45}
+ .public-site .ref-identity-panel .ref-pill{font-size:13px;padding:12px 16px;gap:12px;max-width:100%}
+ .public-site .ref-identity-gallery .ref-placeholder-label{display:none}
+ .public-site .ref-quote-panel{padding:55px 25px 35px}
+ .public-site .ref-quote-panel h3{font-size:34px}
+ .public-site .ref-quote-panel p{font-size:17px}
+ .public-site .ref-campus h2{font-size:clamp(54px,15vw,64px);line-height:1.03}
+ .public-site .ref-campus-facts{margin-top:55px}
+ .public-site .ref-campus-facts p{font-size:14px;padding-block:14px}
+ .public-site .ref-campus-context{bottom:39%;max-width:27ch}
+ .public-site .ref-campus-background>.ref-placeholder-label{inset:51% 10% 31%;opacity:.22}
+ .public-site .ref-campus-background>.ref-placeholder-label span{font-size:30px}
+ .public-site .ref-campus-marker span{font-size:18px;max-width:185px;padding:9px 12px}
+ .public-site .ref-campus-dialog-copy{padding:30px 25px}
+ .public-site .ref-campus-dialog-copy h2{font-size:38px}
+ .public-site .ref-campus-choices button{font-size:12px;padding:9px 12px}
+ .public-site .ref-campus-dialog-facts{margin-block:25px;padding-block:20px}
+ .public-site .ref-campus-dialog-actions .ref-pill{font-size:14px;padding-inline:16px;gap:12px}
+ .public-site .ref-mosaic-intro h2{font-size:42px;max-width:13ch;margin-bottom:24px}
+ .public-site .ref-mosaic-intro>p{font-size:18px;line-height:1.45}
+ .public-site .ref-stat-pending strong{font-size:52px}
+ .public-site .ref-stat-blue{width:205px;top:1535px}
+ .public-site .ref-mosaic-news{height:270px}
+ .public-site .ref-mosaic-caption h3{font-size:28px;line-height:1.1;margin-block:10px}
+ .public-site .ref-mosaic-caption>p:not(.ref-kicker){font-size:15px}
+ .public-site .ref-mosaic-caption .ref-pill{font-size:13px;min-height:42px;gap:12px}
+ .public-site .ref-feed-error button{margin-top:10px;min-height:42px}
+ .public-site .ref-mosaic-photo .ref-placeholder-label span{font-size:23px}
+ .public-site .ref-mosaic-connect{font-size:12px;min-height:116px}
+ .public-site .ref-community-ending>p{font-size:32px;line-height:1.15}
+ .public-site .ref-stage-copy{padding:40px 25px}
+ .public-site .ref-stage-copy h3{font-size:40px}
+ .public-site .ref-stages>article+article{border-left:0;border-top:1px solid #ffffff26}
+ .public-site .ref-stages .ref-placeholder-label{inset:10% 8% 15% 62%}
+}

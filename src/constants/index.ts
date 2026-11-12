@@ -5,7 +5,7 @@ export const SCHOOL_PROFILE = {
     name: "Eckernforde Schools",
     shortName: "Eckernforde Schools",
     tagline: "Learning with purpose",
-    address: "Plot 18, Mlimani Road, Dar es Salaam, Tanzania",
+    address: "Plot 18, Chumbageni, Tanga, Tanzania",
     phone: "+255 700 123 456",
     generalEmail: "hello@eckernfordeschools.example",
     admissionsEmail: "admissions@eckernfordeschools.example",
